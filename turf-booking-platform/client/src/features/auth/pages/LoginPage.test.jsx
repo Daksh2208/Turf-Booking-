@@ -1,17 +1,37 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { LoginPage } from './LoginPage'
+import { AuthContext } from '../context/AuthContext'
 
 describe('LoginPage Component', () => {
-  const renderLogin = () =>
-    render(
-      <MemoryRouter>
-        <LoginPage />
-      </MemoryRouter>
+  const mockLogin = vi.fn().mockResolvedValue({ id: 'u1', name: 'John Doe', email: 'you@example.com' })
+  const mockLogout = vi.fn()
+  const mockRegister = vi.fn()
+  const mockRefreshUser = vi.fn()
+
+  const renderLogin = (contextOverrides = {}) => {
+    const authValue = {
+      user: null,
+      isLoading: false,
+      isAuthenticated: false,
+      isAdmin: false,
+      login: mockLogin,
+      logout: mockLogout,
+      register: mockRegister,
+      refreshUser: mockRefreshUser,
+      ...contextOverrides,
+    }
+
+    return render(
+      <AuthContext.Provider value={authValue}>
+        <MemoryRouter>
+          <LoginPage />
+        </MemoryRouter>
+      </AuthContext.Provider>
     )
+  }
 
   it('renders login form elements with accessible labels', () => {
     renderLogin()
@@ -32,6 +52,24 @@ describe('LoginPage Component', () => {
     await waitFor(() => {
       expect(screen.getByText(/Email address is required/i)).toBeInTheDocument()
       expect(screen.getByText(/Password is required/i)).toBeInTheDocument()
+    })
+  })
+
+  it('submits valid credentials through login handler', async () => {
+    renderLogin()
+
+    fireEvent.change(screen.getByLabelText(/Email Address/i), {
+      target: { value: 'user@example.com' },
+    })
+    fireEvent.change(screen.getByLabelText(/^Password/i), {
+      target: { value: 'Secret123' },
+    })
+
+    const submitBtn = screen.getByRole('button', { name: /Sign In to Account/i })
+    fireEvent.click(submitBtn)
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith('user@example.com', 'Secret123')
     })
   })
 

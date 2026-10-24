@@ -45,10 +45,9 @@ export const registerValidator = [
     .matches(/\d/)
     .withMessage('Password must contain at least one number'),
   body('confirmPassword')
-    .notEmpty()
-    .withMessage('Please confirm your password')
+    .optional()
     .custom((value, { req }) => {
-      if (value !== req.body.password) {
+      if (value && value !== req.body.password) {
         throw new Error('Passwords do not match')
       }
       return true

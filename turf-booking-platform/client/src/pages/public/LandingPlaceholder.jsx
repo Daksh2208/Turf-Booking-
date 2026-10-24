@@ -1,8 +1,11 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { Trophy, ArrowRight, ShieldCheck, Zap, Users, LogIn } from 'lucide-react'
+import { Trophy, ArrowRight, ShieldCheck, Zap, Users, LogIn, LogOut, UserCheck } from 'lucide-react'
+import { useAuth } from '../../hooks/useAuth'
 
 export const LandingPlaceholder = () => {
+  const { user, isAuthenticated, logout } = useAuth()
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
       {/* Top Navbar */}
@@ -23,20 +26,42 @@ export const LandingPlaceholder = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link
-              to="/login"
-              className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors inline-flex items-center gap-1.5"
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>Sign In</span>
-            </Link>
-            <Link
-              to="/register"
-              className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-md shadow-emerald-500/20 transition-all inline-flex items-center gap-1.5"
-            >
-              <span>Create Account</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            {isAuthenticated ? (
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+                  <UserCheck className="w-4 h-4 text-emerald-400" />
+                  <span className="text-slate-200 font-medium">{user?.name}</span>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    {user?.role}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-rose-300 hover:text-white hover:bg-rose-500/20 border border-rose-500/30 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800/60 transition-colors inline-flex items-center gap-1.5"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Sign In</span>
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-md shadow-emerald-500/20 transition-all inline-flex items-center gap-1.5"
+                >
+                  <span>Create Account</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -45,7 +70,7 @@ export const LandingPlaceholder = () => {
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-16 flex flex-col items-center justify-center text-center space-y-8">
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
           <Zap className="w-3.5 h-3.5" />
-          <span>Part 3 — Authentication UI Established</span>
+          <span>Part 4 — Secure JWT Authentication & UI Connected</span>
         </div>
 
         <div className="space-y-4 max-w-2xl">
@@ -60,22 +85,41 @@ export const LandingPlaceholder = () => {
           </p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
-          <Link
-            to="/login"
-            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold shadow-lg shadow-emerald-500/25 transition-transform active:scale-95 flex items-center gap-2"
-          >
-            <span>Open Login View</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-          <Link
-            to="/register"
-            className="px-6 py-3 rounded-2xl bg-slate-900 border border-slate-700/80 hover:bg-slate-800 text-slate-200 font-semibold transition-colors flex items-center gap-2"
-          >
-            <span>Open Register View</span>
-          </Link>
-        </div>
+        {/* Authenticated banner or Action Buttons */}
+        {isAuthenticated ? (
+          <div className="p-6 rounded-2xl bg-slate-900/80 border border-slate-800 max-w-md w-full text-center space-y-3">
+            <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <UserCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-200">
+                Welcome, {user?.name}!
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                Active Role: <strong className="text-emerald-400 capitalize">{user?.role}</strong> • Email: <span className="text-slate-300">{user?.email}</span>
+              </p>
+            </div>
+            <p className="text-xs text-emerald-300/80 bg-emerald-500/10 py-2 px-3 rounded-xl border border-emerald-500/20">
+              Authenticated via secure HttpOnly JWT cookies with automatic refresh-token rotation.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
+            <Link
+              to="/login"
+              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold shadow-lg shadow-emerald-500/25 transition-transform active:scale-95 flex items-center gap-2"
+            >
+              <span>Sign In to Account</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link
+              to="/register"
+              className="px-6 py-3 rounded-2xl bg-slate-900 border border-slate-700/80 hover:bg-slate-800 text-slate-200 font-semibold transition-colors flex items-center gap-2"
+            >
+              <span>Create Account</span>
+            </Link>
+          </div>
+        )}
 
         {/* Feature Highlights Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full pt-8 text-left">
@@ -106,3 +150,5 @@ export const LandingPlaceholder = () => {
     </div>
   )
 }
+
+export default LandingPlaceholder

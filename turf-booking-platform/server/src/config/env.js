@@ -32,6 +32,22 @@ const validateEnv = () => {
     errors.push('MONGODB_URI must start with "mongodb://" or "mongodb+srv://"')
   }
 
+  // 5. JWT Secrets validation
+  const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'default_dev_jwt_access_secret_key_12345'
+  const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'default_dev_jwt_refresh_secret_key_12345'
+  if (NODE_ENV === 'production') {
+    if (!process.env.JWT_ACCESS_SECRET || process.env.JWT_ACCESS_SECRET.length < 32) {
+      errors.push('In production, JWT_ACCESS_SECRET must be set and at least 32 characters long')
+    }
+    if (!process.env.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_SECRET.length < 32) {
+      errors.push('In production, JWT_REFRESH_SECRET must be set and at least 32 characters long')
+    }
+  }
+
+  const JWT_ACCESS_EXPIRES_IN = process.env.JWT_ACCESS_EXPIRES_IN || '15m'
+  const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d'
+  const COOKIE_SECRET = process.env.COOKIE_SECRET || 'dev_cookie_secret_key_999'
+
   if (errors.length > 0) {
     console.error('❌ Environment configuration error:')
     errors.forEach((err) => console.error(`  - ${err}`))
@@ -43,6 +59,11 @@ const validateEnv = () => {
     NODE_ENV,
     CLIENT_URL,
     MONGODB_URI,
+    JWT_ACCESS_SECRET,
+    JWT_REFRESH_SECRET,
+    JWT_ACCESS_EXPIRES_IN,
+    JWT_REFRESH_EXPIRES_IN,
+    COOKIE_SECRET,
   }
 }
 

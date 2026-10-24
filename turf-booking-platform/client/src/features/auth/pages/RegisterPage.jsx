@@ -1,16 +1,26 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { User, Mail, ArrowRight, Check, X, CheckCircle2 } from 'lucide-react'
+import { User, Mail, ArrowRight, Check, X, AlertCircle } from 'lucide-react'
 import { AuthLayout } from '../../../layouts/AuthLayout'
 import { FormField } from '../../../components/common/FormField'
 import { Input } from '../../../components/common/Input'
 import { PasswordInput } from '../../../components/common/PasswordInput'
 import { Button } from '../../../components/common/Button'
 import { registerValidationRules } from '../schemas/auth.schemas'
+import { useAuth } from '../../../hooks/useAuth'
 
 export const RegisterPage = () => {
-  const [submissionFeedback, setSubmissionFeedback] = useState(null)
+  const [serverError, setServerError] = useState(null)
+  const { register: registerCustomer, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/', { replace: true })
+    }
+  }, [isAuthenticated, navigate])
 
   const {
     register,
@@ -34,15 +44,27 @@ export const RegisterPage = () => {
   const hasLetter = /[A-Za-z]/.test(passwordValue)
   const hasNumber = /\d/.test(passwordValue)
 
-  // Validated client-side submission without mock backend calls
   const onSubmit = async (data) => {
-    await new Promise((resolve) => setTimeout(resolve, 600))
-
-    setSubmissionFeedback({
-      type: 'info',
-      message:
-        'Client-side registration validation passed! User creation will be connected to the backend in the next phase.',
-    })
+    setServerError(null)
+    try {
+      await registerCustomer({
+        name: data.name.trim(),
+        email: data.email.trim(),
+        password: data.password,
+      })
+      // Successful registration: navigate to login with state for immediate sign-in
+      navigate('/login', {
+        state: {
+          registered: true,
+          email: data.email.trim(),
+        },
+      })
+    } catch (err) {
+      const message =
+        err.response?.data?.message ||
+        'Registration could not be completed. Please try again.'
+      setServerError(message)
+    }
   }
 
   return (
@@ -51,16 +73,16 @@ export const RegisterPage = () => {
       subtitle="Join to instantly book box cricket, football, pickleball, and badminton turfs with live price calculation."
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        {/* Placeholder container for server-side notices */}
-        {submissionFeedback && (
+        {/* Server Error Alert */}
+        {serverError && (
           <div
-            tabIndex={-1}
-            className="flex items-start gap-3 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs leading-relaxed"
+            role="alert"
+            className="flex items-start gap-3 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs leading-relaxed animate-in fade-in"
           >
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-semibold text-emerald-200">Validation Passed</p>
-              <p>{submissionFeedback.message}</p>
+              <p className="font-semibold text-rose-200">Registration Failed</p>
+              <p>{serverError}</p>
             </div>
           </div>
         )}
@@ -234,3 +256,5 @@ export const RegisterPage = () => {
     </AuthLayout>
   )
 }
+
+export default RegisterPage

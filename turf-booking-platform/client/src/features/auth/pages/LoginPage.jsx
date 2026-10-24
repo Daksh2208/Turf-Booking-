@@ -1,40 +1,67 @@
-import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { Mail, ArrowRight, Info, CheckCircle2 } from 'lucide-react'
+import { Mail, ArrowRight, Info, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { AuthLayout } from '../../../layouts/AuthLayout'
 import { FormField } from '../../../components/common/FormField'
 import { Input } from '../../../components/common/Input'
 import { PasswordInput } from '../../../components/common/PasswordInput'
 import { Button } from '../../../components/common/Button'
 import { loginValidationRules } from '../schemas/auth.schemas'
+import { useAuth } from '../../../hooks/useAuth'
 
 export const LoginPage = () => {
-  const [submissionFeedback, setSubmissionFeedback] = useState(null)
+  const [serverError, setServerError] = useState(null)
   const [showForgotNotice, setShowForgotNotice] = useState(false)
+  const { login, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  // Success message if user was redirected from registration
+  const registrationSuccess = location.state?.registered
+  const prefilledEmail = location.state?.email || ''
+
+  const fromPath = location.state?.from?.pathname || '/'
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(fromPath, { replace: true })
+    }
+  }, [isAuthenticated, navigate, fromPath])
 
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm({
     defaultValues: {
-      email: '',
+      email: prefilledEmail,
       password: '',
       rememberMe: false,
     },
     mode: 'onBlur',
   })
 
-  // Validated client-side submission without mock backend authentication
-  const onSubmit = async (data) => {
-    await new Promise((resolve) => setTimeout(resolve, 600))
+  // Set prefilled email if navigating from registration
+  useEffect(() => {
+    if (prefilledEmail) {
+      setValue('email', prefilledEmail)
+    }
+  }, [prefilledEmail, setValue])
 
-    setSubmissionFeedback({
-      type: 'info',
-      message:
-        'Client-side validation passed! The authentication API will be connected in the next phase.',
-    })
+  const onSubmit = async (data) => {
+    setServerError(null)
+    try {
+      await login(data.email, data.password)
+      navigate(fromPath, { replace: true })
+    } catch (err) {
+      const message =
+        err.response?.data?.message ||
+        'Unable to sign in. Please verify your email and password.'
+      setServerError(message)
+    }
   }
 
   return (
@@ -43,16 +70,30 @@ export const LoginPage = () => {
       subtitle="Sign in to your account to reserve slots, manage bookings, and access member rates."
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-        {/* Placeholder container for server-side notices */}
-        {submissionFeedback && (
+        {/* Registration Success Banner */}
+        {registrationSuccess && !serverError && (
           <div
-            tabIndex={-1}
+            role="status"
             className="flex items-start gap-3 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs leading-relaxed"
           >
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-semibold text-emerald-200">Validation Successful</p>
-              <p>{submissionFeedback.message}</p>
+              <p className="font-semibold text-emerald-200">Account Created Successfully</p>
+              <p>Please enter your password to sign in.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Server Error Alert */}
+        {serverError && (
+          <div
+            role="alert"
+            className="flex items-start gap-3 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs leading-relaxed animate-in fade-in"
+          >
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-semibold text-rose-200">Sign In Failed</p>
+              <p>{serverError}</p>
             </div>
           </div>
         )}
@@ -117,7 +158,7 @@ export const LoginPage = () => {
             <div className="flex-1">
               <p className="font-semibold text-slate-200">Password Reset Info</p>
               <p className="text-slate-400">
-                Automated password reset via email will be activated alongside the notification service in Phase 4.
+                Self-service password recovery is currently being activated. Please contact the facility support team if you cannot access your account.
               </p>
             </div>
             <button
@@ -158,3 +199,5 @@ export const LoginPage = () => {
     </AuthLayout>
   )
 }
+
+export default LoginPage
