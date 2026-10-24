@@ -284,6 +284,26 @@ export const TurfsPage = () => {
       return
     }
 
+    if (isNaN(formData.pricing.baseRate) || Number(formData.pricing.baseRate) < 0) {
+      setServerError('Base rate must be a non-negative number.')
+      return
+    }
+
+    if (isNaN(formData.pricing.peakRate) || Number(formData.pricing.peakRate) < 0) {
+      setServerError('Peak-hour rate must be a non-negative number.')
+      return
+    }
+
+    if (isNaN(formData.pricing.weekendRate) || Number(formData.pricing.weekendRate) < 0) {
+      setServerError('Weekend rate must be a non-negative number.')
+      return
+    }
+
+    if (formData.pricing.peakHours.start >= formData.pricing.peakHours.end) {
+      setServerError('Peak hours start time must be before peak hours end time.')
+      return
+    }
+
     const payload = {
       name: formData.name.trim(),
       slug: formData.slug.trim(),

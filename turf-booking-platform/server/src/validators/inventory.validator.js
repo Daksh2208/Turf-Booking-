@@ -88,6 +88,18 @@ export const createTurfValidator = [
     .optional()
     .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
     .withMessage('Closing time must be in HH:mm 24-hour format'),
+  body('pricing.baseRate')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Base rate must be a non-negative integer represented in paise'),
+  body('pricing.peakRate')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Peak rate must be a non-negative integer represented in paise'),
+  body('pricing.weekendRate')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Weekend rate must be a non-negative integer represented in paise'),
   body('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
 ]
 
@@ -106,6 +118,18 @@ export const updateTurfValidator = [
     .optional()
     .isArray({ min: 1 })
     .withMessage('Turf must support at least one sport reference'),
+  body('pricing.baseRate')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Base rate must be a non-negative integer represented in paise'),
+  body('pricing.peakRate')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Peak rate must be a non-negative integer represented in paise'),
+  body('pricing.weekendRate')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Weekend rate must be a non-negative integer represented in paise'),
   body('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
 ]
 

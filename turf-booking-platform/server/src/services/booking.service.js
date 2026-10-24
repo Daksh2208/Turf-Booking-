@@ -6,37 +6,19 @@ import { BlockedSlot } from '../models/BlockedSlot.js'
 import { User } from '../models/User.js'
 import { BusinessSettings } from '../models/BusinessSettings.js'
 import { logAudit } from '../utils/auditLogger.js'
+import pricingService from './pricing.service.js'
 
 export const bookingService = {
   /**
    * Determine rate type and price for a slot based on date and time
+   * Delegates to the central pricingService (single source of truth)
    */
-  calculateSlotPrice(turf, dateStr, startTime) {
-    const dateObj = new Date(dateStr + 'T00:00:00Z')
-    const dayOfWeek = dateObj.getUTCDay() // 0 = Sunday, 6 = Saturday
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-
-    const peakStart = turf.pricing?.peakHours?.start || '18:00'
-    const peakEnd = turf.pricing?.peakHours?.end || '23:00'
-    const isPeakHour = startTime >= peakStart && startTime < peakEnd
-
-    if (isWeekend) {
-      return {
-        rateType: 'weekend',
-        price: turf.pricing?.weekendRate || 140000, // paise
-      }
-    }
-
-    if (isPeakHour) {
-      return {
-        rateType: 'peak',
-        price: turf.pricing?.peakRate || 120000, // paise
-      }
-    }
-
+  calculateSlotPrice(turf, dateStr, startTime, endTime) {
+    const end = endTime || `${String(Number(startTime.split(':')[0]) + 1).padStart(2, '0')}:00`
+    const pricing = pricingService.getSegmentPricing(turf, dateStr, startTime, end)
     return {
-      rateType: 'base',
-      price: turf.pricing?.baseRate || 80000, // paise
+      rateType: pricing.rateType,
+      price: pricing.segmentPrice,
     }
   },
 
@@ -105,7 +87,7 @@ export const bookingService = {
         )
       })
 
-      const { rateType, price } = this.calculateSlotPrice(turf, dateStr, startTime)
+      const { rateType, price } = this.calculateSlotPrice(turf, dateStr, startTime, endTime)
 
       let status = 'available'
       let reason = ''
@@ -192,7 +174,7 @@ export const bookingService = {
     }
 
     // Calculate slot pricing
-    const { rateType, price: slotPrice } = this.calculateSlotPrice(turf, date, startTime)
+    const { rateType, price: slotPrice } = this.calculateSlotPrice(turf, date, startTime, endTime)
 
     // Calculate Add-Ons
     let addOnsDetails = []

@@ -8,6 +8,11 @@ export const customerBookingService = {
     return response.data?.data
   },
 
+  async getPricingQuote(quoteData) {
+    const response = await apiClient.post('/pricing/quote', quoteData)
+    return response.data?.data?.quote
+  },
+
   async createBooking(data) {
     const response = await apiClient.post('/bookings', data)
     return response.data?.data?.booking

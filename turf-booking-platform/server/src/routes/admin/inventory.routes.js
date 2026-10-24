@@ -57,6 +57,7 @@ router.delete('/sports/:id', deleteSport)
 router.post('/turfs', createTurfValidator, validate, createTurf)
 router.get('/turfs', getAdminTurfs)
 router.put('/turfs/:id', updateTurfValidator, validate, updateTurf)
+router.patch('/turfs/:id', updateTurfValidator, validate, updateTurf)
 router.patch('/turfs/:id/status', toggleTurfStatus)
 router.delete('/turfs/:id', deleteTurf)
 

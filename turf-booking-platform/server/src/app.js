@@ -11,6 +11,7 @@ import adminInventoryRoutes from './routes/admin/inventory.routes.js'
 import adminBookingRoutes from './routes/admin/booking.routes.js'
 import customerInventoryRoutes from './routes/customer/inventory.routes.js'
 import customerBookingRoutes from './routes/customer/booking.routes.js'
+import customerPricingRoutes from './routes/customer/pricing.routes.js'
 import { notFoundMiddleware } from './middleware/not-found.middleware.js'
 import { errorMiddleware } from './middleware/error.middleware.js'
 
@@ -46,6 +47,7 @@ app.use('/api/v1/auth', authRoutes)
 app.use('/api/v1/admin', adminInventoryRoutes)
 app.use('/api/v1/admin', adminBookingRoutes)
 app.use('/api/v1/bookings', customerBookingRoutes)
+app.use('/api/v1/pricing', customerPricingRoutes)
 app.use('/api/v1', customerInventoryRoutes)
 
 // 6. 404 Route Not Found Middleware

@@ -112,27 +112,74 @@ const turfSchema = new mongoose.Schema(
     pricing: {
       baseRate: {
         type: Number,
+        required: [true, 'Base hourly rate is required'],
         default: 80000, // paise (₹800.00)
         min: [0, 'Base rate cannot be negative'],
+        validate: {
+          validator: (v) => Number.isInteger(v) && v >= 0,
+          message: 'Base rate must be a non-negative integer represented in paise',
+        },
       },
       peakRate: {
         type: Number,
+        required: [true, 'Peak-hour rate is required'],
         default: 120000, // paise (₹1200.00)
         min: [0, 'Peak rate cannot be negative'],
+        validate: {
+          validator: (v) => Number.isInteger(v) && v >= 0,
+          message: 'Peak rate must be a non-negative integer represented in paise',
+        },
       },
       weekendRate: {
         type: Number,
+        required: [true, 'Weekend rate is required'],
         default: 140000, // paise (₹1400.00)
         min: [0, 'Weekend rate cannot be negative'],
+        validate: {
+          validator: (v) => Number.isInteger(v) && v >= 0,
+          message: 'Weekend rate must be a non-negative integer represented in paise',
+        },
       },
       peakHours: {
         start: {
           type: String,
           default: '18:00',
+          match: [/^([01]\d|2[0-3]):([0-5]\d)$/, 'Peak start time must be in HH:mm 24-hour format'],
         },
         end: {
           type: String,
           default: '23:00',
+          match: [/^([01]\d|2[0-3]):([0-5]\d)$/, 'Peak end time must be in HH:mm 24-hour format'],
+        },
+      },
+      peakPeriods: [
+        {
+          start: {
+            type: String,
+            required: true,
+            match: [/^([01]\d|2[0-3]):([0-5]\d)$/, 'Peak period start must be in HH:mm 24-hour format'],
+          },
+          end: {
+            type: String,
+            required: true,
+            match: [/^([01]\d|2[0-3]):([0-5]\d)$/, 'Peak period end must be in HH:mm 24-hour format'],
+          },
+          rate: {
+            type: Number,
+            min: [0, 'Peak period rate cannot be negative'],
+            validate: {
+              validator: (v) => v === undefined || (Number.isInteger(v) && v >= 0),
+              message: 'Peak period rate must be a non-negative integer represented in paise',
+            },
+          },
+        },
+      ],
+      weekendDays: {
+        type: [Number],
+        default: [0, 6], // 0 = Sunday, 6 = Saturday
+        validate: {
+          validator: (arr) => Array.isArray(arr) && arr.every((d) => Number.isInteger(d) && d >= 0 && d <= 6),
+          message: 'Weekend days must be integers between 0 (Sunday) and 6 (Saturday)',
         },
       },
     },

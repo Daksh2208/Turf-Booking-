@@ -89,6 +89,8 @@ export const turfService = {
           start: data.pricing?.peakHours?.start || '18:00',
           end: data.pricing?.peakHours?.end || '23:00',
         },
+        peakPeriods: Array.isArray(data.pricing?.peakPeriods) ? data.pricing.peakPeriods : [],
+        weekendDays: Array.isArray(data.pricing?.weekendDays) ? data.pricing.weekendDays : [0, 6],
       },
       timezone: data.timezone || 'Asia/Kolkata',
       isActive: data.isActive !== undefined ? Boolean(data.isActive) : true,
@@ -150,6 +152,8 @@ export const turfService = {
           start: data.pricing.peakHours?.start || turf.pricing?.peakHours?.start || '18:00',
           end: data.pricing.peakHours?.end || turf.pricing?.peakHours?.end || '23:00',
         },
+        peakPeriods: Array.isArray(data.pricing.peakPeriods) ? data.pricing.peakPeriods : turf.pricing?.peakPeriods || [],
+        weekendDays: Array.isArray(data.pricing.weekendDays) ? data.pricing.weekendDays : turf.pricing?.weekendDays || [0, 6],
       }
     }
     if (data.address) {
