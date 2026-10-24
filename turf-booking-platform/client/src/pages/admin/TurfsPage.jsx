@@ -463,7 +463,12 @@ export const TurfsPage = () => {
                         )}
                         <div>
                           <p className="font-semibold text-[#17231B] text-xs sm:text-sm">{turf.name}</p>
-                          <p className="font-mono text-[10px] text-[#526258]">{turf.slug}</p>
+                          {turf.description && (
+                            <p className="text-[11px] text-[#526258] line-clamp-1 max-w-[200px]" title={turf.description}>
+                              {turf.description}
+                            </p>
+                          )}
+                          <p className="font-mono text-[10px] text-[#647168]">{turf.slug}</p>
                         </div>
                       </div>
                     </td>
@@ -637,6 +642,22 @@ export const TurfsPage = () => {
               />
             </FormField>
           </div>
+
+          <FormField
+            label="Arena Description"
+            htmlFor="turfDescription"
+            hint="Brief overview of turf ground, pitch qualities, and amenities"
+          >
+            <textarea
+              id="turfDescription"
+              rows={3}
+              placeholder="e.g. Spacious floodlit box cricket arena with FIFA-grade synthetic turf, high safety nets, and modern amenities..."
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              maxLength={2000}
+              className="w-full bg-white border border-[#D7E0D9] hover:border-[#C9DFCE] focus:border-[#267A45] focus:ring-2 focus:ring-[#267A45]/20 rounded-xl text-sm text-[#17231B] placeholder:text-[#647168] px-3.5 py-2.5 transition-all outline-none resize-y min-h-[76px]"
+            />
+          </FormField>
 
           {/* Supported Sports Selector */}
           <div className="space-y-1.5">

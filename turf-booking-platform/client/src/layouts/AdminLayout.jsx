@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   Trophy,
   Activity,
@@ -11,7 +11,6 @@ import {
   Menu,
   X,
   ChevronRight,
-  Home,
   Settings,
   LayoutDashboard,
   Calendar,
@@ -176,16 +175,6 @@ export const AdminLayout = () => {
             <ChevronRight className="w-3.5 h-3.5 text-[#647168]" />
             <span className="font-semibold text-[#267A45]">{currentNav.name}</span>
           </div>
-
-          {/* Single Home Action Button */}
-          <Link
-            to="/"
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-[#46564A] hover:text-[#17231B] bg-white hover:bg-[#F0F6F1] border border-[#D7E0D9] transition-all cursor-pointer shadow-xs group"
-            title="Return to customer landing page"
-          >
-            <Home className="w-3.5 h-3.5 text-[#267A45] group-hover:scale-110 transition-transform" />
-            <span>Home</span>
-          </Link>
         </header>
 
         {/* Page Container */}

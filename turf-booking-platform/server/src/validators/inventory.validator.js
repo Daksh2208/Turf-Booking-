@@ -53,6 +53,11 @@ export const createTurfValidator = [
     .trim()
     .matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
     .withMessage('Slug must be in lowercase alphanumeric hyphenated format'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('Description cannot exceed 2000 characters'),
   body('sports')
     .isArray({ min: 1 })
     .withMessage('Turf must support at least one sport reference'),
@@ -114,6 +119,11 @@ export const updateTurfValidator = [
     .trim()
     .matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
     .withMessage('Slug must be in lowercase alphanumeric hyphenated format'),
+  body('description')
+    .optional()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('Description cannot exceed 2000 characters'),
   body('sports')
     .optional()
     .isArray({ min: 1 })

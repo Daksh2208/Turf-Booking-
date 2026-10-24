@@ -128,7 +128,6 @@ describe('Admin Route Guards & Layout Integration', () => {
     expect(screen.getByRole('link', { name: /Add-Ons/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Homepage Banners/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Business Settings/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /^Home$/i })).toBeInTheDocument()
 
     // Verify SportsPage content loaded from service
     await waitFor(() => {
