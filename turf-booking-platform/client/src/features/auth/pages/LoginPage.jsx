@@ -13,7 +13,7 @@ import { useAuth } from '../../../hooks/useAuth'
 export const LoginPage = () => {
   const [serverError, setServerError] = useState(null)
   const [showForgotNotice, setShowForgotNotice] = useState(false)
-  const { login, isAuthenticated } = useAuth()
+  const { login, isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -27,14 +27,22 @@ export const LoginPage = () => {
       ? rawFrom
       : rawFrom?.pathname
       ? `${rawFrom.pathname}${rawFrom.search || ''}`
-      : '/'
+      : null
+
+  // Determine post-login destination based on user role
+  const getDestination = (role, targetPath) => {
+    if (role === 'admin') {
+      return targetPath && targetPath.startsWith('/admin') ? targetPath : '/admin/dashboard'
+    }
+    return targetPath && !targetPath.startsWith('/admin') ? targetPath : '/'
+  }
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate(fromPath, { replace: true })
+    if (isAuthenticated && user) {
+      navigate(getDestination(user.role, fromPath), { replace: true })
     }
-  }, [isAuthenticated, navigate, fromPath])
+  }, [isAuthenticated, user, navigate, fromPath])
 
   const {
     register,
@@ -60,8 +68,8 @@ export const LoginPage = () => {
   const onSubmit = async (data) => {
     setServerError(null)
     try {
-      await login(data.email, data.password)
-      navigate(fromPath, { replace: true })
+      const loggedInUser = await login(data.email, data.password)
+      navigate(getDestination(loggedInUser?.role, fromPath), { replace: true })
     } catch (err) {
       const message =
         err.response?.data?.message ||
