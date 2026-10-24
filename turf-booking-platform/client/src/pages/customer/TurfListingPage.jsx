@@ -26,6 +26,8 @@ const COMMON_FACILITIES = [
   'Drinking Water',
   'Seating Area',
   'Cafeteria',
+  'Showers',
+  'First Aid',
 ]
 
 export const TurfListingPage = () => {
@@ -286,26 +288,65 @@ export const TurfListingPage = () => {
         {/* Results Area */}
         <div className="md:col-span-3 space-y-6">
           {/* Active Filter Chips & Sort Dropdown */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/40 p-3 rounded-2xl border border-slate-800/80">
-            <div className="text-xs text-slate-400">
-              Showing <strong className="text-white">{turfs.length}</strong> of{' '}
-              <strong className="text-white">{pagination.total}</strong> turf arenas
+          <div className="space-y-3 bg-slate-900/40 p-3.5 rounded-2xl border border-slate-800/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="text-xs text-slate-400">
+                Showing <strong className="text-white">{turfs.length}</strong> of{' '}
+                <strong className="text-white">{pagination.total}</strong> turf arenas
+              </div>
+
+              <div className="flex items-center gap-2 text-xs">
+                <label className="text-slate-400 shrink-0 font-medium">Sort by:</label>
+                <select
+                  value={sort}
+                  onChange={(e) => updateParam('sort', e.target.value)}
+                  className="bg-slate-950 text-xs text-white px-3 py-1.5 rounded-xl border border-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer font-medium"
+                >
+                  <option value="name_asc">Name: A to Z</option>
+                  <option value="name_desc">Name: Z to A</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="price_desc">Price: High to Low</option>
+                  <option value="newest">Recently Added</option>
+                </select>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 text-xs">
-              <label className="text-slate-400 shrink-0 font-medium">Sort by:</label>
-              <select
-                value={sort}
-                onChange={(e) => updateParam('sort', e.target.value)}
-                className="bg-slate-950 text-xs text-white px-3 py-1.5 rounded-xl border border-slate-800 focus:outline-none focus:border-emerald-500 cursor-pointer font-medium"
-              >
-                <option value="name_asc">Name: A to Z</option>
-                <option value="name_desc">Name: Z to A</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
-                <option value="newest">Recently Added</option>
-              </select>
-            </div>
+            {/* Active Filter Chips Bar */}
+            {hasActiveFilters && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-800/60">
+                <span className="text-[10px] uppercase font-bold text-slate-500 mr-1">Active:</span>
+                {search && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-800 text-[11px] text-slate-300 border border-slate-700">
+                    <span>"{search}"</span>
+                    <button type="button" onClick={() => updateParam('search', '')} className="hover:text-white cursor-pointer"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {sportSlug && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-500/10 text-[11px] text-emerald-400 border border-emerald-500/30">
+                    <span>{sports.find((s) => s.slug === sportSlug)?.name || sportSlug}</span>
+                    <button type="button" onClick={() => updateParam('sport', '')} className="hover:text-emerald-200 cursor-pointer"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {city && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-800 text-[11px] text-slate-300 border border-slate-700">
+                    <span>City: {city}</span>
+                    <button type="button" onClick={() => updateParam('city', '')} className="hover:text-white cursor-pointer"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {selectedFacilities.map((fac) => (
+                  <span key={fac} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-500/15 text-[11px] text-emerald-300 border border-emerald-500/40">
+                    <span>✓ {fac}</span>
+                    <button type="button" onClick={() => handleFacilityToggle(fac)} className="hover:text-white cursor-pointer"><X className="w-3 h-3" /></button>
+                  </span>
+                ))}
+                {(minPrice || maxPrice) && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-slate-800 text-[11px] text-slate-300 border border-slate-700">
+                    <span>₹{minPrice || '0'} - ₹{maxPrice || '∞'}</span>
+                    <button type="button" onClick={() => { updateParam('minPrice', ''); updateParam('maxPrice', '') }} className="hover:text-white cursor-pointer"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Results Grid States */}

@@ -200,58 +200,100 @@ export const HomePage = () => {
 
       {/* 2. Ongoing Tournaments, Announcements & Live Activities (Always Visible) */}
       <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-3 w-3 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-            </span>
-            <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
-              <span>Ongoing Tournaments & Happenings</span>
-            </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <span className="flex h-3 w-3 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+              <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+                <span>Ongoing Tournaments & Happenings</span>
+              </h2>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Active promotional banners, featured tournaments, and special arena offers.
+            </p>
           </div>
-          <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-            Live Updates
+          <span className="self-start sm:self-auto text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+            Featured Banners
           </span>
         </div>
 
-        {/* If custom admin banners exist, display them */}
+        {/* Live Visual Banners Grid */}
         {banners.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {banners.map((banner) => (
-              <div
-                key={banner._id}
-                className="relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-slate-900/80 p-6 flex flex-col justify-between space-y-4 shadow-xl"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                      <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
-                      <span>Active Announcement</span>
-                    </span>
+            {banners.map((banner) => {
+              const bannerImage = banner.image || banner.imageUrl
+              const bannerLink = banner.link || banner.linkUrl || '/turfs'
+
+              return (
+                <div
+                  key={banner._id}
+                  className="relative overflow-hidden rounded-3xl border border-emerald-500/40 bg-slate-900 p-6 sm:p-8 flex flex-col justify-between min-h-[300px] sm:min-h-[340px] shadow-2xl group transition-all duration-300 hover:border-emerald-400 hover:shadow-emerald-500/10"
+                >
+                  {/* Full Visual Banner Image Backdrop - z-0 ensures it is rendered in front of the container background */}
+                  <img
+                    src={bannerImage || 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1200&q=80'}
+                    alt={banner.title}
+                    onError={(e) => {
+                      e.currentTarget.src =
+                        'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1200&q=80'
+                    }}
+                    className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 z-0 brightness-[0.70]"
+                  />
+
+                  {/* High contrast gradient overlay at z-[1] so white text remains perfectly legible */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-950/20 z-[1] pointer-events-none" />
+
+                  <div className="space-y-3 relative z-10">
+                    <div className="flex items-center justify-between">
+                      <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/30 text-emerald-300 border border-emerald-500/50 backdrop-blur-md flex items-center gap-1.5 shadow-md">
+                        <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
+                        <span>Featured Banner</span>
+                      </span>
+
+                      {banner.order !== undefined && (
+                        <span className="text-[10px] text-slate-300 font-mono bg-slate-900/80 px-2 py-0.5 rounded backdrop-blur-md border border-slate-700">
+                          #{banner.order}
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="text-xl sm:text-2xl font-black text-white leading-tight drop-shadow-lg">
+                      {banner.title}
+                    </h3>
+
+                    {banner.subtitle && (
+                      <p className="text-xs sm:text-sm text-slate-200 leading-relaxed max-w-lg drop-shadow font-medium">
+                        {banner.subtitle}
+                      </p>
+                    )}
                   </div>
-                  <h3 className="text-xl font-bold text-white">{banner.title}</h3>
-                  {banner.subtitle && (
-                    <p className="text-xs text-slate-300 leading-relaxed">{banner.subtitle}</p>
-                  )}
+
+                  <div className="pt-4 relative z-10 flex items-center justify-between">
+                    <Link
+                      to={isAuthenticated ? bannerLink : '/register'}
+                      state={{ from: bannerLink }}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all shadow-lg shadow-emerald-500/30 cursor-pointer group-hover:translate-x-1 duration-200"
+                    >
+                      <span>{banner.ctaText || 'Explore & Book'}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+
+                    {!isAuthenticated && (
+                      <span className="text-[10px] text-slate-200 bg-slate-900/90 px-2.5 py-1 rounded-lg backdrop-blur-md border border-slate-700/80">
+                        Sign up to reserve
+                      </span>
+                    )}
+                  </div>
                 </div>
-                {(banner.link || banner.linkUrl) && (
-                  <a
-                    href={banner.link || banner.linkUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors pt-2"
-                  >
-                    <span>{banner.ctaText || 'Learn More'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </a>
-                )}
-              </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
           <div className="p-8 text-center bg-slate-900/40 rounded-3xl border border-slate-800 text-slate-400 text-xs">
-            No active announcements or tournament banners scheduled at this time.
+            No active promotional banners scheduled at this time.
           </div>
         )}
       </section>

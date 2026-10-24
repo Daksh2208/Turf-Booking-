@@ -1,0 +1,33 @@
+Practical Round: Turf Booking Website
+Build a sports turf booking website where turfs, slot prices and bookings are controlled from an admin panel.
+Project description
+A local sports complex runs turfs for box cricket, football and pickleball. Prices are not fixed. Each slot's rate depends on the time of day and on whether it is a weekday or weekend, so the owner cannot set one price for everything. Each booking's price must be calculated from the slot rate, number of hours, weekend or peak charges, add-ons and GST.
+Customers should be able to browse turfs, filter by sport and price, check slot availability for a date, see a clear price breakup, and book a slot. The owner should be able to add turfs, set slot rates, block slots, manage sports and banners, and process bookings.
+Your job is to build both parts: the customer website and the admin panel, connected to one database. The panel will judge how well the admin panel controls what customers see.
+Task
+Nothing on the website should be hard-coded: if the admin changes a turf, slot rate, price or banner, customers must see it immediately.
+Customer website
+Home page with banners, featured turfs and sports (Cricket, Football, Pickleball, Badminton) from the database.
+Turf listing with search, filter by sport, area, facilities (floodlights, parking) and price, with sorting and pagination.
+Turf page with images, size, surface, facilities, opening hours and a date picker showing each slot as Available, Booked or Blocked.
+Live price: total = (slot rate × hours, with peak and weekend rate applied) + add-ons + GST.
+Register, login and profile with hashed passwords.
+Booking and favourites: pick a date and slots, add equipment (bat and ball, football, rackets), live total, save turfs to favourites.
+Checkout with player details and Pay at Venue, and My bookings with status.
+Admin panel
+Secure admin login; normal users cannot open admin pages.
+Dashboard: today's bookings, revenue, users and free slots today.
+Turfs: add, edit, delete, image upload, sport, size, surface, facilities, opening and closing time.
+Slot rates: set base rate, peak-hour rate and weekend rate per turf; all booking prices update automatically.
+Sports, add-ons, banners and blocked slots: add, edit, delete. Blocked slots (maintenance or tournament) must show on the website instantly.
+Bookings: view details and change status (Pending, Confirmed, Completed, Cancelled). Cancelling releases the slot.
+Settings: GST percentage, business name, contact details and cancellation cut-off in hours.
+Bonus: coupon codes, advance payment with balance at venue, test-mode payment gateway, live deployment.
+GitHub
+Push to a public repo .
+Commit regularly with clear messages.
+Do not commit .env; add a .env.example.
+README: setup steps, admin and customer test logins, screenshots.
+Note
+Design is your choice. You are free to design the look, layout, colours and theme of the website as you like. There is no fixed design to copy.
+Evaluation is based on admin panel control. We will mainly check how completely the admin panel controls the website.

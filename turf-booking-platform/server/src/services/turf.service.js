@@ -3,6 +3,82 @@ import { Turf } from '../models/Turf.js'
 import { Sport } from '../models/Sport.js'
 import { slugify } from '../utils/slugify.js'
 import { logAudit } from '../utils/auditLogger.js'
+/**
+ * Generates an intelligent, case-insensitive regular expression for facility filtering.
+ * Gracefully resolves variations like 'Floodlights' -> 'High-Power Floodlights', 'LED Floodlights',
+ * 'Parking' -> 'Ample Parking', 'Free Parking', 'Changing Room' -> 'Changing Rooms', etc.
+ */
+export const getFacilityFilterRegex = (facilityName) => {
+  if (!facilityName || typeof facilityName !== 'string') return /.*/i
+  const clean = facilityName.trim()
+  const lower = clean.toLowerCase()
+
+  // 1. Floodlights / lighting variations (matches 'High-Power Floodlights', 'LED Floodlights', 'flood light', etc.)
+  if (lower.includes('flood') || lower.includes('light')) {
+    return /flood\s*light|floodlight/i
+  }
+
+  // 2. Parking variations ('Parking', 'Free Parking', 'Ample Parking', 'Valet Parking')
+  if (lower.includes('park')) {
+    return /park/i
+  }
+
+  // 3. Changing rooms / dressing rooms
+  if (lower.includes('chang') || lower.includes('dress')) {
+    return /chang|dress/i
+  }
+
+  // 4. Lockers / locker rental
+  if (lower.includes('locker')) {
+    return /locker/i
+  }
+
+  // 5. Drinking water / mineral water
+  if (lower.includes('water')) {
+    return /water/i
+  }
+
+  // 6. Seating, dugouts, spectator stands, lounge
+  if (lower.includes('seat') || lower.includes('dugout') || lower.includes('lounge') || lower.includes('stand')) {
+    return /seat|dugout|lounge|stand/i
+  }
+
+  // 7. Cafeteria, snacks, canteen
+  if (lower.includes('cafe') || lower.includes('canteen') || lower.includes('snack')) {
+    return /caf|canteen|snack/i
+  }
+
+  // 8. Showers
+  if (lower.includes('shower')) {
+    return /shower/i
+  }
+
+  // 9. First aid / medical kit
+  if (lower.includes('aid') || lower.includes('medic')) {
+    return /first\s*aid|aid|medic/i
+  }
+
+  // 10. Scoreboard / digital board
+  if (lower.includes('score')) {
+    return /score/i
+  }
+
+  // 11. Equipment rental / gear
+  if (lower.includes('equip') || lower.includes('gear') || lower.includes('kit')) {
+    return /equip|gear|kit/i
+  }
+
+  // 12. Restrooms / washrooms / toilets
+  if (lower.includes('restroom') || lower.includes('washroom') || lower.includes('toilet')) {
+    return /restroom|washroom|toilet/i
+  }
+
+  // 13. Generic flexible matcher:
+  // Strip trailing plural 's' or 'es' to match both singular and plural forms
+  const stem = clean.replace(/(?:es|s)$/i, '')
+  const escaped = stem.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
+  return new RegExp(escaped, 'i')
+}
 
 export const turfService = {
   /**
@@ -262,6 +338,7 @@ export const turfService = {
         { name: { $regex: search, $options: 'i' } },
         { slug: { $regex: search, $options: 'i' } },
         { 'address.city': { $regex: search, $options: 'i' } },
+        { facilities: { $regex: search, $options: 'i' } },
       ]
     }
 
@@ -316,6 +393,8 @@ export const turfService = {
         { 'address.city': { $regex: search, $options: 'i' } },
         { 'address.street': { $regex: search, $options: 'i' } },
         { 'address.landmark': { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { facilities: { $regex: search, $options: 'i' } },
       ]
     }
 
@@ -324,7 +403,7 @@ export const turfService = {
       query['address.city'] = { $regex: city, $options: 'i' }
     }
 
-    // Filter by facilities (e.g. floodlights, parking)
+    // Filter by facilities (intelligent flexible matcher: 'Floodlights' matches 'High-Power Floodlights', 'LED Floodlights', etc.)
     if (facilities) {
       const facilityList = Array.isArray(facilities)
         ? facilities
@@ -332,7 +411,7 @@ export const turfService = {
 
       if (facilityList.length > 0) {
         query.facilities = {
-          $all: facilityList.map((f) => new RegExp(`^${f}$`, 'i')),
+          $all: facilityList.map((f) => getFacilityFilterRegex(f)),
         }
       }
     }
