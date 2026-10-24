@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from '../../hooks/useApi'
 import {
   Trophy,
   Mail,
@@ -17,7 +17,6 @@ export const CustomerFooter = () => {
   const { data: settings } = useQuery({
     queryKey: ['publicBusinessSettings'],
     queryFn: () => customerInventoryService.getSettings(),
-    staleTime: 1000 * 60 * 10,
   })
 
   const currentYear = new Date().getFullYear()

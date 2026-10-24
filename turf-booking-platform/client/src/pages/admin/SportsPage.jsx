@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '../../hooks/useApi'
 import {
   Plus,
   Search,
@@ -47,11 +47,19 @@ export const SportsPage = () => {
   const sports = data?.sports || []
   const pagination = data?.pagination || { page: 1, totalPages: 1 }
 
+  const invalidateAllSportsQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin-sports'] })
+    queryClient.invalidateQueries({ queryKey: ['publicSports'] })
+    queryClient.invalidateQueries({ queryKey: ['publicTurfs'] })
+    queryClient.invalidateQueries({ queryKey: ['publicTurfsList'] })
+    queryClient.invalidateQueries({ queryKey: ['homeFeaturedTurfs'] })
+  }
+
   // 2. Create Sport Mutation
   const createMutation = useMutation({
     mutationFn: (newSport) => adminInventoryService.createSport(newSport),
     onSuccess: (created) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-sports'] })
+      invalidateAllSportsQueries()
       setIsModalOpen(false)
       showToast(`Sport "${created.name}" created successfully.`)
     },
@@ -64,7 +72,7 @@ export const SportsPage = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, updates }) => adminInventoryService.updateSport(id, updates),
     onSuccess: (updated) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-sports'] })
+      invalidateAllSportsQueries()
       setIsModalOpen(false)
       showToast(`Sport "${updated.name}" updated successfully.`)
     },
@@ -77,7 +85,7 @@ export const SportsPage = () => {
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }) => adminInventoryService.toggleSportStatus(id, isActive),
     onSuccess: (sport) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-sports'] })
+      invalidateAllSportsQueries()
       showToast(`Sport "${sport.name}" is now ${sport.isActive ? 'active' : 'inactive'}.`)
     },
     onError: (err) => {
@@ -89,7 +97,7 @@ export const SportsPage = () => {
   const deleteMutation = useMutation({
     mutationFn: (id) => adminInventoryService.deleteSport(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-sports'] })
+      invalidateAllSportsQueries()
       setIsDeleteModalOpen(false)
       showToast('Sport deleted successfully.')
     },

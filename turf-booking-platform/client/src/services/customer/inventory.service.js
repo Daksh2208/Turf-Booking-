@@ -11,6 +11,11 @@ export const customerInventoryService = {
     return response.data?.data?.turf
   },
 
+  async getTurfById(id) {
+    const response = await apiClient.get(`/turfs/${id}`)
+    return response.data?.data?.turf
+  },
+
   async getSports() {
     const response = await apiClient.get('/sports')
     return response.data?.data?.sports || []
@@ -29,6 +34,16 @@ export const customerInventoryService = {
   async getSettings() {
     const response = await apiClient.get('/settings')
     return response.data?.data?.settings
+  },
+
+  async toggleFavorite(turfId) {
+    const response = await apiClient.post(`/auth/favorites/toggle/${turfId}`)
+    return response.data?.data
+  },
+
+  async getFavorites() {
+    const response = await apiClient.get('/auth/favorites')
+    return response.data?.data?.favorites || []
   },
 }
 

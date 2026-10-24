@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { User, Mail, ArrowRight, Check, X, AlertCircle } from 'lucide-react'
 import { AuthLayout } from '../../../layouts/AuthLayout'
@@ -14,13 +14,22 @@ export const RegisterPage = () => {
   const [serverError, setServerError] = useState(null)
   const { register: registerCustomer, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const rawFrom = location.state?.from
+  const fromPath =
+    typeof rawFrom === 'string'
+      ? rawFrom
+      : rawFrom?.pathname
+      ? `${rawFrom.pathname}${rawFrom.search || ''}`
+      : '/'
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/', { replace: true })
+      navigate(fromPath, { replace: true })
     }
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated, navigate, fromPath])
 
   const {
     register,
@@ -57,6 +66,7 @@ export const RegisterPage = () => {
         state: {
           registered: true,
           email: data.email.trim(),
+          from: location.state?.from,
         },
       })
     } catch (err) {
@@ -246,6 +256,7 @@ export const RegisterPage = () => {
             Already have an account?{' '}
             <Link
               to="/login"
+              state={{ from: location.state?.from }}
               className="font-semibold text-emerald-400 hover:text-emerald-300 transition-colors focus-visible:outline-none focus-visible:underline"
             >
               Sign In

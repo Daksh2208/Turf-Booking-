@@ -42,6 +42,22 @@ export const authService = {
     const response = await apiClient.get('/auth/admin-check')
     return response.data
   },
+
+  /**
+   * Update current user profile
+   */
+  async updateProfile(profileData) {
+    const response = await apiClient.put('/auth/profile', profileData)
+    return response.data
+  },
+
+  /**
+   * Change current user password
+   */
+  async changePassword(passwordData) {
+    const response = await apiClient.put('/auth/password', passwordData)
+    return response.data
+  },
 }
 
 export default authService

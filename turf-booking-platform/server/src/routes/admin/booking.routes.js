@@ -5,6 +5,8 @@ import {
   getAdminBookings,
   getBookingDetails,
   updateBookingStatus,
+  recordPayment,
+  cancelBooking,
   createBlockedSlot,
   getAdminBlockedSlots,
   updateBlockedSlot,
@@ -23,6 +25,9 @@ router.get('/dashboard', getDashboardMetrics)
 router.get('/bookings', getAdminBookings)
 router.get('/bookings/:id', getBookingDetails)
 router.patch('/bookings/:id/status', updateBookingStatus)
+router.post('/bookings/:id/payment', recordPayment)
+router.patch('/bookings/:id/payment', recordPayment)
+router.post('/bookings/:id/cancel', cancelBooking)
 
 // Blocked Slots (maintenance & tournament)
 router.get('/blocked-slots', getAdminBlockedSlots)

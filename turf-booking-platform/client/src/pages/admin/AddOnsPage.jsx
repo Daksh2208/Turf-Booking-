@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '../../hooks/useApi'
 import {
   Plus,
   Edit2,
@@ -47,11 +47,17 @@ export const AddOnsPage = () => {
 
   const addOns = data?.addOns || []
 
+  const invalidateAllAddOnQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin-addons'] })
+    queryClient.invalidateQueries({ queryKey: ['publicAddOns'] })
+    queryClient.invalidateQueries({ queryKey: ['pricingQuote'] })
+  }
+
   // Create Mutation
   const createMutation = useMutation({
     mutationFn: (newAddOn) => adminInventoryService.createAddOn(newAddOn),
     onSuccess: (created) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-addons'] })
+      invalidateAllAddOnQueries()
       setIsModalOpen(false)
       showToast(`Add-on "${created.name}" created successfully.`)
     },
@@ -64,7 +70,7 @@ export const AddOnsPage = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, updates }) => adminInventoryService.updateAddOn(id, updates),
     onSuccess: (updated) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-addons'] })
+      invalidateAllAddOnQueries()
       setIsModalOpen(false)
       showToast(`Add-on "${updated.name}" updated successfully.`)
     },
@@ -77,7 +83,7 @@ export const AddOnsPage = () => {
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }) => adminInventoryService.toggleAddOnStatus(id, isActive),
     onSuccess: (addOn) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-addons'] })
+      invalidateAllAddOnQueries()
       showToast(`Add-on "${addOn.name}" is now ${addOn.isActive ? 'active' : 'inactive'}.`)
     },
     onError: (err) => {
@@ -89,7 +95,7 @@ export const AddOnsPage = () => {
   const deleteMutation = useMutation({
     mutationFn: (id) => adminInventoryService.deleteAddOn(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-addons'] })
+      invalidateAllAddOnQueries()
       setIsDeleteModalOpen(false)
       showToast('Add-on item deleted successfully.')
     },

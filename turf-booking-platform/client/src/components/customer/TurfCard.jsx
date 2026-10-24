@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   MapPin,
@@ -8,19 +8,55 @@ import {
   Zap,
   Users,
   Trophy,
+  Lock,
+  Heart,
 } from 'lucide-react'
+import { useAuth } from '../../hooks/useAuth'
+import customerInventoryService from '../../services/customer/inventory.service'
 
 export const TurfCard = ({ turf }) => {
+  const { user, isAuthenticated } = useAuth()
+  const [isFavorited, setIsFavorited] = useState(false)
+  const [isFavLoading, setIsFavLoading] = useState(false)
+
+  useEffect(() => {
+    if (user && turf?._id && Array.isArray(user.favorites)) {
+      const hasFav = user.favorites.some(
+        (f) => (typeof f === 'object' ? f._id : f).toString() === turf._id.toString()
+      )
+      setIsFavorited(hasFav)
+    }
+  }, [user, turf])
+
+  const handleToggleFavorite = async (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!isAuthenticated || !turf?._id || isFavLoading) return
+
+    try {
+      setIsFavLoading(true)
+      const res = await customerInventoryService.toggleFavorite(turf._id)
+      setIsFavorited(Boolean(res?.isFavorited))
+    } catch (err) {
+      console.error('Failed to toggle favourite:', err)
+    } finally {
+      setIsFavLoading(false)
+    }
+  }
+
   if (!turf) return null
 
-  const startingPrice = turf.pricing?.baseRate
-    ? `₹${(turf.pricing.baseRate / 100).toFixed(0)}`
-    : '₹800'
+  const targetLink = isAuthenticated ? `/turfs/${turf.slug || turf._id}` : '/register'
+
+  const startingPrice =
+    turf.pricing?.baseRate != null
+      ? `₹${(turf.pricing.baseRate / 100).toFixed(0)}`
+      : '₹0'
 
   const primaryImage =
     turf.images && turf.images.length > 0 && turf.images[0]
       ? turf.images[0]
-      : 'https://images.unsplash.com/photo-1529900245534-47fbf76681e0?auto=format&fit=crop&w=800&q=80'
+      : null
 
   const locationText = [turf.address?.street, turf.address?.city]
     .filter(Boolean)
@@ -29,14 +65,23 @@ export const TurfCard = ({ turf }) => {
   return (
     <div className="group rounded-3xl bg-slate-900/70 border border-slate-800/80 hover:border-emerald-500/50 flex flex-col justify-between overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-emerald-950/20 backdrop-blur-md">
       {/* Top Image Preview with Overlay */}
-      <div className="relative h-48 w-full overflow-hidden bg-slate-950">
-        <img
-          src={primaryImage}
-          alt={turf.name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          loading="lazy"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+      <div className="relative h-48 w-full overflow-hidden bg-slate-950 flex items-center justify-center">
+        {primaryImage ? (
+          <img
+            src={primaryImage}
+            alt={turf.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-slate-900 to-slate-950 flex flex-col items-center justify-center gap-2 text-slate-600">
+            <Trophy className="w-12 h-12 text-emerald-500/20" />
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+              {turf.name}
+            </span>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent pointer-events-none" />
 
         {/* Operating Hours Tag */}
         {turf.openingHours && (
@@ -46,6 +91,23 @@ export const TurfCard = ({ turf }) => {
               {turf.openingHours.open} - {turf.openingHours.close}
             </span>
           </div>
+        )}
+
+        {/* Favorite Heart Button */}
+        {isAuthenticated && (
+          <button
+            type="button"
+            onClick={handleToggleFavorite}
+            disabled={isFavLoading}
+            className={`absolute top-3 right-3 p-2 rounded-xl backdrop-blur-md border transition-all cursor-pointer z-10 ${
+              isFavorited
+                ? 'bg-rose-950/80 border-rose-500/50 text-rose-400 shadow-sm shadow-rose-500/20'
+                : 'bg-slate-950/70 border-slate-800 text-slate-300 hover:text-white hover:border-slate-700'
+            }`}
+            title={isFavorited ? 'Remove from favourites' : 'Save to favourites'}
+          >
+            <Heart className={`w-3.5 h-3.5 ${isFavorited ? 'fill-rose-500 text-rose-500' : ''}`} />
+          </button>
         )}
 
         {/* Starting Price Pill */}
@@ -84,7 +146,7 @@ export const TurfCard = ({ turf }) => {
           )}
 
           {/* Turf Name */}
-          <Link to={`/turfs/${turf.slug || turf._id}`}>
+          <Link to={targetLink} state={{ from: `/turfs/${turf.slug || turf._id}` }}>
             <h3 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors line-clamp-1">
               {turf.name}
             </h3>
@@ -96,21 +158,24 @@ export const TurfCard = ({ turf }) => {
             <span>{locationText || turf.address?.city || 'Sports Arena'}</span>
           </p>
 
-          {/* Specs / Surface */}
-          {(turf.size || turf.surface) && (
-            <div className="mt-2.5 flex items-center gap-2 text-[11px] text-slate-400">
-              {turf.size && (
-                <span className="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-slate-300 font-medium">
-                  {turf.size}
-                </span>
-              )}
-              {turf.surface && (
-                <span className="text-slate-400 font-medium truncate">
-                  {turf.surface}
-                </span>
-              )}
-            </div>
-          )}
+          {/* Specs / Surface / Capacity */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+            {turf.size && (
+              <span className="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-slate-300 font-medium">
+                {turf.size}
+              </span>
+            )}
+            {turf.capacity && (
+              <span className="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-slate-300 font-medium">
+                Max {turf.capacity.maxPlayers || 22} Players
+              </span>
+            )}
+            {turf.surface && (
+              <span className="text-slate-400 font-medium truncate">
+                {turf.surface}
+              </span>
+            )}
+          </div>
 
           {/* Facilities Preview */}
           {turf.facilities && turf.facilities.length > 0 && (
@@ -135,11 +200,25 @@ export const TurfCard = ({ turf }) => {
         {/* CTA Button */}
         <div className="pt-2">
           <Link
-            to={`/turfs/${turf.slug || turf._id}`}
-            className="w-full py-2.5 px-4 rounded-xl bg-slate-800/80 hover:bg-emerald-600 text-slate-200 hover:text-white font-semibold text-xs transition-all duration-200 flex items-center justify-center gap-1.5 group/btn shadow-sm"
+            to={targetLink}
+            state={{ from: `/turfs/${turf.slug || turf._id}` }}
+            className={`w-full py-2.5 px-4 rounded-xl font-semibold text-xs transition-all duration-200 flex items-center justify-center gap-1.5 group/btn shadow-sm ${
+              isAuthenticated
+                ? 'bg-slate-800/80 hover:bg-emerald-600 text-slate-200 hover:text-white'
+                : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+            }`}
           >
-            <span>View Details & Slots</span>
-            <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
+            {isAuthenticated ? (
+              <>
+                <span>View Details & Slots</span>
+                <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
+              </>
+            ) : (
+              <>
+                <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Sign Up to Book Slots</span>
+              </>
+            )}
           </Link>
         </div>
       </div>

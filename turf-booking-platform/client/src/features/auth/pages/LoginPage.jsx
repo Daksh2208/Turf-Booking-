@@ -21,7 +21,13 @@ export const LoginPage = () => {
   const registrationSuccess = location.state?.registered
   const prefilledEmail = location.state?.email || ''
 
-  const fromPath = location.state?.from?.pathname || '/'
+  const rawFrom = location.state?.from
+  const fromPath =
+    typeof rawFrom === 'string'
+      ? rawFrom
+      : rawFrom?.pathname
+      ? `${rawFrom.pathname}${rawFrom.search || ''}`
+      : '/'
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -189,6 +195,7 @@ export const LoginPage = () => {
             Don&apos;t have an account yet?{' '}
             <Link
               to="/register"
+              state={{ from: location.state?.from }}
               className="font-semibold text-emerald-400 hover:text-emerald-300 transition-colors focus-visible:outline-none focus-visible:underline"
             >
               Create Account

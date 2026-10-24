@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '../../hooks/useApi'
 import {
   Plus,
   Edit2,
@@ -40,11 +40,16 @@ export const BannersPage = () => {
     queryFn: () => adminInventoryService.getBanners(),
   })
 
+  const invalidateAllBannerQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin-banners'] })
+    queryClient.invalidateQueries({ queryKey: ['publicBanners'] })
+  }
+
   // Create Mutation
   const createMutation = useMutation({
     mutationFn: (newBanner) => adminInventoryService.createBanner(newBanner),
     onSuccess: (created) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-banners'] })
+      invalidateAllBannerQueries()
       setIsModalOpen(false)
       showToast(`Banner "${created.title}" created successfully.`)
     },
@@ -57,7 +62,7 @@ export const BannersPage = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, updates }) => adminInventoryService.updateBanner(id, updates),
     onSuccess: (updated) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-banners'] })
+      invalidateAllBannerQueries()
       setIsModalOpen(false)
       showToast(`Banner "${updated.title}" updated successfully.`)
     },
@@ -70,7 +75,7 @@ export const BannersPage = () => {
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }) => adminInventoryService.toggleBannerStatus(id, isActive),
     onSuccess: (banner) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-banners'] })
+      invalidateAllBannerQueries()
       showToast(`Banner is now ${banner.isActive ? 'active' : 'inactive'}.`)
     },
     onError: (err) => {
@@ -82,7 +87,7 @@ export const BannersPage = () => {
   const deleteMutation = useMutation({
     mutationFn: (id) => adminInventoryService.deleteBanner(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-banners'] })
+      invalidateAllBannerQueries()
       showToast('Banner removed successfully.')
     },
     onError: (err) => {

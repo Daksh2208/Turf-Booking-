@@ -36,7 +36,15 @@ export const getPricingQuote = async (req, res, next) => {
 
 export const createBooking = async (req, res, next) => {
   try {
-    const booking = await bookingService.createBooking(req.body, req.user, req.ip)
+    const idempotencyKey =
+      req.body.idempotencyKey || req.headers['x-idempotency-key'] || undefined
+
+    const booking = await bookingService.createBooking(
+      { ...req.body, idempotencyKey },
+      req.user,
+      req.ip
+    )
+
     res.status(201).json({
       success: true,
       message: 'Booking confirmed successfully.',
@@ -49,10 +57,51 @@ export const createBooking = async (req, res, next) => {
 
 export const getMyBookings = async (req, res, next) => {
   try {
-    const bookings = await bookingService.getUserBookings(req.user._id)
+    const { page, limit, status } = req.query
+    const result = await bookingService.getUserBookings(req.user._id, {
+      page,
+      limit,
+      status,
+    })
+
     res.status(200).json({
       success: true,
-      data: { bookings },
+      data: result,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getBookingDetail = async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const booking = await bookingService.getBookingById(id, req.user)
+
+    res.status(200).json({
+      success: true,
+      data: { booking },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const cancelMyBooking = async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { cancellationReason } = req.body
+    const booking = await bookingService.cancelBooking(
+      id,
+      { cancellationReason },
+      req.user,
+      req.ip
+    )
+
+    res.status(200).json({
+      success: true,
+      message: 'Booking cancelled successfully.',
+      data: { booking },
     })
   } catch (error) {
     next(error)

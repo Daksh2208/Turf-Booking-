@@ -14,6 +14,7 @@ import {
   Compass,
   Layers,
   HelpCircle,
+  Calendar,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -27,7 +28,11 @@ export const CustomerNavbar = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault()
     if (navSearch.trim()) {
-      navigate(`/turfs?search=${encodeURIComponent(navSearch.trim())}`)
+      if (!isAuthenticated) {
+        navigate('/register', { state: { from: `/turfs?search=${encodeURIComponent(navSearch.trim())}` } })
+      } else {
+        navigate(`/turfs?search=${encodeURIComponent(navSearch.trim())}`)
+      }
       setNavSearch('')
       setMobileMenuOpen(false)
     }
@@ -82,7 +87,8 @@ export const CustomerNavbar = () => {
           {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center gap-6 text-xs font-semibold">
             <Link
-              to="/turfs"
+              to={isAuthenticated ? '/turfs' : '/register'}
+              state={{ from: '/turfs' }}
               className={`flex items-center gap-1.5 transition-colors ${
                 isCurrent('/turfs')
                   ? 'text-emerald-400 font-bold'
@@ -92,6 +98,19 @@ export const CustomerNavbar = () => {
               <Compass className="w-4 h-4 text-emerald-400" />
               <span>Explore Turfs</span>
             </Link>
+            {isAuthenticated && (
+              <Link
+                to="/my-bookings"
+                className={`flex items-center gap-1.5 transition-colors ${
+                  isCurrent('/my-bookings')
+                    ? 'text-emerald-400 font-bold'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <Calendar className="w-4 h-4 text-emerald-400" />
+                <span>My Bookings</span>
+              </Link>
+            )}
             <a
               href="/#sports"
               className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors"
@@ -202,13 +221,24 @@ export const CustomerNavbar = () => {
 
           <nav className="flex flex-col gap-2 pt-2 text-sm font-semibold">
             <Link
-              to="/turfs"
+              to={isAuthenticated ? '/turfs' : '/register'}
+              state={{ from: '/turfs' }}
               onClick={() => setMobileMenuOpen(false)}
               className="px-3 py-2 rounded-xl hover:bg-slate-900 text-slate-200 hover:text-white flex items-center gap-2.5"
             >
               <Compass className="w-4 h-4 text-emerald-400" />
               <span>Explore Turfs</span>
             </Link>
+            {isAuthenticated && (
+              <Link
+                to="/my-bookings"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 rounded-xl hover:bg-slate-900 text-slate-200 hover:text-white flex items-center gap-2.5"
+              >
+                <Calendar className="w-4 h-4 text-emerald-400" />
+                <span>My Bookings</span>
+              </Link>
+            )}
             <a
               href="/#sports"
               onClick={() => setMobileMenuOpen(false)}

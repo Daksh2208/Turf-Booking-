@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from '../../hooks/useApi'
 import {
   Search,
   MapPin,
@@ -9,39 +9,45 @@ import {
   Sparkles,
   Zap,
   Calendar,
-  ShieldCheck,
   CheckCircle2,
-  Clock,
   Compass,
   Layers,
   ChevronRight,
-  Loader2,
   AlertCircle,
+  Lock,
+  UserPlus,
+  LogIn,
+  Radio,
 } from 'lucide-react'
+import { useAuth } from '../../hooks/useAuth'
 import customerInventoryService from '../../services/customer/inventory.service'
 import { TurfCard } from '../../components/customer/TurfCard'
 
 export const HomePage = () => {
+  const { isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCity, setSelectedCity] = useState('')
 
-  // 1. Fetch Active Sports Categories
+  // 1. Fetch Active Sports Categories (auto-synced with DB)
   const { data: sports = [], isLoading: sportsLoading } = useQuery({
     queryKey: ['publicSports'],
     queryFn: () => customerInventoryService.getSports(),
+    refetchInterval: 5000,
   })
 
-  // 2. Fetch Active Promotional Banners
+  // 2. Fetch Active Promotional Banners (auto-synced with DB)
   const { data: banners = [] } = useQuery({
     queryKey: ['publicBanners'],
     queryFn: () => customerInventoryService.getBanners(),
+    refetchInterval: 5000,
   })
 
-  // 3. Fetch Featured / Recent Turfs
+  // 3. Fetch Featured / Recent Turfs (auto-synced with DB)
   const { data: turfsData, isLoading: turfsLoading, isError: turfsError, error } = useQuery({
     queryKey: ['homeFeaturedTurfs'],
     queryFn: () => customerInventoryService.getTurfs({ limit: 6, sort: 'newest' }),
+    refetchInterval: 5000,
   })
 
   const turfs = turfsData?.turfs || []
@@ -56,10 +62,14 @@ export const HomePage = () => {
     const params = new URLSearchParams()
     if (searchTerm.trim()) params.set('search', searchTerm.trim())
     if (selectedCity) params.set('city', selectedCity)
-    navigate(`/turfs?${params.toString()}`)
-  }
+    const targetUrl = `/turfs?${params.toString()}`
 
-  const activeBanner = banners.length > 0 ? banners[0] : null
+    if (!isAuthenticated) {
+      navigate('/register', { state: { from: targetUrl } })
+    } else {
+      navigate(targetUrl)
+    }
+  }
 
   return (
     <div className="space-y-16 sm:space-y-24 pb-20">
@@ -85,53 +95,90 @@ export const HomePage = () => {
             Find and book premier sports turfs for Cricket, Football, Pickleball, and Badminton. Inspect live available slots, transparent peak/weekend rates, and play without conflicts.
           </p>
 
-          {/* Hero Search Box */}
-          <form
-            onSubmit={handleSearchSubmit}
-            className="p-2 sm:p-2.5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-xl flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 text-left max-w-2xl mx-auto"
-          >
-            {/* Search Input */}
-            <div className="flex-1 flex items-center gap-2.5 px-3 py-2">
-              <Search className="w-4 h-4 text-emerald-400 shrink-0" />
-              <input
-                type="text"
-                placeholder="Search turf name, area, or landmark..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-transparent text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none"
-              />
-            </div>
-
-            {/* City Selector if available */}
-            {availableCities.length > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-2 border-t sm:border-t-0 sm:border-l border-slate-800 text-xs">
-                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <select
-                  value={selectedCity}
-                  onChange={(e) => setSelectedCity(e.target.value)}
-                  className="bg-transparent text-slate-200 focus:outline-none cursor-pointer text-xs"
-                >
-                  <option value="" className="bg-slate-900 text-white">
-                    All Areas
-                  </option>
-                  {availableCities.map((city) => (
-                    <option key={city} value={city} className="bg-slate-900 text-white">
-                      {city}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              className="py-3 px-6 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer"
+          {/* Conditional Hero Feature Area:
+              - If Logged In: Show live interactive search & filter controls.
+              - If Not Logged In: Hide interactive booking features and display a clear member registration callout. */}
+          {isAuthenticated ? (
+            <form
+              onSubmit={handleSearchSubmit}
+              className="p-2 sm:p-2.5 rounded-3xl bg-slate-900/90 border border-slate-800 shadow-2xl backdrop-blur-xl flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 text-left max-w-2xl mx-auto"
             >
-              <span>Find Turfs</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </form>
+              {/* Search Input */}
+              <div className="flex-1 flex items-center gap-2.5 px-3 py-2">
+                <Search className="w-4 h-4 text-emerald-400 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search turf name, area, or landmark..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-transparent text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none"
+                />
+              </div>
+
+              {/* City Selector if available */}
+              {availableCities.length > 0 && (
+                <div className="flex items-center gap-1.5 px-3 py-2 border-t sm:border-t-0 sm:border-l border-slate-800 text-xs">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <select
+                    value={selectedCity}
+                    onChange={(e) => setSelectedCity(e.target.value)}
+                    className="bg-transparent text-slate-200 focus:outline-none cursor-pointer text-xs"
+                  >
+                    <option value="" className="bg-slate-900 text-white">
+                      All Areas
+                    </option>
+                    {availableCities.map((city) => (
+                      <option key={city} value={city} className="bg-slate-900 text-white">
+                        {city}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                className="py-3 px-6 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer"
+              >
+                <span>Find Turfs</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+          ) : (
+            <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/90 border border-emerald-500/30 shadow-2xl backdrop-blur-xl max-w-xl mx-auto text-center space-y-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
+                <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Protected Booking Features</span>
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-xl sm:text-2xl font-bold text-white">
+                  Sign Up to Search & Book Slots
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 max-w-md mx-auto">
+                  To protect slot availability and manage reservations, live slot schedules and turf bookings are accessible to registered members.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                <Link
+                  to="/register"
+                  state={{ from: '/turfs' }}
+                  className="w-full sm:w-auto py-3 px-6 rounded-2xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-emerald-400/20 cursor-pointer"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Create Account</span>
+                </Link>
+                <Link
+                  to="/login"
+                  state={{ from: '/turfs' }}
+                  className="w-full sm:w-auto py-3 px-5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 border border-slate-700 cursor-pointer"
+                >
+                  <LogIn className="w-4 h-4 text-emerald-400" />
+                  <span>Sign In</span>
+                </Link>
+              </div>
+            </div>
+          )}
 
           {/* Quick Stats Badges */}
           <div className="flex flex-wrap items-center justify-center gap-6 pt-4 text-xs text-slate-400">
@@ -149,33 +196,67 @@ export const HomePage = () => {
             </span>
           </div>
         </div>
+      </section>
 
-        {/* Hero Active Banner (if configured by Admin) */}
-        {activeBanner && (
-          <div className="mt-12 max-w-5xl mx-auto rounded-3xl overflow-hidden border border-emerald-500/30 shadow-xl bg-slate-900/60 p-6 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="space-y-2 text-left">
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300">
-                Featured Announcement
-              </span>
-              <h3 className="text-xl font-bold text-white">{activeBanner.title}</h3>
-              {activeBanner.subtitle && (
-                <p className="text-xs text-slate-300">{activeBanner.subtitle}</p>
-              )}
-            </div>
-            {activeBanner.linkUrl && (
-              <a
-                href={activeBanner.linkUrl}
-                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-1.5"
+      {/* 2. Ongoing Tournaments, Announcements & Live Activities (Always Visible) */}
+      <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-3 w-3 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+            </span>
+            <h2 className="text-xl sm:text-2xl font-bold text-white flex items-center gap-2">
+              <span>Ongoing Tournaments & Happenings</span>
+            </h2>
+          </div>
+          <span className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+            Live Updates
+          </span>
+        </div>
+
+        {/* If custom admin banners exist, display them */}
+        {banners.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {banners.map((banner) => (
+              <div
+                key={banner._id}
+                className="relative overflow-hidden rounded-3xl border border-emerald-500/30 bg-slate-900/80 p-6 flex flex-col justify-between space-y-4 shadow-xl"
               >
-                <span>Learn More</span>
-                <ChevronRight className="w-4 h-4" />
-              </a>
-            )}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                      <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
+                      <span>Active Announcement</span>
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-bold text-white">{banner.title}</h3>
+                  {banner.subtitle && (
+                    <p className="text-xs text-slate-300 leading-relaxed">{banner.subtitle}</p>
+                  )}
+                </div>
+                {(banner.link || banner.linkUrl) && (
+                  <a
+                    href={banner.link || banner.linkUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors pt-2"
+                  >
+                    <span>{banner.ctaText || 'Learn More'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-8 text-center bg-slate-900/40 rounded-3xl border border-slate-800 text-slate-400 text-xs">
+            No active announcements or tournament banners scheduled at this time.
           </div>
         )}
       </section>
 
-      {/* 2. Sports Categories Section */}
+      {/* 3. Sports Categories Section */}
       <section id="sports" className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
@@ -189,10 +270,11 @@ export const HomePage = () => {
           </div>
 
           <Link
-            to="/turfs"
+            to={isAuthenticated ? '/turfs' : '/register'}
+            state={{ from: '/turfs' }}
             className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors"
           >
-            <span>View all sports</span>
+            <span>{isAuthenticated ? 'View all sports' : 'Sign up to view all sports'}</span>
             <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
@@ -209,32 +291,43 @@ export const HomePage = () => {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {sports.map((sport) => (
-              <Link
-                key={sport._id}
-                to={`/turfs?sport=${sport.slug}`}
-                className="group p-5 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-900 transition-all duration-300 flex flex-col justify-between space-y-4 shadow-sm"
-              >
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-                  <Trophy className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-white text-sm group-hover:text-emerald-400 transition-colors">
-                    {sport.name}
-                  </h3>
-                  {sport.description && (
-                    <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                      {sport.description}
-                    </p>
-                  )}
-                </div>
-              </Link>
-            ))}
+            {sports.map((sport) => {
+              const targetRoute = `/turfs?sport=${sport.slug}`
+              return (
+                <Link
+                  key={sport._id}
+                  to={isAuthenticated ? targetRoute : '/register'}
+                  state={{ from: targetRoute }}
+                  className="group p-5 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-emerald-500/50 hover:bg-slate-900 transition-all duration-300 flex flex-col justify-between space-y-4 shadow-sm"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+                      <Trophy className="w-6 h-6" />
+                    </div>
+                    {!isAuthenticated && (
+                      <span className="p-1.5 rounded-lg bg-slate-800 text-slate-400 group-hover:text-emerald-400 group-hover:bg-slate-700 transition-colors" title="Sign up required to book">
+                        <Lock className="w-3 h-3" />
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-sm group-hover:text-emerald-400 transition-colors">
+                      {sport.name}
+                    </h3>
+                    {sport.description && (
+                      <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                        {sport.description}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         )}
       </section>
 
-      {/* 3. Featured Turfs Section */}
+      {/* 4. Featured Arenas Showcase */}
       <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
@@ -248,10 +341,15 @@ export const HomePage = () => {
           </div>
 
           <Link
-            to="/turfs"
+            to={isAuthenticated ? '/turfs' : '/register'}
+            state={{ from: '/turfs' }}
             className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors"
           >
-            <span>Explore all {turfsData?.pagination?.total || ''} arenas</span>
+            <span>
+              {isAuthenticated
+                ? `Explore all ${turfsData?.pagination?.total || ''} arenas`
+                : 'Sign up to explore all arenas'}
+            </span>
             <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
@@ -280,7 +378,7 @@ export const HomePage = () => {
         )}
       </section>
 
-      {/* 4. How Booking Works Section */}
+      {/* 5. How Booking Works Section */}
       <section id="how-it-works" className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-10">
         <div className="text-center max-w-2xl mx-auto space-y-2">
           <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
@@ -302,7 +400,7 @@ export const HomePage = () => {
             </div>
             <h3 className="font-bold text-white text-base">1. Discover Your Arena</h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Search by turf name, city, or area. Filter by sport, facilities like floodlights & parking, and price ranges.
+              Create an account, search by turf name or area, and filter by sport, floodlights, and price ranges.
             </p>
           </div>
 
@@ -315,7 +413,7 @@ export const HomePage = () => {
             </div>
             <h3 className="font-bold text-white text-base">2. Check Live Slot Schedule</h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Inspect real-time slot availability for any date. Base, peak-hour, and weekend rates are calculated automatically.
+              Inspect real-time slot availability for any date. Base, peak-hour, and weekend rates calculate automatically.
             </p>
           </div>
 
@@ -328,7 +426,7 @@ export const HomePage = () => {
             </div>
             <h3 className="font-bold text-white text-base">3. Instant Match Confirmation</h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Confirm your reservation with venue payment and zero double-booking conflicts. Show up and play!
+              Confirm your reservation with zero double-booking conflicts. Show up with your squad and play!
             </p>
           </div>
         </div>

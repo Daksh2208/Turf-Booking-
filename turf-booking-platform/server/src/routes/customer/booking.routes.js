@@ -5,6 +5,8 @@ import {
   getPricingQuote,
   createBooking,
   getMyBookings,
+  getBookingDetail,
+  cancelMyBooking,
 } from '../../controllers/customer/booking.controller.js'
 
 const router = Router()
@@ -15,8 +17,10 @@ router.get('/slots', getTurfSlots)
 // Public: Generate detailed price quote and segment breakdown
 router.post('/quote', getPricingQuote)
 
-// Authenticated: Create booking & view user's bookings
+// Authenticated Customer Endpoints
 router.post('/', requireAuth, createBooking)
 router.get('/my', requireAuth, getMyBookings)
+router.get('/:id', requireAuth, getBookingDetail)
+router.post('/:id/cancel', requireAuth, cancelMyBooking)
 
 export default router

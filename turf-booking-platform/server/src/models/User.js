@@ -30,6 +30,17 @@ const userSchema = new mongoose.Schema(
       default: 'customer',
       required: true,
     },
+    phone: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    favorites: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Turf',
+      },
+    ],
     isActive: {
       type: Boolean,
       default: true,

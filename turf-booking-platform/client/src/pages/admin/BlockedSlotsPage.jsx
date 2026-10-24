@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '../../hooks/useApi'
 import {
   Calendar,
   Clock,
@@ -74,6 +74,7 @@ export const BlockedSlotsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminBlockedSlots'] })
       queryClient.invalidateQueries({ queryKey: ['adminDashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['turfAvailability'] })
       setIsModalOpen(false)
       setSuccessToast('Slot blocked successfully. Synced to live website.')
       setTimeout(() => setSuccessToast(null), 4000)
@@ -88,6 +89,7 @@ export const BlockedSlotsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminBlockedSlots'] })
       queryClient.invalidateQueries({ queryKey: ['adminDashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['turfAvailability'] })
       setIsModalOpen(false)
       setSuccessToast('Blocked slot updated successfully.')
       setTimeout(() => setSuccessToast(null), 4000)
@@ -102,6 +104,7 @@ export const BlockedSlotsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminBlockedSlots'] })
       queryClient.invalidateQueries({ queryKey: ['adminDashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['turfAvailability'] })
       setIsDeleteModalOpen(false)
       setSuccessToast('Blocked slot removed. Slot is immediately released on the website.')
       setTimeout(() => setSuccessToast(null), 4000)
@@ -114,6 +117,13 @@ export const BlockedSlotsPage = () => {
   const turfs = turfsData?.turfs || []
   const blockedSlots = slotsData?.slots || []
   const pagination = slotsData?.pagination || { page: 1, totalPages: 1, total: 0 }
+
+  // Auto-select first turf if none is selected
+  React.useEffect(() => {
+    if (!formData.turf && turfs.length > 0) {
+      setFormData((prev) => ({ ...prev, turf: turfs[0]._id }))
+    }
+  }, [turfs, formData.turf])
 
   const handleOpenCreate = () => {
     setEditingSlot(null)
@@ -337,19 +347,31 @@ export const BlockedSlotsPage = () => {
               <label className="block text-xs font-semibold text-slate-300 mb-1">
                 Turf Arena
               </label>
-              <select
-                value={formData.turf}
-                onChange={(e) => setFormData({ ...formData, turf: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:outline-none focus:border-emerald-500"
-                required
-              >
-                <option value="">Select arena...</option>
-                {turfs.map((t) => (
-                  <option key={t._id} value={t._id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+              {turfs.length === 0 ? (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs flex items-center justify-between">
+                  <span>No turf arenas found in inventory.</span>
+                  <a
+                    href="/admin/turfs"
+                    className="font-bold underline text-amber-300 hover:text-white transition-colors"
+                  >
+                    Create Turf Arena
+                  </a>
+                </div>
+              ) : (
+                <select
+                  value={formData.turf}
+                  onChange={(e) => setFormData({ ...formData, turf: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  required
+                >
+                  <option value="">Select arena...</option>
+                  {turfs.map((t) => (
+                    <option key={t._id} value={t._id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

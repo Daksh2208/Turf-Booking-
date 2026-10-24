@@ -139,6 +139,16 @@ export const adminInventoryService = {
     return response.data?.data?.booking
   },
 
+  async recordPayment(id, { paymentMethod = 'Pay at Venue', notes = '' } = {}) {
+    const response = await apiClient.post(`/admin/bookings/${id}/payment`, { paymentMethod, notes })
+    return response.data?.data?.booking
+  },
+
+  async cancelBooking(id, { cancellationReason = '' } = {}) {
+    const response = await apiClient.post(`/admin/bookings/${id}/cancel`, { cancellationReason })
+    return response.data?.data?.booking
+  },
+
   // ==========================================
   // Blocked Slots Management
   // ==========================================

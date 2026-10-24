@@ -175,7 +175,7 @@ export const pricingService = {
   /**
    * Calculate a comprehensive, server-validated pricing quote.
    */
-  async calculateQuote({ turfId, date, startTime, endTime, addOns = [] }) {
+  async calculateQuote({ turfId, date, startTime, endTime, addOns = [], playerCount }) {
     if (!turfId) {
       const err = new Error('Turf ID is required.')
       err.statusCode = 400
@@ -203,6 +203,39 @@ export const pricingService = {
       err.statusCode = 400
       err.code = 'TURF_INACTIVE'
       throw err
+    }
+
+    // Capacity & Player Count Validation
+    const minCap = turf.capacity?.minPlayers || 2
+    const maxCap = turf.capacity?.maxPlayers || 22
+
+    let effectivePlayers = minCap
+    if (playerCount !== undefined && playerCount !== null && playerCount !== '') {
+      effectivePlayers = Number(playerCount)
+      if (!Number.isInteger(effectivePlayers) || effectivePlayers < 1) {
+        const err = new Error(`Player count must be a positive integer. Received "${playerCount}".`)
+        err.statusCode = 400
+        err.code = 'INVALID_PLAYER_COUNT'
+        throw err
+      }
+
+      if (effectivePlayers > maxCap) {
+        const err = new Error(
+          `Player count (${effectivePlayers}) exceeds turf maximum capacity of ${maxCap} players.`
+        )
+        err.statusCode = 400
+        err.code = 'CAPACITY_EXCEEDED'
+        throw err
+      }
+
+      if (effectivePlayers < minCap) {
+        const err = new Error(
+          `Player count (${effectivePlayers}) is below the minimum required capacity of ${minCap} players.`
+        )
+        err.statusCode = 400
+        err.code = 'MIN_PLAYERS_REQUIRED'
+        throw err
+      }
     }
 
     if (!date) {
@@ -293,8 +326,10 @@ export const pricingService = {
         let itemTotal = 0
         if (addon.pricingUnit === 'per_hour') {
           itemTotal = Math.round(addon.price * quantity * durationHours)
+        } else if (addon.pricingUnit === 'per_player') {
+          itemTotal = Math.round(addon.price * quantity * effectivePlayers)
         } else {
-          // 'per_booking' or 'per_player'
+          // 'per_booking'
           itemTotal = addon.price * quantity
         }
 
@@ -332,6 +367,11 @@ export const pricingService = {
         startTime,
         endTime,
         durationHours,
+      },
+      playerCount: effectivePlayers,
+      capacity: {
+        minPlayers: minCap,
+        maxPlayers: maxCap,
       },
       hourlySegments,
       turfSubtotal,

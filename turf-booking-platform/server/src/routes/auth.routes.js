@@ -6,6 +6,10 @@ import {
   refresh,
   logout,
   getMe,
+  updateProfile,
+  changePassword,
+  toggleFavorite,
+  getFavorites,
 } from '../controllers/auth.controller.js'
 import { loginValidator, registerValidator } from '../validators/auth.validator.js'
 import { validate } from '../middleware/validate.middleware.js'
@@ -37,6 +41,10 @@ router.post('/logout', logout)
 
 // Protected User Routes
 router.get('/me', requireAuth, getMe)
+router.put('/profile', requireAuth, updateProfile)
+router.put('/password', requireAuth, changePassword)
+router.post('/favorites/toggle/:turfId', requireAuth, toggleFavorite)
+router.get('/favorites', requireAuth, getFavorites)
 router.get('/admin-check', requireAuth, requireAdmin, (req, res) => {
   res.status(200).json({ success: true, message: 'Admin access authorized', data: { role: req.user.role } })
 })

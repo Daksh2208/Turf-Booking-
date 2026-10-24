@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from '../../hooks/useApi'
 import {
   Search,
   Filter,
@@ -52,13 +52,14 @@ export const TurfListingPage = () => {
     setLocalSearch(search)
   }, [search])
 
-  // 1. Fetch Sports for filter dropdown
+  // 1. Fetch Sports for filter dropdown (auto-synced with DB)
   const { data: sports = [] } = useQuery({
     queryKey: ['publicSports'],
     queryFn: () => customerInventoryService.getSports(),
+    refetchInterval: 5000,
   })
 
-  // 2. Fetch Turfs with current query params
+  // 2. Fetch Turfs with current query params (auto-synced with DB)
   const { data: turfsData, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: [
       'publicTurfsList',
@@ -76,6 +77,7 @@ export const TurfListingPage = () => {
         maxPrice: maxPrice || undefined,
         sort,
       }),
+    refetchInterval: 5000,
   })
 
   const turfs = turfsData?.turfs || []

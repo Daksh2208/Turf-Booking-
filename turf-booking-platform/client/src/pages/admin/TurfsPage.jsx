@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '../../hooks/useApi'
 import {
   Plus,
   Search,
@@ -109,11 +109,21 @@ export const TurfsPage = () => {
   const pagination = turfsData?.pagination || { page: 1, totalPages: 1 }
   const sportsList = sportsData?.sports || []
 
+  const invalidateAllTurfQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin-turfs'] })
+    queryClient.invalidateQueries({ queryKey: ['publicTurfs'] })
+    queryClient.invalidateQueries({ queryKey: ['publicTurfsList'] })
+    queryClient.invalidateQueries({ queryKey: ['homeFeaturedTurfs'] })
+    queryClient.invalidateQueries({ queryKey: ['publicTurfDetail'] })
+    queryClient.invalidateQueries({ queryKey: ['turfAvailability'] })
+    queryClient.invalidateQueries({ queryKey: ['pricingQuote'] })
+  }
+
   // Create Turf Mutation
   const createMutation = useMutation({
     mutationFn: (newTurf) => adminInventoryService.createTurf(newTurf),
     onSuccess: (created) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-turfs'] })
+      invalidateAllTurfQueries()
       setIsModalOpen(false)
       showToast(`Turf "${created.name}" created successfully.`)
     },
@@ -126,7 +136,7 @@ export const TurfsPage = () => {
   const updateMutation = useMutation({
     mutationFn: ({ id, updates }) => adminInventoryService.updateTurf(id, updates),
     onSuccess: (updated) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-turfs'] })
+      invalidateAllTurfQueries()
       setIsModalOpen(false)
       showToast(`Turf "${updated.name}" updated successfully.`)
     },
@@ -139,7 +149,7 @@ export const TurfsPage = () => {
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }) => adminInventoryService.toggleTurfStatus(id, isActive),
     onSuccess: (turf) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-turfs'] })
+      invalidateAllTurfQueries()
       showToast(`Turf "${turf.name}" is now ${turf.isActive ? 'active' : 'inactive'}.`)
     },
     onError: (err) => {
@@ -151,7 +161,7 @@ export const TurfsPage = () => {
   const deleteMutation = useMutation({
     mutationFn: (id) => adminInventoryService.deleteTurf(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-turfs'] })
+      invalidateAllTurfQueries()
       setIsDeleteModalOpen(false)
       showToast('Turf arena deleted successfully.')
     },

@@ -64,6 +64,46 @@ export const updateBookingStatus = async (req, res, next) => {
   }
 }
 
+export const recordPayment = async (req, res, next) => {
+  try {
+    const { paymentMethod, notes } = req.body
+    const booking = await bookingService.recordPayment(
+      req.params.id,
+      { paymentMethod, notes },
+      req.user,
+      req.ip
+    )
+
+    res.status(200).json({
+      success: true,
+      message: 'Payment recorded successfully.',
+      data: { booking },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const cancelBooking = async (req, res, next) => {
+  try {
+    const { cancellationReason } = req.body
+    const booking = await bookingService.cancelBooking(
+      req.params.id,
+      { cancellationReason },
+      req.user,
+      req.ip
+    )
+
+    res.status(200).json({
+      success: true,
+      message: 'Booking cancelled and slot released successfully.',
+      data: { booking },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 // ==========================================
 // BLOCKED SLOTS CONTROLLERS
 // ==========================================

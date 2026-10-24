@@ -2,7 +2,7 @@ import React from 'react'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider } from '../../hooks/useApi'
 import { AuthContext } from '../../features/auth/context/AuthContext'
 import { CustomerLayout } from '../../layouts/CustomerLayout'
 import { HomePage } from './HomePage'
@@ -180,7 +180,7 @@ describe('Part 9: Customer-Facing Website & Discovery Suite', () => {
     customerBookingService.getPricingQuote.mockResolvedValue(mockQuote)
   })
 
-  // 1. Home Page renders banners, sports, and featured turfs
+  // 1. Home Page renders ongoing things, banners, sports, and guest protection
   it('1. renders Home Page with real hero banner, sports categories, and featured turfs', async () => {
     render(
       <QueryClientProvider client={queryClient}>
@@ -199,10 +199,18 @@ describe('Part 9: Customer-Facing Website & Discovery Suite', () => {
       screen.getByRole('heading', { level: 1, name: /Sports Turf Booking/i })
     ).toBeInTheDocument()
 
-    // Real announcement banner from API
+    // Real announcement banner from API (ongoing event)
     await waitFor(() => {
       expect(screen.getByText('Weekend Night Tournament Registrations Open')).toBeInTheDocument()
     })
+
+    // Ongoing happenings section header
+    expect(screen.getByText('Ongoing Tournaments & Happenings')).toBeInTheDocument()
+
+    // Without login, interactive search form is hidden and guest sign-up callout is shown
+    expect(screen.queryByPlaceholderText(/Search turf name, area/i)).not.toBeInTheDocument()
+    expect(screen.getByText('Sign Up to Search & Book Slots')).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: /Create Account/i }).length).toBeGreaterThanOrEqual(1)
 
     // Sports categories from API
     expect(screen.getAllByText('Box Cricket').length).toBeGreaterThanOrEqual(1)
@@ -210,13 +218,47 @@ describe('Part 9: Customer-Facing Website & Discovery Suite', () => {
     expect(screen.getByText('Pickleball')).toBeInTheDocument()
     expect(screen.getByText('Badminton')).toBeInTheDocument()
 
-    // Featured arena card
+    // Featured arena card with protected guest lock
     expect(screen.getByText('Apex Arena Alpha')).toBeInTheDocument()
     expect(screen.getByText('From')).toBeInTheDocument()
     expect(screen.getByText('₹800')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Sign Up to Book Slots/i })).toBeInTheDocument()
 
     // Business contact info in footer
     expect(screen.getByText('contact@turfspot.com')).toBeInTheDocument()
+  })
+
+  // 1b. When authenticated, interactive search form is unlocked on Home Page
+  it('1b. unlocks interactive turf search form and view details CTA when logged in', async () => {
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/']}>
+          <AuthContext.Provider
+            value={{
+              user: { _id: 'u-1', name: 'Cristiano Ronaldo', role: 'customer' },
+              isAuthenticated: true,
+              logout: vi.fn(),
+            }}
+          >
+            <CustomerLayout>
+              <HomePage />
+            </CustomerLayout>
+          </AuthContext.Provider>
+        </MemoryRouter>
+      </QueryClientProvider>
+    )
+
+    // Interactive search form is rendered
+    expect(screen.getByPlaceholderText(/Search turf name, area/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Find Turfs/i })).toBeInTheDocument()
+
+    // Protected callout is not present
+    expect(screen.queryByText('Sign Up to Search & Book Slots')).not.toBeInTheDocument()
+
+    // Turf card has View Details & Slots CTA
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /View Details & Slots/i })).toBeInTheDocument()
+    })
   })
 
   // 2. Turf Listing Page renders search and filter controls

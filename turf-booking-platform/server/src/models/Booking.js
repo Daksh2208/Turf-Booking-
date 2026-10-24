@@ -25,7 +25,7 @@ const bookingSchema = new mongoose.Schema(
     sport: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Sport',
-      required: [true, 'Sport reference is required'],
+      required: false, // Optional if turf has default or inferred sport
     },
     date: {
       type: String,
@@ -43,21 +43,49 @@ const bookingSchema = new mongoose.Schema(
       required: [true, 'End time is required (HH:mm)'],
       match: [/^([01]\d|2[0-3]):([0-5]\d)$/, 'End time must be in HH:mm 24-hour format'],
     },
+    selectedSlots: {
+      type: [String],
+      default: [],
+    },
     durationMinutes: {
       type: Number,
       default: 60,
       min: 15,
     },
+    playerCount: {
+      type: Number,
+      default: 10,
+      min: 1,
+    },
+    // Player / Customer Contact Details Snapshot
+    contactDetails: {
+      name: {
+        type: String,
+        default: '',
+        trim: true,
+      },
+      email: {
+        type: String,
+        default: '',
+        trim: true,
+        lowercase: true,
+      },
+      phone: {
+        type: String,
+        default: '',
+        trim: true,
+      },
+    },
     rateType: {
       type: String,
-      enum: ['base', 'peak', 'weekend'],
+      enum: ['base', 'peak', 'weekend', 'weekend_peak'],
       default: 'base',
     },
     slotPrice: {
       type: Number,
       required: true,
       min: [0, 'Slot price cannot be negative'],
-    },
+    }, // in integer paise
     addOns: [
       {
         addOn: {
@@ -65,20 +93,22 @@ const bookingSchema = new mongoose.Schema(
           ref: 'AddOn',
         },
         name: { type: String, required: true },
-        price: { type: Number, required: true }, // paise
+        price: { type: Number, required: true }, // unit price snapshot in paise
         quantity: { type: Number, default: 1, min: 1 },
+        pricingUnit: { type: String, default: 'per_booking' },
+        totalPrice: { type: Number, required: true }, // total item price in paise
       },
     ],
     addOnsTotal: {
       type: Number,
       default: 0,
       min: 0,
-    },
+    }, // in integer paise
     subtotal: {
       type: Number,
       required: true,
       min: 0,
-    },
+    }, // in integer paise
     taxRatePercentage: {
       type: Number,
       default: 18,
@@ -88,11 +118,30 @@ const bookingSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: 0,
-    },
+    }, // in integer paise
     totalAmount: {
       type: Number,
       required: true,
       min: 0,
+    }, // in integer paise
+    // Authoritative pricing breakdown snapshot from pricingService
+    pricingBreakdown: {
+      hourlySegments: [
+        {
+          startTime: String,
+          endTime: String,
+          durationHours: Number,
+          rateType: String,
+          hourlyRate: Number,
+          segmentPrice: Number,
+        },
+      ],
+      turfSubtotal: Number,
+      addOnsSubtotal: Number,
+      subtotal: Number,
+      taxPercentage: Number,
+      taxAmount: Number,
+      finalTotal: Number,
     },
     status: {
       type: String,
@@ -102,13 +151,21 @@ const bookingSchema = new mongoose.Schema(
     },
     paymentStatus: {
       type: String,
-      enum: ['pending', 'paid', 'refunded'],
-      default: 'pending',
+      enum: ['unpaid', 'pending', 'paid', 'refunded'],
+      default: 'unpaid',
+      index: true,
     },
     paymentMethod: {
       type: String,
-      enum: ['pay_at_venue', 'online', 'card', 'upi'],
-      default: 'pay_at_venue',
+      enum: ['Pay at Venue', 'pay_at_venue', 'online', 'card', 'upi'],
+      default: 'Pay at Venue',
+    },
+    // Safe retry and duplicate submission prevention
+    idempotencyKey: {
+      type: String,
+      trim: true,
+      sparse: true,
+      index: true,
     },
     cancellationReason: {
       type: String,
@@ -118,13 +175,41 @@ const bookingSchema = new mongoose.Schema(
     cancelledAt: {
       type: Date,
     },
+    cancelledBy: {
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+      role: {
+        type: String,
+        enum: ['admin', 'customer', 'system'],
+      },
+    },
+    paidAt: {
+      type: Date,
+    },
+    paymentRecordedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    paymentNotes: {
+      type: String,
+      trim: true,
+      default: '',
+    },
   },
   {
     timestamps: true,
   }
 )
 
+// Efficient compound indexes for customer lookups, admin reporting and conflict detection
+bookingSchema.index({ user: 1, createdAt: -1 })
 bookingSchema.index({ turf: 1, date: 1, startTime: 1, endTime: 1, status: 1 })
+bookingSchema.index({ turf: 1, date: 1, status: 1 })
+bookingSchema.index({ date: 1, status: 1, paymentStatus: 1 })
+bookingSchema.index({ status: 1, paymentStatus: 1 })
+bookingSchema.index({ createdAt: -1 })
 
 export const Booking = mongoose.models.Booking || mongoose.model('Booking', bookingSchema)
 export default Booking
