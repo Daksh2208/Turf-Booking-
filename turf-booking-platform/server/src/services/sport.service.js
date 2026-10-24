@@ -167,6 +167,33 @@ export const sportService = {
     }
     return sport
   },
+
+  /**
+   * Delete Sport (Admin only)
+   */
+  async deleteSport(id, adminUser, ip = '') {
+    const sport = await Sport.findById(id)
+    if (!sport) {
+      const error = new Error('Sport not found.')
+      error.statusCode = 404
+      error.code = 'SPORT_NOT_FOUND'
+      throw error
+    }
+
+    await Sport.findByIdAndDelete(id)
+
+    await logAudit({
+      actorId: adminUser._id,
+      action: 'DELETE',
+      entityType: 'Sport',
+      entityId: id,
+      details: { name: sport.name, slug: sport.slug },
+      ip,
+    })
+
+    return { success: true, message: 'Sport deleted successfully.' }
+  },
 }
 
 export default sportService
+

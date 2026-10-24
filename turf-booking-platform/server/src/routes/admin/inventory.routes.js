@@ -16,14 +16,17 @@ import {
   createSport,
   updateSport,
   toggleSportStatus,
+  deleteSport,
   getAdminSports,
   createTurf,
   updateTurf,
   toggleTurfStatus,
+  deleteTurf,
   getAdminTurfs,
   createAddOn,
   updateAddOn,
   toggleAddOnStatus,
+  deleteAddOn,
   getAdminAddOns,
   createBanner,
   updateBanner,
@@ -46,6 +49,7 @@ router.post('/sports', createSportValidator, validate, createSport)
 router.get('/sports', getAdminSports)
 router.put('/sports/:id', updateSportValidator, validate, updateSport)
 router.patch('/sports/:id/status', toggleSportStatus)
+router.delete('/sports/:id', deleteSport)
 
 // ==========================================
 // Admin Turf Management
@@ -54,6 +58,7 @@ router.post('/turfs', createTurfValidator, validate, createTurf)
 router.get('/turfs', getAdminTurfs)
 router.put('/turfs/:id', updateTurfValidator, validate, updateTurf)
 router.patch('/turfs/:id/status', toggleTurfStatus)
+router.delete('/turfs/:id', deleteTurf)
 
 // ==========================================
 // Admin Add-On Management
@@ -62,6 +67,7 @@ router.post('/addons', createAddOnValidator, validate, createAddOn)
 router.get('/addons', getAdminAddOns)
 router.put('/addons/:id', updateAddOnValidator, validate, updateAddOn)
 router.patch('/addons/:id/status', toggleAddOnStatus)
+router.delete('/addons/:id', deleteAddOn)
 
 // ==========================================
 // Admin Banner Management

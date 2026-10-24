@@ -124,6 +124,32 @@ export const addOnService = {
       .select('name description price pricingUnit applicableSports')
       .sort({ price: 1 })
   },
+
+  /**
+   * Delete Add-On (Admin only)
+   */
+  async deleteAddOn(id, adminUser, ip = '') {
+    const addon = await AddOn.findById(id)
+    if (!addon) {
+      const error = new Error('Add-on not found.')
+      error.statusCode = 404
+      error.code = 'ADDON_NOT_FOUND'
+      throw error
+    }
+
+    await AddOn.findByIdAndDelete(id)
+
+    await logAudit({
+      actorId: adminUser._id,
+      action: 'DELETE',
+      entityType: 'AddOn',
+      entityId: id,
+      details: { name: addon.name },
+      ip,
+    })
+
+    return { success: true, message: 'Add-on deleted successfully.' }
+  },
 }
 
 export default addOnService

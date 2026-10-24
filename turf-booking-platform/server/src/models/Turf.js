@@ -99,6 +99,43 @@ const turfSchema = new mongoose.Schema(
       default: 'Asia/Kolkata',
       trim: true,
     },
+    size: {
+      type: String,
+      default: 'Standard (100x60 ft)',
+      trim: true,
+    },
+    surface: {
+      type: String,
+      default: 'Artificial Turf',
+      trim: true,
+    },
+    pricing: {
+      baseRate: {
+        type: Number,
+        default: 80000, // paise (₹800.00)
+        min: [0, 'Base rate cannot be negative'],
+      },
+      peakRate: {
+        type: Number,
+        default: 120000, // paise (₹1200.00)
+        min: [0, 'Peak rate cannot be negative'],
+      },
+      weekendRate: {
+        type: Number,
+        default: 140000, // paise (₹1400.00)
+        min: [0, 'Weekend rate cannot be negative'],
+      },
+      peakHours: {
+        start: {
+          type: String,
+          default: '18:00',
+        },
+        end: {
+          type: String,
+          default: '23:00',
+        },
+      },
+    },
     isActive: {
       type: Boolean,
       default: true,

@@ -1,0 +1,119 @@
+import bookingService from '../../services/booking.service.js'
+import blockedSlotService from '../../services/blockedSlot.service.js'
+
+export const getDashboardMetrics = async (req, res, next) => {
+  try {
+    const data = await bookingService.getDashboardMetrics()
+    res.status(200).json({
+      success: true,
+      data,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getAdminBookings = async (req, res, next) => {
+  try {
+    const result = await bookingService.getAdminBookings(req.query)
+    res.status(200).json({
+      success: true,
+      data: result,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getBookingDetails = async (req, res, next) => {
+  try {
+    const booking = await bookingService.getBookingById(req.params.id)
+    res.status(200).json({
+      success: true,
+      data: { booking },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const updateBookingStatus = async (req, res, next) => {
+  try {
+    const { status, cancellationReason } = req.body
+    if (!['pending', 'confirmed', 'completed', 'cancelled'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid booking status. Allowed values: pending, confirmed, completed, cancelled',
+      })
+    }
+
+    const booking = await bookingService.updateBookingStatus(
+      req.params.id,
+      { status, cancellationReason },
+      req.user,
+      req.ip
+    )
+
+    res.status(200).json({
+      success: true,
+      message: `Booking status updated to ${status}.`,
+      data: { booking },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// ==========================================
+// BLOCKED SLOTS CONTROLLERS
+// ==========================================
+
+export const createBlockedSlot = async (req, res, next) => {
+  try {
+    const blockedSlot = await blockedSlotService.createBlockedSlot(req.body, req.user, req.ip)
+    res.status(201).json({
+      success: true,
+      message: 'Slot blocked successfully.',
+      data: { blockedSlot },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const updateBlockedSlot = async (req, res, next) => {
+  try {
+    const blockedSlot = await blockedSlotService.updateBlockedSlot(req.params.id, req.body, req.user, req.ip)
+    res.status(200).json({
+      success: true,
+      message: 'Blocked slot updated successfully.',
+      data: { blockedSlot },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const deleteBlockedSlot = async (req, res, next) => {
+  try {
+    const result = await blockedSlotService.deleteBlockedSlot(req.params.id, req.user, req.ip)
+    res.status(200).json({
+      success: true,
+      message: result.message,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getAdminBlockedSlots = async (req, res, next) => {
+  try {
+    const result = await blockedSlotService.getAdminBlockedSlots(req.query)
+    res.status(200).json({
+      success: true,
+      data: result,
+    })
+  } catch (error) {
+    next(error)
+  }
+}

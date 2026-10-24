@@ -79,6 +79,17 @@ export const turfService = {
         open: data.openingHours?.open || '06:00',
         close: data.openingHours?.close || '23:00',
       },
+      size: data.size || 'Standard (100x60 ft)',
+      surface: data.surface || 'Artificial Turf',
+      pricing: {
+        baseRate: data.pricing?.baseRate !== undefined ? Number(data.pricing.baseRate) : 80000,
+        peakRate: data.pricing?.peakRate !== undefined ? Number(data.pricing.peakRate) : 120000,
+        weekendRate: data.pricing?.weekendRate !== undefined ? Number(data.pricing.weekendRate) : 140000,
+        peakHours: {
+          start: data.pricing?.peakHours?.start || '18:00',
+          end: data.pricing?.peakHours?.end || '23:00',
+        },
+      },
       timezone: data.timezone || 'Asia/Kolkata',
       isActive: data.isActive !== undefined ? Boolean(data.isActive) : true,
     })
@@ -128,6 +139,19 @@ export const turfService = {
 
     if (data.name !== undefined) turf.name = data.name.trim()
     if (data.description !== undefined) turf.description = data.description.trim()
+    if (data.size !== undefined) turf.size = data.size.trim()
+    if (data.surface !== undefined) turf.surface = data.surface.trim()
+    if (data.pricing) {
+      turf.pricing = {
+        baseRate: data.pricing.baseRate !== undefined ? Number(data.pricing.baseRate) : turf.pricing?.baseRate || 80000,
+        peakRate: data.pricing.peakRate !== undefined ? Number(data.pricing.peakRate) : turf.pricing?.peakRate || 120000,
+        weekendRate: data.pricing.weekendRate !== undefined ? Number(data.pricing.weekendRate) : turf.pricing?.weekendRate || 140000,
+        peakHours: {
+          start: data.pricing.peakHours?.start || turf.pricing?.peakHours?.start || '18:00',
+          end: data.pricing.peakHours?.end || turf.pricing?.peakHours?.end || '23:00',
+        },
+      }
+    }
     if (data.address) {
       if (data.address.street !== undefined) turf.address.street = data.address.street.trim()
       if (data.address.city !== undefined) turf.address.city = data.address.city.trim()
@@ -168,6 +192,32 @@ export const turfService = {
     })
 
     return turf
+  },
+
+  /**
+   * Delete Turf (Admin only)
+   */
+  async deleteTurf(id, adminUser, ip = '') {
+    const turf = await Turf.findById(id)
+    if (!turf) {
+      const error = new Error('Turf not found.')
+      error.statusCode = 404
+      error.code = 'TURF_NOT_FOUND'
+      throw error
+    }
+
+    await Turf.findByIdAndDelete(id)
+
+    await logAudit({
+      actorId: adminUser._id,
+      action: 'DELETE',
+      entityType: 'Turf',
+      entityId: id,
+      details: { name: turf.name, slug: turf.slug },
+      ip,
+    })
+
+    return { success: true, message: 'Turf arena deleted successfully.' }
   },
 
   /**

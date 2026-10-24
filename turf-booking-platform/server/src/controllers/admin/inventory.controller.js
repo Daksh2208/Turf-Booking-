@@ -264,8 +264,44 @@ export const updateSettings = async (req, res, next) => {
       message: 'Business settings updated successfully.',
       data: { settings },
     })
-  } catch (error)
-    {
+  } catch (error) {
     next(error)
   }
 }
+
+export const deleteSport = async (req, res, next) => {
+  try {
+    const result = await sportService.deleteSport(req.params.id, req.user, req.ip)
+    res.status(200).json({
+      success: true,
+      message: result.message,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const deleteTurf = async (req, res, next) => {
+  try {
+    const result = await turfService.deleteTurf(req.params.id, req.user, req.ip)
+    res.status(200).json({
+      success: true,
+      message: result.message,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const deleteAddOn = async (req, res, next) => {
+  try {
+    const result = await addOnService.deleteAddOn(req.params.id, req.user, req.ip)
+    res.status(200).json({
+      success: true,
+      message: result.message,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
