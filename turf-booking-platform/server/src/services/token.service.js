@@ -72,7 +72,7 @@ export const getCookieOptions = (isRefreshToken = false) => {
   return {
     httpOnly: true,
     secure: isProduction,
-    sameSite: 'lax',
+    sameSite: isProduction ? 'none' : 'lax',
     path: '/',
     maxAge: parseDurationToMs(durationStr),
   }
@@ -92,6 +92,13 @@ export const setAuthCookies = (res, accessToken, refreshToken) => {
  * Clears authentication cookies upon logout or session revocation
  */
 export const clearAuthCookies = (res) => {
-  res.clearCookie('accessToken', { path: '/' })
-  res.clearCookie('refreshToken', { path: '/' })
+  const isProduction = env.NODE_ENV === 'production'
+  const opts = {
+    path: '/',
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+  }
+  res.clearCookie('accessToken', opts)
+  res.clearCookie('refreshToken', opts)
 }

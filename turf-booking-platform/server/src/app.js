@@ -19,21 +19,38 @@ import { errorMiddleware } from './middleware/error.middleware.js'
 
 const app = express()
 
+// Trust reverse proxy (Render / Cloudflare / Heroku load balancers)
+app.set('trust proxy', 1)
+
 // 1. Security Headers
 app.use(helmet())
 
 // 2. Cross-Origin Resource Sharing (CORS) with credentials enabled
 const allowedOrigins = [
-  "http://localhost:5173",
-  "https://turf-booking-fronend.onrender.com",
-];
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'https://turf-booking-fronend.onrender.com',
+  'https://turf-booking-frontend.onrender.com',
+  env.CLIENT_URL,
+].filter(Boolean)
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like curl, server-to-server)
+      if (!origin) return callback(null, true)
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.onrender.com') ||
+        origin.includes('localhost')
+      ) {
+        return callback(null, true)
+      }
+      return callback(null, false)
+    },
     credentials: true,
   })
-);
+)
 
 // 3. HTTP Request Logging
 app.use(

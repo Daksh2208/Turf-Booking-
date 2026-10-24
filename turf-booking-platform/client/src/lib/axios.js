@@ -24,6 +24,17 @@ const processQueue = (error, token = null) => {
   failedQueue = []
 }
 
+// Request interceptor: attach Bearer token from localStorage as fallback for cross-origin setups
+apiClient.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('auth_token')
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+  }
+  return config
+})
+
 // Response interceptor for automatic refresh-token rotation handling
 apiClient.interceptors.response.use(
   (response) => response,
@@ -64,10 +75,18 @@ apiClient.interceptors.response.use(
 
     try {
       // Attempt silent refresh using HttpOnly refresh cookie
-      await apiClient.post('/auth/refresh')
-      processQueue(null)
+      const refreshRes = await apiClient.post('/auth/refresh')
+      const newToken = refreshRes.data?.data?.accessToken
+      if (newToken && typeof window !== 'undefined') {
+        localStorage.setItem('auth_token', newToken)
+        originalRequest.headers.Authorization = `Bearer ${newToken}`
+      }
+      processQueue(null, newToken)
       return apiClient(originalRequest)
     } catch (refreshError) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth_token')
+      }
       processQueue(refreshError, null)
       // Notify AuthContext of session expiration
       if (typeof window !== 'undefined') {

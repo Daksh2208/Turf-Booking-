@@ -40,6 +40,17 @@ const FILTER_TABS = [
   { id: 'disabled', label: 'Suspended' },
 ]
 
+/**
+ * Convert raw paise integer to formatted Indian Rupees with .00 decimals
+ */
+const formatPrice = (amountInPaise = 0) => {
+  const rupees = (Number(amountInPaise) || 0) / 100
+  return rupees.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
 export const CustomersPage = () => {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
@@ -290,12 +301,12 @@ export const CustomersPage = () => {
           <div className="mt-3">
             <p className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center">
               <span className="text-lg font-bold text-amber-400 mr-0.5">₹</span>
-              {isAnalyticsLoading ? '...' : (financials.totalRevenue || 0).toLocaleString()}
+              {isAnalyticsLoading ? '...' : formatPrice(financials.totalRevenue || 0)}
             </p>
             <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-400">
               <span>Avg:</span>
               <span className="font-semibold text-white">
-                ₹{(financials.avgSpendPerActiveCustomer || 0).toLocaleString()}
+                ₹{formatPrice(financials.avgSpendPerActiveCustomer || 0)}
               </span>
               <span>/ active user</span>
             </div>
@@ -472,7 +483,7 @@ export const CustomersPage = () => {
                   {top.name}
                 </p>
                 <p className="text-[11px] font-black text-emerald-300 mt-1">
-                  ₹{top.totalSpent?.toLocaleString()}
+                  ₹{formatPrice(top.totalSpent || 0)}
                 </p>
               </div>
             ))}
@@ -649,7 +660,7 @@ export const CustomersPage = () => {
                       {/* Total Spent */}
                       <td className="px-4 py-4">
                         <span className="font-bold text-emerald-400">
-                          ₹{(c.totalSpent || 0).toLocaleString()}
+                          ₹{formatPrice(c.totalSpent || 0)}
                         </span>
                       </td>
 
@@ -806,7 +817,7 @@ export const CustomersPage = () => {
                   Total Spend
                 </span>
                 <span className="text-lg font-black text-emerald-400 mt-1 block">
-                  ₹{(customerDetailData.stats?.totalSpent || 0).toLocaleString()}
+                  ₹{formatPrice(customerDetailData.stats?.totalSpent || 0)}
                 </span>
                 <span className="text-[10px] text-slate-400">Lifetime revenue</span>
               </div>
@@ -870,7 +881,7 @@ export const CustomersPage = () => {
                             {b.date} ({b.startTime} - {b.endTime})
                           </td>
                           <td className="px-4 py-2.5 font-bold text-emerald-400">
-                            ₹{b.totalAmount}
+                            ₹{formatPrice(b.totalAmount || 0)}
                           </td>
                           <td className="px-4 py-2.5">
                             <span

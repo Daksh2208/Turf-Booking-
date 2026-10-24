@@ -53,6 +53,7 @@ export const login = async (req, res, next) => {
       message: 'Signed in successfully.',
       data: {
         user,
+        accessToken,
       },
     })
   } catch (error) {
@@ -65,7 +66,7 @@ export const login = async (req, res, next) => {
  */
 export const refresh = async (req, res, next) => {
   try {
-    const rawRefreshToken = req.cookies?.refreshToken
+    const rawRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken
     const ip = req.ip || req.socket?.remoteAddress || ''
     const userAgent = req.headers['user-agent'] || ''
 
@@ -83,6 +84,7 @@ export const refresh = async (req, res, next) => {
       message: 'Token refreshed successfully.',
       data: {
         user,
+        accessToken,
       },
     })
   } catch (error) {

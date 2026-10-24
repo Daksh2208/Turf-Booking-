@@ -16,6 +16,9 @@ export const authService = {
    */
   async login(credentials) {
     const response = await apiClient.post('/auth/login', credentials)
+    if (response.data?.data?.accessToken && typeof window !== 'undefined') {
+      localStorage.setItem('auth_token', response.data.data.accessToken)
+    }
     return response.data
   },
 
@@ -31,8 +34,14 @@ export const authService = {
    * Log out user and revoke refresh session
    */
   async logout() {
-    const response = await apiClient.post('/auth/logout')
-    return response.data
+    try {
+      const response = await apiClient.post('/auth/logout')
+      return response.data
+    } finally {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth_token')
+      }
+    }
   },
 
   /**

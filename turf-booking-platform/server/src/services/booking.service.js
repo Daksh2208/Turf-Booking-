@@ -833,15 +833,21 @@ export const bookingService = {
       status: { $in: ['confirmed', 'completed', 'pending'] },
     }
 
+    const todayStart = new Date(today + 'T00:00:00.000Z')
+
     const [
       todayActiveBookings,
       todayPaidBookings,
       totalCustomers,
+      newCustomersToday,
       activeTurfs,
       allTurfsTodayBlocked,
+      todaySchedule,
       recentBookings,
-      statusAggregation,
-      paymentAggregation,
+      todayStatusAggregation,
+      todayPaymentAggregation,
+      allTimeStatusAggregation,
+      allTimePaymentAggregation,
     ] = await Promise.all([
       Booking.find(todayBookingsQuery),
       Booking.find({
@@ -850,14 +856,45 @@ export const bookingService = {
         paymentStatus: 'paid',
       }),
       User.countDocuments({ role: 'customer' }),
+      User.countDocuments({ role: 'customer', createdAt: { $gte: todayStart } }),
       Turf.find({ isActive: true }).select('name slug openingHours'),
       BlockedSlot.find({ date: today }),
+      // Today's live reservations ordered by time slot
+      Booking.find({ date: today })
+        .populate('turf', 'name slug')
+        .populate('sport', 'name slug')
+        .populate('user', 'name email phone')
+        .sort({ startTime: 1 }),
+      // Recent all-time bookings
       Booking.find()
         .populate('turf', 'name slug')
         .populate('sport', 'name slug')
         .populate('user', 'name email phone')
         .sort({ createdAt: -1 })
-        .limit(8),
+        .limit(10),
+      // Today status breakdown
+      Booking.aggregate([
+        { $match: { date: today } },
+        {
+          $group: {
+            _id: '$status',
+            count: { $sum: 1 },
+            totalAmount: { $sum: '$totalAmount' },
+          },
+        },
+      ]),
+      // Today payment breakdown
+      Booking.aggregate([
+        { $match: { date: today, status: { $ne: 'cancelled' } } },
+        {
+          $group: {
+            _id: '$paymentStatus',
+            count: { $sum: 1 },
+            totalAmount: { $sum: '$totalAmount' },
+          },
+        },
+      ]),
+      // All-time status breakdown
       Booking.aggregate([
         {
           $group: {
@@ -867,6 +904,7 @@ export const bookingService = {
           },
         },
       ]),
+      // All-time payment breakdown
       Booking.aggregate([
         { $match: { status: { $ne: 'cancelled' } } },
         {
@@ -885,7 +923,6 @@ export const bookingService = {
     const todayUnpaidValuePaise = Math.max(0, todayTotalBookingValuePaise - todayRevenuePaise)
 
     // Accurate calculation of free slots today across all active turfs:
-    // Total opening hours minus (distinct booked 1-hour slots UNION distinct blocked slots)
     let totalPossibleSlotsToday = 0
     let totalOccupiedSlotsToday = 0
 
@@ -930,30 +967,35 @@ export const bookingService = {
 
     const freeSlotsToday = Math.max(0, totalPossibleSlotsToday - totalOccupiedSlotsToday)
 
-    // Status breakdown map
-    const statusBreakdown = {
-      confirmed: 0,
-      pending: 0,
-      completed: 0,
-      cancelled: 0,
-    }
-    for (const s of statusAggregation) {
-      if (statusBreakdown[s._id] !== undefined) {
-        statusBreakdown[s._id] = s.count
+    // Helper to map status aggregation
+    const mapStatus = (aggregation) => {
+      const breakdown = { confirmed: 0, pending: 0, completed: 0, cancelled: 0 }
+      for (const s of aggregation) {
+        if (breakdown[s._id] !== undefined) {
+          breakdown[s._id] = s.count
+        }
       }
+      return breakdown
     }
 
-    // Payment breakdown map
-    const paymentBreakdown = {
-      paid: { count: 0, amount: 0 },
-      unpaid: { count: 0, amount: 0 },
-      refunded: { count: 0, amount: 0 },
-    }
-    for (const p of paymentAggregation) {
-      if (paymentBreakdown[p._id] !== undefined) {
-        paymentBreakdown[p._id] = { count: p.count, amount: p.totalAmount }
+    // Helper to map payment aggregation
+    const mapPayment = (aggregation) => {
+      const breakdown = {
+        paid: { count: 0, amount: 0 },
+        unpaid: { count: 0, amount: 0 },
+        refunded: { count: 0, amount: 0 },
       }
+      for (const p of aggregation) {
+        if (breakdown[p._id] !== undefined) {
+          breakdown[p._id] = { count: p.count, amount: p.totalAmount }
+        }
+      }
+      return breakdown
     }
+
+    const todayCustomersCount = new Set(
+      todayActiveBookings.map((b) => (b.user ? b.user.toString() : '')).filter(Boolean)
+    ).size
 
     return {
       today,
@@ -966,14 +1008,19 @@ export const bookingService = {
         todayTotalBookingValueFormatted: `₹${(todayTotalBookingValuePaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
         todayUnpaidValue: todayUnpaidValuePaise,
         todayUnpaidValueFormatted: `₹${(todayUnpaidValuePaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`,
+        todayCustomersCount,
+        newCustomersToday,
         totalUsers: totalCustomers,
         freeSlotsToday,
         totalPossibleSlotsToday,
         totalOccupiedSlotsToday,
         activeTurfsCount: activeTurfs.length,
       },
-      statusBreakdown,
-      paymentBreakdown,
+      statusBreakdown: mapStatus(todayStatusAggregation),
+      allTimeStatusBreakdown: mapStatus(allTimeStatusAggregation),
+      paymentBreakdown: mapPayment(todayPaymentAggregation),
+      allTimePaymentBreakdown: mapPayment(allTimePaymentAggregation),
+      todaySchedule,
       recentBookings,
     }
   },
