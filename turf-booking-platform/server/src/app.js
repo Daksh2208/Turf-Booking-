@@ -23,12 +23,17 @@ const app = express()
 app.use(helmet())
 
 // 2. Cross-Origin Resource Sharing (CORS) with credentials enabled
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://turf-booking-fronend.onrender.com",
+];
+
 app.use(
   cors({
-    origin: env.CLIENT_URL,
+    origin: allowedOrigins,
     credentials: true,
   })
-)
+);
 
 // 3. HTTP Request Logging
 app.use(
