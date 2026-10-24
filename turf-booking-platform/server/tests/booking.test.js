@@ -31,8 +31,6 @@ describe('Booking Engine, Pricing, Blocked Slots, and Dashboard Suite', () => {
       User.deleteMany({ email: { $in: ['admin_booking@turf.com', 'customer_booking@turf.com'] } }),
       Sport.deleteMany({ slug: 'cricket-booking-test' }),
       Turf.deleteMany({ slug: 'arena-booking-test' }),
-      Booking.deleteMany({}),
-      BlockedSlot.deleteMany({}),
     ])
 
     // Create Admin
@@ -114,8 +112,8 @@ describe('Booking Engine, Pricing, Blocked Slots, and Dashboard Suite', () => {
       User.deleteMany({ email: { $in: ['admin_booking@turf.com', 'customer_booking@turf.com'] } }),
       Sport.deleteMany({ slug: 'cricket-booking-test' }),
       Turf.deleteMany({ slug: 'arena-booking-test' }),
-      Booking.deleteMany({}),
-      BlockedSlot.deleteMany({}),
+      Booking.deleteMany({ turf: testTurf?._id }),
+      BlockedSlot.deleteMany({ turf: testTurf?._id }),
     ])
   })
 

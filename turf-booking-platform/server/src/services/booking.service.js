@@ -7,6 +7,7 @@ import { User } from '../models/User.js'
 import { BusinessSettings } from '../models/BusinessSettings.js'
 import { logAudit } from '../utils/auditLogger.js'
 import pricingService from './pricing.service.js'
+import availabilityService from './availability.service.js'
 
 export const bookingService = {
   /**
@@ -24,106 +25,10 @@ export const bookingService = {
 
   /**
    * Generate dynamic slots for a turf on a given date with live status & pricing
+   * Delegates to central availabilityService
    */
   async getTurfSlots(turfId, dateStr) {
-    const turf = await Turf.findById(turfId)
-    if (!turf || !turf.isActive) {
-      const error = new Error('Turf arena not found or inactive.')
-      error.statusCode = 404
-      error.code = 'TURF_NOT_FOUND'
-      throw error
-    }
-
-    const settings = await BusinessSettings.getSettings()
-    const slotDuration = settings.bookingRules?.slotDurationMinutes || 60
-
-    // Parse open/close hours (e.g. "06:00" to "23:00")
-    const openTime = turf.openingHours?.open || '06:00'
-    const closeTime = turf.openingHours?.close || '23:00'
-
-    const [openH, openM] = openTime.split(':').map(Number)
-    const [closeH, closeM] = closeTime.split(':').map(Number)
-
-    const openMinutes = openH * 60 + openM
-    const closeMinutes = closeH * 60 + closeM
-
-    // Fetch confirmed/pending bookings for this turf on this date
-    const [activeBookings, blockedSlots] = await Promise.all([
-      Booking.find({
-        turf: turfId,
-        date: dateStr,
-        status: { $in: ['pending', 'confirmed'] },
-      }),
-      BlockedSlot.find({
-        turf: turfId,
-        date: dateStr,
-      }),
-    ])
-
-    const slots = []
-
-    for (let current = openMinutes; current + slotDuration <= closeMinutes; current += slotDuration) {
-      const startH = String(Math.floor(current / 60)).padStart(2, '0')
-      const startM = String(current % 60).padStart(2, '0')
-      const endH = String(Math.floor((current + slotDuration) / 60)).padStart(2, '0')
-      const endM = String((current + slotDuration) % 60).padStart(2, '0')
-
-      const startTime = `${startH}:${startM}`
-      const endTime = `${endH}:${endM}`
-
-      // Check if slot is blocked
-      const blockedMatch = blockedSlots.find((b) => {
-        return (
-          (startTime >= b.startTime && startTime < b.endTime) ||
-          (endTime > b.startTime && endTime <= b.endTime)
-        )
-      })
-
-      // Check if slot is booked
-      const bookedMatch = activeBookings.find((b) => {
-        return (
-          (startTime >= b.startTime && startTime < b.endTime) ||
-          (endTime > b.startTime && endTime <= b.endTime)
-        )
-      })
-
-      const { rateType, price } = this.calculateSlotPrice(turf, dateStr, startTime, endTime)
-
-      let status = 'available'
-      let reason = ''
-
-      if (blockedMatch) {
-        status = 'blocked'
-        reason = blockedMatch.reason === 'maintenance' ? 'Arena Maintenance' : blockedMatch.reason === 'tournament' ? 'Tournament Match' : blockedMatch.note || 'Slot Blocked'
-      } else if (bookedMatch) {
-        status = 'booked'
-        reason = 'Reserved by Player'
-      }
-
-      slots.push({
-        date: dateStr,
-        startTime,
-        endTime,
-        durationMinutes: slotDuration,
-        rateType,
-        price, // in paise
-        priceFormatted: `₹${(price / 100).toFixed(2)}`,
-        status, // 'available' | 'booked' | 'blocked'
-        reason,
-      })
-    }
-
-    return {
-      turf: {
-        id: turf._id,
-        name: turf.name,
-        slug: turf.slug,
-        size: turf.size,
-        surface: turf.surface,
-      },
-      date: dateStr,
-      slots,
-    }
+    return availabilityService.getTurfAvailability({ turfId, date: dateStr })
   },
 
   /**

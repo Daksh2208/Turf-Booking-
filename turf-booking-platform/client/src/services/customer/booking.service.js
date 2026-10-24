@@ -1,6 +1,13 @@
 import apiClient from '../../lib/axios'
 
 export const customerBookingService = {
+  async getAvailability(turfId, date) {
+    const response = await apiClient.get('/availability', {
+      params: { turfId, date },
+    })
+    return response.data?.data
+  },
+
   async getSlots(turfId, date) {
     const response = await apiClient.get('/bookings/slots', {
       params: { turfId, date },

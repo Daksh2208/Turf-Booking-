@@ -1,8 +1,62 @@
 import { BlockedSlot } from '../models/BlockedSlot.js'
 import { Turf } from '../models/Turf.js'
+import { Booking } from '../models/Booking.js'
 import { logAudit } from '../utils/auditLogger.js'
 
 export const blockedSlotService = {
+  /**
+   * Helper to validate block time range and prevent overlapping blocks / booking conflicts
+   */
+  async validateBlockConstraints({ turfId, date, startTime, endTime, excludeBlockId = null }) {
+    if (!startTime || !endTime) {
+      const err = new Error('Start time and end time are required.')
+      err.statusCode = 400
+      err.code = 'MISSING_TIME'
+      throw err
+    }
+
+    if (startTime >= endTime) {
+      const err = new Error('End time must be strictly after start time.')
+      err.statusCode = 400
+      err.code = 'INVALID_TIME_RANGE'
+      throw err
+    }
+
+    // 1. Prevent overlapping active blocks for the same turf and date
+    const blockQuery = {
+      turf: turfId,
+      date,
+      startTime: { $lt: endTime },
+      endTime: { $gt: startTime },
+    }
+    if (excludeBlockId) {
+      blockQuery._id = { $ne: excludeBlockId }
+    }
+
+    const overlappingBlock = await BlockedSlot.findOne(blockQuery)
+    if (overlappingBlock) {
+      const err = new Error(`Time range conflicts with an existing blocked slot (${overlappingBlock.startTime} - ${overlappingBlock.endTime}).`)
+      err.statusCode = 409
+      err.code = 'BLOCK_OVERLAP_CONFLICT'
+      throw err
+    }
+
+    // 2. Reject block if it conflicts with an existing active customer booking
+    const conflictingBooking = await Booking.findOne({
+      turf: turfId,
+      date,
+      status: { $in: ['pending', 'confirmed'] },
+      startTime: { $lt: endTime },
+      endTime: { $gt: startTime },
+    })
+    if (conflictingBooking) {
+      const err = new Error(`Cannot block slot: A conflicting active booking (${conflictingBooking.bookingId}) already occupies this time range.`)
+      err.statusCode = 409
+      err.code = 'BOOKING_CONFLICT'
+      throw err
+    }
+  },
+
   /**
    * Create blocked slot (Admin only)
    */
@@ -14,6 +68,14 @@ export const blockedSlotService = {
       error.code = 'TURF_NOT_FOUND'
       throw error
     }
+
+    // Validate time range, overlapping blocks, and existing booking conflicts
+    await this.validateBlockConstraints({
+      turfId: data.turf,
+      date: data.date,
+      startTime: data.startTime,
+      endTime: data.endTime,
+    })
 
     const blocked = await BlockedSlot.create({
       turf: data.turf,
@@ -48,6 +110,20 @@ export const blockedSlotService = {
       error.code = 'BLOCKED_SLOT_NOT_FOUND'
       throw error
     }
+
+    const targetTurf = data.turf || blocked.turf
+    const targetDate = data.date || blocked.date
+    const targetStart = data.startTime || blocked.startTime
+    const targetEnd = data.endTime || blocked.endTime
+
+    // Validate constraints excluding the current block
+    await this.validateBlockConstraints({
+      turfId: targetTurf,
+      date: targetDate,
+      startTime: targetStart,
+      endTime: targetEnd,
+      excludeBlockId: blocked._id,
+    })
 
     if (data.turf) blocked.turf = data.turf
     if (data.date) blocked.date = data.date

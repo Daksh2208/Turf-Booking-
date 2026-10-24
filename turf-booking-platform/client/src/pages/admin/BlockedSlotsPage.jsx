@@ -79,7 +79,7 @@ export const BlockedSlotsPage = () => {
       setTimeout(() => setSuccessToast(null), 4000)
     },
     onError: (err) => {
-      setServerError(err.response?.data?.message || 'Failed to block slot.')
+      setServerError(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to block slot.')
     },
   })
 
@@ -93,7 +93,7 @@ export const BlockedSlotsPage = () => {
       setTimeout(() => setSuccessToast(null), 4000)
     },
     onError: (err) => {
-      setServerError(err.response?.data?.message || 'Failed to update slot.')
+      setServerError(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to update slot.')
     },
   })
 
@@ -107,7 +107,7 @@ export const BlockedSlotsPage = () => {
       setTimeout(() => setSuccessToast(null), 4000)
     },
     onError: (err) => {
-      setServerError(err.response?.data?.message || 'Failed to release slot.')
+      setServerError(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to release slot.')
     },
   })
 
@@ -147,6 +147,14 @@ export const BlockedSlotsPage = () => {
     e.preventDefault()
     if (!formData.turf) {
       setServerError('Please select a turf arena.')
+      return
+    }
+    if (!formData.startTime || !formData.endTime) {
+      setServerError('Start time and end time are required.')
+      return
+    }
+    if (formData.startTime >= formData.endTime) {
+      setServerError('End time must be strictly after start time.')
       return
     }
     if (editingSlot) {

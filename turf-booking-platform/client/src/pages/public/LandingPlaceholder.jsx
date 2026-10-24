@@ -27,6 +27,7 @@ import {
 import { useAuth } from '../../hooks/useAuth'
 import customerInventoryService from '../../services/customer/inventory.service'
 import customerBookingService from '../../services/customer/booking.service'
+import { AvailabilityCalendar } from '../../components/customer/AvailabilityCalendar'
 import { Modal } from '../../components/common/Modal'
 import { Button } from '../../components/common/Button'
 
@@ -53,32 +54,18 @@ export const LandingPlaceholder = () => {
   const activeTurf = turfs.find((t) => t._id === selectedTurfId) || turfs[0]
   const effectiveTurfId = activeTurf?._id
 
-  // 2. Fetch Live Slots for Active Turf and Date
-  const {
-    data: slotsData,
-    isLoading: slotsLoading,
-    refetch: refetchSlots,
-    isFetching: slotsFetching,
-  } = useQuery({
-    queryKey: ['customerSlots', { turfId: effectiveTurfId, date: selectedDate }],
-    queryFn: () => customerBookingService.getSlots(effectiveTurfId, selectedDate),
-    enabled: !!effectiveTurfId,
-    refetchInterval: 5000, // Real-time poll every 5s so maintenance/tournament blocks reflect instantly
-  })
-
-  const slots = slotsData?.slots || []
-
-  // 3. Create Booking Mutation
+  // 2. Create Booking Mutation
   const bookMutation = useMutation({
     mutationFn: (bookingPayload) => customerBookingService.createBooking(bookingPayload),
     onSuccess: (booking) => {
       queryClient.invalidateQueries({ queryKey: ['customerSlots'] })
+      queryClient.invalidateQueries({ queryKey: ['turfAvailability'] })
       setBookingModalSlot(null)
       setBookingSuccess(`Slot booked successfully! Booking Ref: ${booking.bookingId || booking._id}`)
       setTimeout(() => setBookingSuccess(null), 5000)
     },
     onError: (err) => {
-      setBookingError(err.response?.data?.message || 'Failed to complete booking.')
+      setBookingError(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to complete booking.')
     },
   })
 
@@ -213,28 +200,6 @@ export const LandingPlaceholder = () => {
                 Select an arena and date to inspect slot availability, dynamic rates, and real-time maintenance blocks.
               </p>
             </div>
-
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 text-xs text-slate-300 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800">
-                <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-                <input
-                  type="date"
-                  value={selectedDate}
-                  min={todayStr}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="bg-transparent border-none text-white focus:outline-none cursor-pointer"
-                />
-              </label>
-
-              <button
-                type="button"
-                onClick={() => refetchSlots()}
-                className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition-colors cursor-pointer"
-                title="Refresh Availability"
-              >
-                <RefreshCw className={`w-4 h-4 ${slotsFetching ? 'animate-spin text-emerald-400' : ''}`} />
-              </button>
-            </div>
           </div>
 
           {/* Turf Arena Selector Pills */}
@@ -318,111 +283,15 @@ export const LandingPlaceholder = () => {
                 </div>
               )}
 
-              {/* Slot Grid */}
+              {/* Reusable Customer Availability Calendar Component */}
               <div className="pt-2">
-                <div className="flex items-center justify-between text-xs text-slate-400 mb-3">
-                  <span>Showing slots for <strong className="text-white">{selectedDate}</strong> {slotsData?.isWeekend && '(Weekend Rates Apply)'}</span>
-                  <div className="flex items-center gap-4 text-[11px]">
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Available</span>
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Blocked (Maintenance/Tournament)</span>
-                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-600"></span> Booked</span>
-                  </div>
-                </div>
-
-                {slotsLoading ? (
-                  <div className="py-12 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2">
-                    <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
-                    <span>Calculating dynamic slot rates & checking blocked schedules...</span>
-                  </div>
-                ) : slots.length === 0 ? (
-                  <div className="py-8 text-center text-slate-500 text-xs">
-                    No time slots generated for this turf schedule.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                    {slots.map((slot, idx) => {
-                      const isAvailable = slot.status === 'available'
-                      const isBlocked = slot.status === 'blocked'
-                      const isBooked = slot.status === 'booked'
-                      const priceRupees = (slot.price / 100).toFixed(0)
-
-                      return (
-                        <div
-                          key={`${slot.startTime}-${idx}`}
-                          className={`p-3 rounded-2xl border flex flex-col justify-between transition-all ${
-                            isAvailable
-                              ? 'bg-slate-900/90 border-slate-800 hover:border-emerald-500/50 shadow-sm'
-                              : isBlocked
-                              ? 'bg-rose-950/20 border-rose-500/30'
-                              : 'bg-slate-950/40 border-slate-800/50 opacity-60'
-                          }`}
-                        >
-                          <div>
-                            {/* Time Header */}
-                            <div className="flex items-center justify-between text-xs font-mono font-bold text-white mb-1.5">
-                              <span>{slot.startTime}</span>
-                              <span className="text-[10px] text-slate-500 font-normal">to {slot.endTime}</span>
-                            </div>
-
-                            {/* Status Tag */}
-                            {isBlocked ? (
-                              <div className="space-y-1">
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                                  <Wrench className="w-2.5 h-2.5 shrink-0" />
-                                  <span>{slot.reason === 'tournament' ? 'Tournament' : 'Maintenance'}</span>
-                                </span>
-                                {slot.note && (
-                                  <p className="text-[10px] text-rose-400/80 truncate" title={slot.note}>
-                                    {slot.note}
-                                  </p>
-                                )}
-                              </div>
-                            ) : isBooked ? (
-                              <span className="inline-block px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700">
-                                Booked
-                              </span>
-                            ) : (
-                              <div className="flex items-center justify-between">
-                                <span className="font-mono font-black text-sm text-emerald-400">
-                                  ₹{priceRupees}
-                                </span>
-                                <span
-                                  className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                                    slot.rateType === 'weekend'
-                                      ? 'bg-purple-500/20 text-purple-300'
-                                      : slot.rateType === 'peak'
-                                      ? 'bg-amber-500/20 text-amber-300'
-                                      : 'bg-emerald-500/10 text-emerald-400'
-                                  }`}
-                                >
-                                  {slot.rateType}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Action Button */}
-                          <div className="mt-3">
-                            {isAvailable ? (
-                              <button
-                                type="button"
-                                onClick={() => handleBookClick(slot)}
-                                className="w-full py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer shadow-sm shadow-emerald-600/20 flex items-center justify-center gap-1"
-                              >
-                                <span>Book</span>
-                                <ChevronRight className="w-3 h-3" />
-                              </button>
-                            ) : (
-                              <div className="py-1 text-center text-[10px] font-medium text-slate-500">
-                                {isBlocked ? 'Slot Unavailable' : 'Reserved'}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
+                <AvailabilityCalendar
+                  turfId={effectiveTurfId}
+                  initialDate={selectedDate}
+                  selectedSlot={bookingModalSlot}
+                  onSlotSelect={handleBookClick}
+                  onDateChange={setSelectedDate}
+                />
               </div>
             </div>
           )}
