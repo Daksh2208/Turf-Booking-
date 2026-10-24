@@ -5,7 +5,7 @@ import App from './App'
 describe('App', () => {
   it('renders the turf booking platform title', () => {
     render(<App />)
-    expect(screen.getByText(/Turf Booking/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: /Turf Booking/i })).toBeInTheDocument()
     expect(screen.getByText(/Step 1: Project Initialized/i)).toBeInTheDocument()
   })
 

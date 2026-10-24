@@ -1,39 +1,45 @@
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
+import pinoHttp from 'pino-http'
 import { env } from './config/env.js'
+import { logger } from './config/logger.js'
 import healthRoutes from './routes/health.routes.js'
-import { notFound } from './middleware/notFound.js'
-import { errorHandler } from './middleware/errorHandler.js'
+import { notFoundMiddleware } from './middleware/not-found.middleware.js'
+import { errorMiddleware } from './middleware/error.middleware.js'
 
 const app = express()
 
-// Security headers
+// 1. Security Headers
 app.use(helmet())
 
-// Cross-Origin Resource Sharing
+// 2. Cross-Origin Resource Sharing (CORS)
 app.use(
   cors({
-    origin: env.CORS_ORIGIN,
+    origin: env.CLIENT_URL,
     credentials: true,
   })
 )
 
-// Body parsing
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+// 3. HTTP Request Logging
+app.use(
+  pinoHttp({
+    logger,
+    autoLogging: env.NODE_ENV !== 'test',
+  })
+)
 
-// Primary Health Check Route
+// 4. Request Body Parsers
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+
+// 5. Application API Routes
 app.use('/api/v1/health', healthRoutes)
 
-// Placeholders for future Customer and Admin route groups
-// app.use('/api/v1/customer', customerRoutes)
-// app.use('/api/v1/admin', adminRoutes)
+// 6. 404 Route Not Found Middleware
+app.use(notFoundMiddleware)
 
-// Fallback 404 handler
-app.use(notFound)
-
-// Centralized error handler
-app.use(errorHandler)
+// 7. Centralized Error Handling Middleware
+app.use(errorMiddleware)
 
 export default app

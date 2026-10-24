@@ -2,14 +2,18 @@ import { Router } from 'express'
 
 const router = Router()
 
-router.get('/', (req, res) => {
-  res.status(200).json({
+/**
+ * GET /api/v1/health
+ * Checks if the API process is alive and responsive.
+ */
+router.get('/', async (req, res) => {
+  return res.status(200).json({
     success: true,
     message: 'Turf Booking Platform API is operational',
     data: {
       status: 'healthy',
-      timestamp: new Date().toISOString(),
       uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
       version: '1.0.0',
     },
   })
