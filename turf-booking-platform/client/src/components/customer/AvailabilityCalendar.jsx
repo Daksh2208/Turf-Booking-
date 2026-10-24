@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQuery } from '../../hooks/useApi'
 import {
   Calendar,
@@ -28,20 +28,58 @@ export const AvailabilityCalendar = ({
   turfId,
   initialDate,
   selectedSlot = null,
+  selectedSlots: propSelectedSlots = null,
   onSlotSelect,
   onDateChange,
 }) => {
   const todayStr = new Date().toISOString().split('T')[0]
   const [currentDate, setCurrentDate] = useState(initialDate || todayStr)
-  const [startSlotTime, setStartSlotTime] = useState(selectedSlot?.startTime || null)
-  const [durationHours, setDurationHours] = useState(selectedSlot?.durationHours || 1)
-  const [rangeError, setRangeError] = useState('')
+  
+  // Track array of selected slot start times
+  const [selectedSlotTimes, setSelectedSlotTimes] = useState(() => {
+    if (Array.isArray(propSelectedSlots) && propSelectedSlots.length > 0) {
+      return propSelectedSlots.map((s) => (typeof s === 'string' ? s : s.startTime))
+    }
+    if (Array.isArray(selectedSlot?.selectedSlots) && selectedSlot.selectedSlots.length > 0) {
+      return selectedSlot.selectedSlots
+    }
+    if (selectedSlot?.startTime) {
+      return [selectedSlot.startTime]
+    }
+    return []
+  })
+
+  // Synchronize when parent prop updates
+  useEffect(() => {
+    if (Array.isArray(propSelectedSlots)) {
+      setSelectedSlotTimes(propSelectedSlots.map((s) => (typeof s === 'string' ? s : s.startTime)))
+    } else if (Array.isArray(selectedSlot?.selectedSlots)) {
+      setSelectedSlotTimes((prev) => {
+        const incoming = selectedSlot.selectedSlots
+        if (
+          prev.length === incoming.length &&
+          prev.every((v, i) => v === incoming[i])
+        ) {
+          return prev
+        }
+        return incoming
+      })
+    } else if (selectedSlot?.startTime) {
+      setSelectedSlotTimes((prev) => {
+        if (prev.length === 1 && prev[0] === selectedSlot.startTime) return prev
+        if (prev.includes(selectedSlot.startTime)) return prev
+        return [selectedSlot.startTime]
+      })
+    } else if (selectedSlot === null && (propSelectedSlots === null || propSelectedSlots === undefined)) {
+      setSelectedSlotTimes([])
+    }
+  }, [selectedSlot, propSelectedSlots])
 
   const handleDateChange = (newDate) => {
     setCurrentDate(newDate)
-    setStartSlotTime(null)
-    setRangeError('')
+    setSelectedSlotTimes([])
     if (onDateChange) onDateChange(newDate)
+    if (onSlotSelect) onSlotSelect(null)
   }
 
   // Query Availability from backend API
@@ -55,146 +93,48 @@ export const AvailabilityCalendar = ({
   const slots = data?.slots || []
   const timezone = data?.timezone || 'Asia/Kolkata'
 
-  // Helper to validate and calculate range
-  const evaluateRange = (startKey, targetDuration) => {
-    if (!startKey || slots.length === 0) return null
-
-    const startIndex = slots.findIndex((s) => s.startTime === startKey)
-    if (startIndex === -1) return null
-
-    const selectedSlotsList = []
-    let currentEnd = null
-
-    for (let i = 0; i < targetDuration; i++) {
-      const slotIndex = startIndex + i
-      if (slotIndex >= slots.length) {
-        return {
-          valid: false,
-          maxContinuous: i,
-          reason: 'Selected duration extends past the arena closing time.',
-        }
-      }
-
-      const slot = slots[slotIndex]
-      if (slot.status !== 'available') {
-        return {
-          valid: false,
-          maxContinuous: i,
-          reason: `Slot ${slot.startTime} - ${slot.endTime} is ${slot.status}. Multi-hour bookings must be continuous available slots.`,
-        }
-      }
-
-      selectedSlotsList.push(slot)
-      currentEnd = slot.endTime
-    }
-
-    return {
-      valid: true,
-      startSlot: slots[startIndex],
-      endSlot: selectedSlotsList[selectedSlotsList.length - 1],
-      startTime: slots[startIndex].startTime,
-      endTime: currentEnd,
-      durationHours: targetDuration,
-      selectedSlots: selectedSlotsList.map((s) => s.startTime),
-      slotList: selectedSlotsList,
-    }
-  }
-
-  // Handle slot card click
+  // Handle slot card click (toggle selection for any clicked slot)
   const handleSlotClick = (slot) => {
     if (slot.status !== 'available') return
 
-    setRangeError('')
-
-    if (!startSlotTime) {
-      setStartSlotTime(slot.startTime)
-      setDurationHours(1)
-      if (onSlotSelect) {
-        onSlotSelect({
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          durationHours: 1,
-          selectedSlots: [slot.startTime],
-          rateType: slot.rateType,
-          price: slot.price,
-        })
-      }
-      return
-    }
-
-    const startIndex = slots.findIndex((s) => s.startTime === startSlotTime)
-    const clickedIndex = slots.findIndex((s) => s.startTime === slot.startTime)
-
-    if (clickedIndex < startIndex) {
-      setStartSlotTime(slot.startTime)
-      setDurationHours(1)
-      if (onSlotSelect) {
-        onSlotSelect({
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          durationHours: 1,
-          selectedSlots: [slot.startTime],
-          rateType: slot.rateType,
-          price: slot.price,
-        })
-      }
-    } else if (clickedIndex === startIndex) {
-      setDurationHours(1)
-      if (onSlotSelect) {
-        onSlotSelect({
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          durationHours: 1,
-          selectedSlots: [slot.startTime],
-          rateType: slot.rateType,
-          price: slot.price,
-        })
-      }
-    } else {
-      const newDuration = clickedIndex - startIndex + 1
-      const evalRes = evaluateRange(startSlotTime, newDuration)
-
-      if (evalRes && evalRes.valid) {
-        setDurationHours(newDuration)
-        if (onSlotSelect) {
-          onSlotSelect(evalRes)
-        }
+    setSelectedSlotTimes((prev) => {
+      let updated
+      if (prev.includes(slot.startTime)) {
+        updated = prev.filter((t) => t !== slot.startTime)
       } else {
-        setRangeError(
-          evalRes?.reason || 'Some hours in between are occupied. Please select contiguous slots.'
-        )
+        updated = [...prev, slot.startTime].sort()
       }
-    }
-  }
 
-  // Handle duration button changes
-  const handleDurationChange = (newHours) => {
-    if (newHours < 1) return
-    if (!startSlotTime) return
-
-    setRangeError('')
-    const evalRes = evaluateRange(startSlotTime, newHours)
-
-    if (evalRes && evalRes.valid) {
-      setDurationHours(newHours)
       if (onSlotSelect) {
-        onSlotSelect(evalRes)
+        if (updated.length === 0) {
+          onSlotSelect(null)
+        } else {
+          const selectedList = updated.map((timeStr) => {
+            const found = slots.find((s) => s.startTime === timeStr)
+            return (
+              found || {
+                startTime: timeStr,
+                endTime: `${String(Number(timeStr.split(':')[0]) + 1).padStart(2, '0')}:00`,
+                rateType: slot.rateType,
+                price: slot.price,
+              }
+            )
+          })
+
+          onSlotSelect({
+            startTime: selectedList[0].startTime,
+            endTime: selectedList[selectedList.length - 1].endTime,
+            durationHours: selectedList.length,
+            selectedSlots: updated,
+            slots: selectedList,
+            rateType: selectedList[0].rateType,
+            price: selectedList.reduce((sum, s) => sum + (s.price || 0), 0),
+          })
+        }
       }
-    } else {
-      setRangeError(
-        evalRes?.reason ||
-        `Cannot extend to ${newHours} hours because an intermediate slot is booked or blocked.`
-      )
-    }
-  }
 
-  const activeRange = evaluateRange(startSlotTime, durationHours)
-
-  const isSlotInSelection = (slot) => {
-    if (!activeRange || !activeRange.valid) {
-      return slot.startTime === startSlotTime
-    }
-    return activeRange.selectedSlots.includes(slot.startTime)
+      return updated
+    })
   }
 
   const getReasonIcon = (reason) => {
@@ -215,10 +155,10 @@ export const AvailabilityCalendar = ({
         <div>
           <h3 className="text-base font-bold text-[#17231B] flex items-center gap-2">
             <Calendar className="w-4 h-4 text-[#267A45]" />
-            <span>Select Available Time Slot</span>
+            <span>Select Available Time Slots</span>
           </h3>
           <p className="text-[11px] text-[#526258] mt-0.5">
-            Times displayed in <strong className="text-[#17231B] font-mono">{timezone}</strong>. Select start slot and book 1 to 5 continuous hours.
+            Times displayed in <strong className="text-[#17231B] font-mono">{timezone}</strong>. Click any available slot to select or unselect. You can pick multiple slots.
           </p>
         </div>
 
@@ -246,74 +186,76 @@ export const AvailabilityCalendar = ({
         </div>
       </div>
 
-      {/* Multi-Hour Booking Selector Tool */}
-      {startSlotTime && (
-        <div className="p-4 rounded-2xl bg-[#EDF5EF] border border-[#C9DFCE] space-y-3 animate-in fade-in duration-300">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2 text-xs font-bold text-[#1D6537]">
-                <Clock className="w-4 h-4 text-[#267A45]" />
-                <span>
-                  Booking Window: <span className="font-mono text-[#17231B] text-sm">{activeRange?.startTime || startSlotTime}</span> to{' '}
-                  <span className="font-mono text-[#17231B] text-sm">{activeRange?.endTime || '...'}</span>
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE] text-[10px] font-black">
-                  {durationHours} {durationHours === 1 ? 'Hour' : 'Hours'}
-                </span>
-              </div>
-              <p className="text-[11px] text-[#526258]">
-                Dynamic pricing applies per hourly segment (regular base rates and peak evening rates).
-              </p>
-            </div>
-
-            {/* Stepper + Quick Hour Chips */}
-            <div className="flex items-center gap-1.5 self-start sm:self-center">
-              <span className="text-[11px] font-semibold text-[#526258] mr-1 hidden sm:inline">
-                Duration:
+      {/* Selected Slots Confirmation Strip */}
+      {selectedSlotTimes.length > 0 && (
+        <div className="p-3.5 rounded-2xl bg-[#EDF5EF] border border-[#C9DFCE] space-y-2.5 animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-[#1D6537]">
+              <Clock className="w-4 h-4 text-[#267A45]" />
+              <span>
+                Selected ({selectedSlotTimes.length}{' '}
+                {selectedSlotTimes.length === 1 ? 'Slot' : 'Slots'} • {selectedSlotTimes.length}{' '}
+                {selectedSlotTimes.length === 1 ? 'Hour' : 'Hours'}):
               </span>
-              <button
-                type="button"
-                onClick={() => handleDurationChange(durationHours - 1)}
-                disabled={durationHours <= 1}
-                className="w-8 h-8 rounded-lg bg-white border border-[#D7E0D9] hover:bg-[#F0F6F1] disabled:opacity-40 disabled:cursor-not-allowed text-[#17231B] flex items-center justify-center transition-colors cursor-pointer"
-                title="Decrease 1 hour"
-              >
-                <Minus className="w-3.5 h-3.5" />
-              </button>
-
-              {[1, 2, 3, 4, 5].map((hr) => (
-                <button
-                  key={hr}
-                  type="button"
-                  onClick={() => handleDurationChange(hr)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    durationHours === hr
-                      ? 'bg-[#267A45] text-white shadow-xs'
-                      : 'bg-white hover:bg-[#F0F6F1] text-[#46564A] border border-[#D7E0D9]'
-                  }`}
-                >
-                  {hr}h
-                </button>
-              ))}
-
-              <button
-                type="button"
-                onClick={() => handleDurationChange(durationHours + 1)}
-                className="w-8 h-8 rounded-lg bg-white border border-[#D7E0D9] hover:bg-[#F0F6F1] text-[#17231B] flex items-center justify-center transition-colors cursor-pointer"
-                title="Increase 1 hour"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedSlotTimes([])
+                if (onSlotSelect) onSlotSelect(null)
+              }}
+              className="text-xs text-[#526258] hover:text-[#922B27] font-semibold px-2.5 py-1 rounded-lg bg-white border border-[#D7E0D9] hover:border-[#F8D2CE] transition-all cursor-pointer self-start sm:self-auto"
+            >
+              Clear Selection
+            </button>
           </div>
 
-          {/* Range Error Alert */}
-          {rangeError && (
-            <div className="p-2.5 rounded-xl bg-[#FDF0EF] border border-[#F8D2CE] text-[#922B27] text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-[#922B27] shrink-0" />
-              <span>{rangeError}</span>
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2 pt-1 border-t border-[#C9DFCE]/60">
+            {selectedSlotTimes.map((st) => {
+              const foundSlot = slots.find((s) => s.startTime === st)
+              const label = foundSlot ? `${foundSlot.startTime} - ${foundSlot.endTime}` : st
+              return (
+                <span
+                  key={st}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white border border-[#C9DFCE] text-xs font-mono font-bold text-[#1D6537] shadow-2xs"
+                >
+                  <span>{label}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const updated = selectedSlotTimes.filter((t) => t !== st)
+                      setSelectedSlotTimes(updated)
+                      if (onSlotSelect) {
+                        if (updated.length === 0) onSlotSelect(null)
+                        else {
+                          const selectedList = updated.map(
+                            (timeStr) =>
+                              slots.find((s) => s.startTime === timeStr) || {
+                                startTime: timeStr,
+                                endTime: `${String(Number(timeStr.split(':')[0]) + 1).padStart(2, '0')}:00`,
+                              }
+                          )
+                          onSlotSelect({
+                            startTime: selectedList[0].startTime,
+                            endTime: selectedList[selectedList.length - 1].endTime,
+                            durationHours: selectedList.length,
+                            selectedSlots: updated,
+                            slots: selectedList,
+                          })
+                        }
+                      }
+                    }}
+                    className="text-[#647168] hover:text-[#922B27] cursor-pointer text-sm font-sans"
+                    title="Remove slot"
+                  >
+                    ×
+                  </button>
+                </span>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -363,8 +305,7 @@ export const AvailabilityCalendar = ({
             const isAvailable = slot.status === 'available'
             const isBlocked = slot.status === 'blocked'
             const isBooked = slot.status === 'booked'
-            const isSelected = isSlotInSelection(slot)
-            const isStart = slot.startTime === startSlotTime
+            const isSelected = selectedSlotTimes.includes(slot.startTime)
 
             return (
               <div
@@ -405,21 +346,10 @@ export const AvailabilityCalendar = ({
                       Reserved
                     </span>
                   ) : (
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono font-black text-sm text-[#267A45]">
-                          {slot.priceFormatted || `₹${(slot.price / 100).toFixed(0)}`}
-                        </span>
-                        <span
-                          className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${
-                            slot.rateType === 'weekend_peak' || slot.rateType === 'weekend' || slot.rateType === 'peak'
-                              ? 'bg-[#FDF4E7] text-[#79420D] border-[#F6E1C4]'
-                              : 'bg-[#E7F3E9] text-[#1D6537] border-[#C9DFCE]'
-                          }`}
-                        >
-                          {slot.rateType}
-                        </span>
-                      </div>
+                    <div className="flex items-center">
+                      <span className="font-mono font-black text-sm text-[#267A45]">
+                        {slot.priceFormatted || `₹${(slot.price / 100).toFixed(0)}`}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -435,15 +365,7 @@ export const AvailabilityCalendar = ({
                           : 'bg-[#E7F3E9] hover:bg-[#267A45] text-[#1D6537] hover:text-white border border-[#C9DFCE]'
                       }`}
                     >
-                      <span>
-                        {isStart
-                          ? durationHours > 1
-                            ? 'Start Slot'
-                            : 'Selected'
-                          : isSelected
-                            ? 'Included'
-                            : 'Select'}
-                      </span>
+                      <span>{isSelected ? 'Selected' : 'Select'}</span>
                       {!isSelected && <ChevronRight className="w-3 h-3" />}
                     </button>
                   ) : (

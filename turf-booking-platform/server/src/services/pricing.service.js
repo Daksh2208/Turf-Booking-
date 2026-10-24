@@ -175,7 +175,16 @@ export const pricingService = {
   /**
    * Calculate a comprehensive, server-validated pricing quote.
    */
-  async calculateQuote({ turfId, date, startTime, endTime, addOns = [], playerCount }) {
+  async calculateQuote({
+    turfId,
+    date,
+    startTime,
+    endTime,
+    addOns = [],
+    playerCount,
+    slots,
+    selectedSlots,
+  }) {
     if (!turfId) {
       const err = new Error('Turf ID is required.')
       err.statusCode = 400
@@ -248,15 +257,43 @@ export const pricingService = {
     // Validate day of week
     this.getDayOfWeek(date)
 
-    if (!startTime || !endTime) {
-      const err = new Error('Start time and end time are required.')
-      err.statusCode = 400
-      err.code = 'MISSING_TIMES'
-      throw err
+    // Support either explicit discrete slots array OR startTime/endTime range
+    const rawSegments = []
+    const discreteSlots =
+      Array.isArray(slots) && slots.length > 0
+        ? slots
+        : Array.isArray(selectedSlots) && selectedSlots.length > 0
+        ? selectedSlots
+        : Array.isArray(arguments[0]?.selectedSlots) && arguments[0].selectedSlots.length > 0
+        ? arguments[0].selectedSlots
+        : []
+
+    if (Array.isArray(discreteSlots) && discreteSlots.length > 0) {
+      for (const item of discreteSlots) {
+        const sStart = typeof item === 'string' ? item : item.startTime
+        let sEnd = typeof item === 'object' && item.endTime ? item.endTime : null
+        if (!sEnd && typeof sStart === 'string') {
+          const [h, m] = sStart.split(':').map(Number)
+          sEnd = `${String(h + 1).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`
+        }
+        if (sStart && sEnd) {
+          rawSegments.push({
+            startTime: sStart,
+            endTime: sEnd,
+            durationFraction: 1,
+          })
+        }
+      }
+    } else {
+      if (!startTime || !endTime) {
+        const err = new Error('Start time and end time or slots array are required.')
+        err.statusCode = 400
+        err.code = 'MISSING_TIMES'
+        throw err
+      }
+      rawSegments.push(...this.splitIntoHourlySegments(startTime, endTime))
     }
 
-    // Split into hourly segments
-    const rawSegments = this.splitIntoHourlySegments(startTime, endTime)
     const durationHours = rawSegments.reduce((sum, seg) => sum + seg.durationFraction, 0)
 
     // Calculate segment breakdowns
@@ -364,9 +401,10 @@ export const pricingService = {
       },
       date,
       timeRange: {
-        startTime,
-        endTime,
+        startTime: startTime || (rawSegments[0] ? rawSegments[0].startTime : ''),
+        endTime: endTime || (rawSegments.length > 0 ? rawSegments[rawSegments.length - 1].endTime : ''),
         durationHours,
+        selectedSlots: rawSegments.map((s) => s.startTime),
       },
       playerCount: effectivePlayers,
       capacity: {

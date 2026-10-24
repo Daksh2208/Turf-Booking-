@@ -650,6 +650,7 @@ describe('Part 10: Booking Engine, Checkout & Customer Booking History Suite', (
     expect(quote.capacity.maxPlayers).toBe(22)
 
     // Book it
+    await SlotReservation.deleteMany({ date: '2026-11-12', slotTime: { $in: ['15:00', '16:00', '17:00', '18:00', '19:00'] } })
     const bookingRes = await request(app)
       .post('/api/v1/bookings')
       .set('Cookie', customer1Cookie)
@@ -713,5 +714,67 @@ describe('Part 10: Booking Engine, Checkout & Customer Booking History Suite', (
       .expect(200)
 
     expect(toggleOffRes.body.data.isFavorited).toBe(false)
+  })
+
+  // 19. Discrete multi-slot booking (e.g., 06:00-07:00, 07:00-08:00, 13:00-14:00, 14:00-15:00)
+  it('19. books discrete non-contiguous slots without reserving unselected middle slots', async () => {
+    const bookingDate = '2026-11-20'
+    const selectedSlots = ['06:00', '07:00', '13:00', '14:00']
+
+    // Clean up test date before running
+    await Promise.all([
+      Booking.deleteMany({ date: bookingDate }),
+      SlotReservation.deleteMany({ date: bookingDate }),
+    ])
+
+    // 1. Get quote for discrete slots via POST /api/v1/pricing/quote
+    const quoteRes = await request(app)
+      .post('/api/v1/pricing/quote')
+      .send({
+        turfId: testTurf._id,
+        date: bookingDate,
+        selectedSlots,
+      })
+      .expect(200)
+
+    expect(quoteRes.body.success).toBe(true)
+    const quote = quoteRes.body.data.quote
+    expect(quote.timeRange.durationHours).toBe(4)
+    expect(quote.hourlySegments).toHaveLength(4)
+
+    // 2. Book discrete slots
+    const bookRes = await request(app)
+      .post('/api/v1/bookings')
+      .set('Cookie', customer1Cookie)
+      .send({
+        turfId: testTurf._id,
+        date: bookingDate,
+        selectedSlots,
+        paymentMethod: 'Pay at Venue',
+      })
+      .expect(201)
+
+    expect(bookRes.body.success).toBe(true)
+    expect(bookRes.body.data.booking.selectedSlots).toEqual(expect.arrayContaining(['06:00', '07:00', '13:00', '14:00']))
+
+    // 3. Check availability: 06:00, 07:00, 13:00, 14:00 should be booked, but intermediate slots (e.g. 08:00, 09:00, 10:00, 11:00, 12:00) must remain AVAILABLE!
+    const availRes = await request(app)
+      .get(`/api/v1/availability?turfId=${testTurf._id}&date=${bookingDate}`)
+      .expect(200)
+
+    const slots = availRes.body.data.slots
+    const slot06 = slots.find((s) => s.startTime === '06:00')
+    const slot07 = slots.find((s) => s.startTime === '07:00')
+    const slot08 = slots.find((s) => s.startTime === '08:00')
+    const slot12 = slots.find((s) => s.startTime === '12:00')
+    const slot13 = slots.find((s) => s.startTime === '13:00')
+    const slot14 = slots.find((s) => s.startTime === '14:00')
+
+    expect(slot06.status).toBe('booked')
+    expect(slot07.status).toBe('booked')
+    expect(slot08.status).toBe('available')
+    expect(slot12.status).toBe('available')
+    expect(slot13.status).toBe('booked')
+    expect(slot14.status).toBe('booked')
   })
 })

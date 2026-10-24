@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { Link } from 'react-router-dom'
 import {
   MapPin,
@@ -9,40 +9,11 @@ import {
   Users,
   Trophy,
   Lock,
-  Heart,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
-import customerInventoryService from '../../services/customer/inventory.service'
 
 export const TurfCard = ({ turf }) => {
-  const { user, isAuthenticated } = useAuth()
-  const [isFavorited, setIsFavorited] = useState(false)
-  const [isFavLoading, setIsFavLoading] = useState(false)
-
-  useEffect(() => {
-    if (user && turf?._id && Array.isArray(user.favorites)) {
-      const hasFav = user.favorites.some(
-        (f) => (typeof f === 'object' ? f._id : f).toString() === turf._id.toString()
-      )
-      setIsFavorited(hasFav)
-    }
-  }, [user, turf])
-
-  const handleToggleFavorite = async (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!isAuthenticated || !turf?._id || isFavLoading) return
-
-    try {
-      setIsFavLoading(true)
-      const res = await customerInventoryService.toggleFavorite(turf._id)
-      setIsFavorited(Boolean(res?.isFavorited))
-    } catch (err) {
-      console.error('Failed to toggle favourite:', err)
-    } finally {
-      setIsFavLoading(false)
-    }
-  }
+  const { isAuthenticated } = useAuth()
 
   if (!turf) return null
 
@@ -93,22 +64,6 @@ export const TurfCard = ({ turf }) => {
           </div>
         )}
 
-        {/* Favorite Heart Button */}
-        {isAuthenticated && (
-          <button
-            type="button"
-            onClick={handleToggleFavorite}
-            disabled={isFavLoading}
-            className={`absolute top-3 right-3 p-2 rounded-xl backdrop-blur-md border transition-all cursor-pointer z-10 ${
-              isFavorited
-                ? 'bg-[#FDF0EF] border-[#F8D2CE] text-[#922B27] shadow-xs'
-                : 'bg-white/90 border-[#D7E0D9] text-[#46564A] hover:text-[#17231B] hover:bg-white'
-            }`}
-            title={isFavorited ? 'Remove from favourites' : 'Save to favourites'}
-          >
-            <Heart className={`w-3.5 h-3.5 ${isFavorited ? 'fill-[#922B27] text-[#922B27]' : ''}`} />
-          </button>
-        )}
 
         {/* Starting Price Pill */}
         <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-[#C9DFCE] text-xs font-mono font-bold shadow-xs flex items-center gap-1">

@@ -35,6 +35,8 @@ export const CheckoutPage = () => {
     date,
     startTime,
     endTime,
+    selectedSlots = [],
+    slots = [],
     playerCount = 10,
     selectedAddOns = [],
   } = checkoutState
@@ -66,20 +68,22 @@ export const CheckoutPage = () => {
     isError: quoteError,
     error: quoteErrObj,
   } = useQuery({
-    queryKey: ['checkoutQuote', { turfId, date, startTime, endTime, playerCount, selectedAddOns }],
+    queryKey: ['checkoutQuote', { turfId, date, startTime, endTime, selectedSlots, playerCount, selectedAddOns }],
     queryFn: () =>
       customerBookingService.getPricingQuote({
         turfId,
         date,
         startTime,
         endTime,
+        selectedSlots: selectedSlots.length > 0 ? selectedSlots : (startTime ? [startTime] : []),
+        slots: slots.length > 0 ? slots : undefined,
         playerCount,
         addOns: selectedAddOns.map((item) => ({
           addOnId: item.addOnId,
           quantity: item.quantity,
         })),
       }),
-    enabled: !!turfId && !!date && !!startTime && !!endTime,
+    enabled: !!turfId && !!date && (!!startTime || selectedSlots.length > 0),
   })
 
   const formattedDate = date
@@ -128,6 +132,8 @@ export const CheckoutPage = () => {
         date,
         startTime,
         endTime,
+        selectedSlots: selectedSlots.length > 0 ? selectedSlots : (startTime ? [startTime] : []),
+        slots: slots.length > 0 ? slots : undefined,
         playerCount,
         addOns: selectedAddOns.map((item) => ({
           addOnId: item.addOnId,
@@ -262,9 +268,11 @@ export const CheckoutPage = () => {
                     <Clock className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-[#526258] block">Time Slot</span>
+                    <span className="text-[10px] uppercase font-bold text-[#526258] block">
+                      {selectedSlots.length > 1 ? `Time Slots (${selectedSlots.length})` : 'Time Slot'}
+                    </span>
                     <span className="text-xs font-semibold text-[#17231B]">
-                      {startTime} - {endTime}
+                      {selectedSlots.length > 1 ? selectedSlots.join(', ') : `${startTime} - ${endTime}`}
                     </span>
                   </div>
                 </div>

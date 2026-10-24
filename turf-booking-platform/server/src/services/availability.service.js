@@ -103,6 +103,9 @@ export const availabilityService = {
 
       // Check if slot overlaps with any valid booking
       const bookedMatch = activeBookings.find((b) => {
+        if (b.selectedSlots && b.selectedSlots.length > 0) {
+          return b.selectedSlots.includes(startTime)
+        }
         return startTime < b.endTime && endTime > b.startTime
       })
 

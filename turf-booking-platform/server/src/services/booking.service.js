@@ -138,31 +138,53 @@ export const bookingService = {
       throw error
     }
 
-    // 4. Validate Start & End Times
-    if (!startTime || !endTime || !/^([01]\d|2[0-3]):([0-5]\d)$/.test(startTime) || !/^([01]\d|2[0-3]):([0-5]\d)$/.test(endTime)) {
-      const error = new Error('Valid start time and end time (HH:mm) are required.')
-      error.statusCode = 400
-      error.code = 'INVALID_TIMES'
-      throw error
-    }
+    // 4. Validate Slots / Start & End Times
+    const discreteSlots = data.slots || (Array.isArray(data.selectedSlots) ? data.selectedSlots : [])
+    let slotTimesToReserve = []
+    let effectiveStartTime = startTime
+    let effectiveEndTime = endTime
 
-    if (startTime >= endTime) {
-      const error = new Error('End time must be later than start time.')
-      error.statusCode = 400
-      error.code = 'INVALID_TIME_RANGE'
-      throw error
+    if (Array.isArray(discreteSlots) && discreteSlots.length > 0) {
+      slotTimesToReserve = discreteSlots.map((s) => (typeof s === 'string' ? s : s.startTime))
+      effectiveStartTime = slotTimesToReserve[0]
+      const lastItem = discreteSlots[discreteSlots.length - 1]
+      effectiveEndTime =
+        typeof lastItem === 'object' && lastItem.endTime
+          ? lastItem.endTime
+          : `${String(Number(slotTimesToReserve[slotTimesToReserve.length - 1].split(':')[0]) + 1).padStart(2, '0')}:00`
+    } else {
+      if (!startTime || !endTime || !/^([01]\d|2[0-3]):([0-5]\d)$/.test(startTime) || !/^([01]\d|2[0-3]):([0-5]\d)$/.test(endTime)) {
+        const error = new Error('Valid start time and end time (HH:mm) are required.')
+        error.statusCode = 400
+        error.code = 'INVALID_TIMES'
+        throw error
+      }
+
+      if (startTime >= endTime) {
+        const error = new Error('End time must be later than start time.')
+        error.statusCode = 400
+        error.code = 'INVALID_TIME_RANGE'
+        throw error
+      }
+
+      const rawSegments = pricingService.splitIntoHourlySegments(startTime, endTime)
+      slotTimesToReserve = rawSegments.map((s) => s.startTime)
+      effectiveStartTime = startTime
+      effectiveEndTime = endTime
     }
 
     // 5. Validate Operating Hours
     const openTime = turf.openingHours?.open || '06:00'
     const closeTime = turf.openingHours?.close || '23:00'
-    if (startTime < openTime || endTime > closeTime) {
-      const error = new Error(
-        `Requested slot time (${startTime} - ${endTime}) is outside the arena's operating hours (${openTime} - ${closeTime}).`
-      )
-      error.statusCode = 400
-      error.code = 'OUTSIDE_OPERATING_HOURS'
-      throw error
+    for (const st of slotTimesToReserve) {
+      if (st < openTime || st >= closeTime) {
+        const error = new Error(
+          `Requested slot (${st}) is outside the arena's operating hours (${openTime} - ${closeTime}).`
+        )
+        error.statusCode = 400
+        error.code = 'OUTSIDE_OPERATING_HOURS'
+        throw error
+      }
     }
 
     // 6. Validate & Normalize Player Contact Details
@@ -170,51 +192,43 @@ export const bookingService = {
     const customerEmail = contactDetails?.email?.trim().toLowerCase() || user.email || 'customer@example.com'
     const customerPhone = contactDetails?.phone?.trim() || user.phone || '9876543210'
 
-    // 7. Check for Admin Blocked Slots conflict
-    const isBlocked = await BlockedSlot.findOne({
-      turf: turfId,
-      date,
-      $or: [
-        { startTime: { $lte: startTime }, endTime: { $gt: startTime } },
-        { startTime: { $lt: endTime }, endTime: { $gte: endTime } },
-        { startTime: { $gte: startTime }, endTime: { $lte: endTime } },
-      ],
-    })
-    if (isBlocked) {
-      const error = new Error(`Slot is unavailable due to admin block: ${isBlocked.reason}.`)
-      error.statusCode = 400
-      error.code = 'SLOT_BLOCKED'
-      throw error
+    // 7. Check for Admin Blocked Slots conflict for each discrete slot
+    for (const st of slotTimesToReserve) {
+      const isBlocked = await BlockedSlot.findOne({
+        turf: turfId,
+        date,
+        startTime: { $lte: st },
+        endTime: { $gt: st },
+      })
+      if (isBlocked) {
+        const error = new Error(`Slot ${st} is unavailable due to admin block: ${isBlocked.reason}.`)
+        error.statusCode = 400
+        error.code = 'SLOT_BLOCKED'
+        throw error
+      }
     }
 
-    // 8. Check for existing active bookings conflict
-    const existingActiveBooking = await Booking.findOne({
+    // 8. Check for existing active bookings conflict for each discrete slot
+    const existingActiveBooking = await SlotReservation.findOne({
       turf: turfId,
       date,
-      status: { $in: ['pending', 'confirmed'] },
-      $or: [
-        { startTime: { $lte: startTime }, endTime: { $gt: startTime } },
-        { startTime: { $lt: endTime }, endTime: { $gte: endTime } },
-        { startTime: { $gte: startTime }, endTime: { $lte: endTime } },
-      ],
+      slotTime: { $in: slotTimesToReserve },
+      status: 'active',
     })
     if (existingActiveBooking) {
-      const error = new Error('This slot is already booked by another customer.')
+      const error = new Error(`Slot ${existingActiveBooking.slotTime} is already booked by another customer.`)
       error.statusCode = 409
       error.code = 'SLOT_ALREADY_BOOKED'
       throw error
     }
 
-    // 9. Split requested slot range into discrete hourly slot keys
-    const rawSegments = pricingService.splitIntoHourlySegments(startTime, endTime)
-    const slotTimesToReserve = rawSegments.map((s) => s.startTime)
-
     // 10. Server-Side Authoritative Pricing Recalculation (never trust client amounts)
     const quote = await pricingService.calculateQuote({
       turfId,
       date,
-      startTime,
-      endTime,
+      startTime: effectiveStartTime,
+      endTime: effectiveEndTime,
+      slots: discreteSlots.length > 0 ? discreteSlots : undefined,
       addOns,
       playerCount,
     })
@@ -258,8 +272,8 @@ export const bookingService = {
       turf: turfId,
       sport: resolvedSportId,
       date,
-      startTime,
-      endTime,
+      startTime: effectiveStartTime,
+      endTime: effectiveEndTime,
       selectedSlots: slotTimesToReserve,
       durationMinutes,
       playerCount: quote.playerCount,
