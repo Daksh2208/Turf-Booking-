@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
+    "seed:admin": "node src/scripts/seedAdmin.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -17,12 +18,12 @@
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",
+    "express-validator": "^7.3.2",
     "helmet": "^8.0.0",
     "mongoose": "^8.12.0",
     "multer": "^1.4.5-lts.1",
     "pino": "^9.6.0",
-    "pino-http": "^10.4.0",
-    "zod": "^3.24.2"
+    "pino-http": "^10.4.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.9",

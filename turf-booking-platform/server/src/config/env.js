@@ -1,44 +1,49 @@
 import dotenv from 'dotenv'
-import { z } from 'zod'
 
 // Load environment variables
 dotenv.config()
 
-// Zod Schema with MongoDB URI validation
-const envSchema = z.object({
-  PORT: z
-    .string()
-    .default('5000')
-    .transform((val) => parseInt(val, 10)),
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  CLIENT_URL: z.string().default('http://localhost:5173'),
-  MONGODB_URI: z
-    .string({ required_error: 'MONGODB_URI environment variable is required' })
-    .min(1, 'MONGODB_URI cannot be empty')
-    .refine(
-      (uri) => uri.startsWith('mongodb://') || uri.startsWith('mongodb+srv://'),
-      {
-        message: 'MONGODB_URI must start with "mongodb://" or "mongodb+srv://"',
-      }
-    ),
-})
+/**
+ * Validates environment variables without external schema dependencies
+ */
+const validateEnv = () => {
+  const errors = []
 
-// Safe parsing without credential exposure
-const parseEnv = () => {
-  const result = envSchema.safeParse(process.env)
+  // 1. Port validation
+  const PORT = parseInt(process.env.PORT || '5000', 10)
+  if (isNaN(PORT) || PORT <= 0) {
+    errors.push('PORT must be a valid positive integer')
+  }
 
-  if (!result.success) {
-    console.error('❌ Environment validation failed:')
-    // Format error safely without leaking process.env secrets
-    const formattedErrors = result.error.errors.map((err) => ({
-      path: err.path.join('.'),
-      message: err.message,
-    }))
-    console.error(formattedErrors)
+  // 2. Node Environment validation
+  const NODE_ENV = process.env.NODE_ENV || 'development'
+  if (!['development', 'production', 'test'].includes(NODE_ENV)) {
+    errors.push('NODE_ENV must be "development", "production", or "test"')
+  }
+
+  // 3. Client URL
+  const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
+
+  // 4. MongoDB URI validation
+  const MONGODB_URI = process.env.MONGODB_URI
+  if (!MONGODB_URI || typeof MONGODB_URI !== 'string' || MONGODB_URI.trim() === '') {
+    errors.push('MONGODB_URI is required')
+  } else if (!MONGODB_URI.startsWith('mongodb://') && !MONGODB_URI.startsWith('mongodb+srv://')) {
+    errors.push('MONGODB_URI must start with "mongodb://" or "mongodb+srv://"')
+  }
+
+  if (errors.length > 0) {
+    console.error('❌ Environment configuration error:')
+    errors.forEach((err) => console.error(`  - ${err}`))
     process.exit(1)
   }
 
-  return result.data
+  return {
+    PORT,
+    NODE_ENV,
+    CLIENT_URL,
+    MONGODB_URI,
+  }
 }
 
-export const env = parseEnv()
+export const env = validateEnv()
