@@ -1,15 +1,90 @@
 @import "tailwindcss";
 
+@theme {
+  --color-app-bg: #F6F8F6;
+  --color-card-bg: #FFFFFF;
+  --color-section-subtle: #EDF5EF;
+  --color-table-header: #F0F4F1;
+  --color-surface-hover: #F0F6F1;
+  --color-surface-selected: #E1F0E5;
+
+  --color-primary-text: #17231B;
+  --color-secondary-text: #46564A;
+  --color-supporting-text: #526258;
+  --color-placeholder-text: #647168;
+  --color-disabled-text: #69756D;
+
+  --color-brand-green: #267A45;
+  --color-brand-hover: #1E6338;
+  --color-brand-dark: #174D2D;
+  --color-brand-light: #E7F3E9;
+  --color-brand-border: #C9DFCE;
+
+  --color-neutral-border: #D7E0D9;
+  --color-neutral-divider: #E2E8E3;
+  --color-icon-bg: #EEF3EF;
+  --color-badge-bg: #EDF1EE;
+
+  --color-status-success-text: #1D6537;
+  --color-status-success-bg: #E7F3E9;
+  --color-status-warning-text: #79420D;
+  --color-status-warning-bg: #FDF4E7;
+  --color-status-error-text: #922B27;
+  --color-status-error-bg: #FDF0EF;
+  --color-status-info-text: #1B4E82;
+  --color-status-info-bg: #EFF6FF;
+}
+
 @layer base {
   :root {
-    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --app-bg: #F6F8F6;
+    --card-bg: #FFFFFF;
+    --primary-text: #17231B;
+    --secondary-text: #46564A;
+    --supporting-text: #526258;
+    --border-neutral: #D7E0D9;
+    --brand-green: #267A45;
+    --brand-hover: #1E6338;
   }
 
   body {
     font-family: var(--font-sans);
-    background-color: #0b0f17;
-    color: #f1f5f9;
+    background-color: #F6F8F6;
+    color: #17231B;
     margin: 0;
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Form control defaults to prevent browser dark mode inheritance */
+  input, textarea, select {
+    color: #17231B;
+    background-color: #FFFFFF;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: #647168;
+    opacity: 1;
+  }
+}
+
+/* Custom subtle light scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #D7E0D9;
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #C9DFCE;
 }

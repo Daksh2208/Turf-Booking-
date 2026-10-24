@@ -350,13 +350,13 @@ export const TurfsPage = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#E2E8E3]">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2.5">
-            <MapPin className="w-6 h-6 text-emerald-400" />
+          <h1 className="text-2xl font-black tracking-tight text-[#17231B] flex items-center gap-2.5">
+            <MapPin className="w-6 h-6 text-[#267A45]" />
             <span>Turf Arenas</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-[#526258] mt-1">
             Configure turf arenas, multi-sport mappings, locations, amenities, and operational hours.
           </p>
         </div>
@@ -378,22 +378,22 @@ export const TurfsPage = () => {
           role="status"
           className={`p-3.5 rounded-2xl flex items-center gap-3 text-xs leading-relaxed animate-in fade-in ${
             successToast.type === 'error'
-              ? 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
-              : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+              ? 'bg-[#FDF0EF] border border-[#F5C2BF] text-[#922B27]'
+              : 'bg-[#E7F3E9] border border-[#C9DFCE] text-[#1D6537]'
           }`}
         >
           {successToast.type === 'error' ? (
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-[#922B27] shrink-0" />
           ) : (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-[#267A45] shrink-0" />
           )}
           <span>{successToast.message}</span>
         </div>
       )}
 
       {/* Search Bar */}
-      <div className="flex items-center gap-3 bg-slate-900 p-2.5 rounded-2xl border border-slate-800">
-        <Search className="w-4 h-4 text-slate-400 ml-2" />
+      <div className="flex items-center gap-3 bg-white p-2.5 rounded-2xl border border-[#D7E0D9] shadow-xs">
+        <Search className="w-4 h-4 text-[#647168] ml-2" />
         <input
           type="text"
           placeholder="Search turfs by name, city, or landmark..."
@@ -402,12 +402,12 @@ export const TurfsPage = () => {
             setSearch(e.target.value)
             setPage(1)
           }}
-          className="bg-transparent border-none text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none flex-1"
+          className="bg-transparent border-none text-xs sm:text-sm text-[#17231B] placeholder-[#647168] focus:outline-none flex-1"
         />
         {search && (
           <button
             onClick={() => setSearch('')}
-            className="text-xs text-slate-400 hover:text-white px-2 cursor-pointer"
+            className="text-xs text-[#526258] hover:text-[#17231B] px-2 cursor-pointer"
           >
             Clear
           </button>
@@ -415,25 +415,25 @@ export const TurfsPage = () => {
       </div>
 
       {/* Turfs Table */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden shadow-xl">
+      <div className="rounded-2xl border border-[#D7E0D9] bg-white overflow-hidden shadow-xs">
         {isLoading ? (
           <div className="py-16 text-center flex flex-col items-center justify-center gap-2">
-            <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
-            <p className="text-xs text-slate-400">Loading turf arenas...</p>
+            <Loader2 className="w-6 h-6 text-[#267A45] animate-spin" />
+            <p className="text-xs text-[#526258]">Loading turf arenas...</p>
           </div>
         ) : isError ? (
-          <div className="py-12 text-center text-rose-400 text-xs">
+          <div className="py-12 text-center text-[#922B27] text-xs">
             Failed to load turfs: {error?.message}
           </div>
         ) : turfs.length === 0 ? (
-          <div className="py-16 text-center text-slate-400 text-xs">
+          <div className="py-16 text-center text-[#526258] text-xs">
             No turf arenas registered yet. Click &quot;Add New Turf Arena&quot; to create one.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-800 bg-slate-900/90 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+                <tr className="border-b border-[#D7E0D9] bg-[#F0F4F1] text-[#526258] font-semibold uppercase tracking-wider text-[10px]">
                   <th className="py-3.5 px-4">Turf Name</th>
                   <th className="py-3.5 px-4">Supported Sports</th>
                   <th className="py-3.5 px-4">Location</th>
@@ -442,28 +442,28 @@ export const TurfsPage = () => {
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-[#E2E8E3] text-[#17231B]">
                 {turfs.map((turf) => (
-                  <tr key={turf._id} className="hover:bg-slate-800/30 transition-colors">
+                  <tr key={turf._id} className="hover:bg-[#F0F6F1] transition-colors">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         {turf.images && turf.images[0] ? (
                           <img
                             src={turf.images[0]}
                             alt={turf.name}
-                            className="w-10 h-10 rounded-xl object-cover border border-slate-700 shrink-0"
+                            className="w-10 h-10 rounded-xl object-cover border border-[#D7E0D9] shrink-0"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none'
                             }}
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 shrink-0">
+                          <div className="w-10 h-10 rounded-xl bg-[#EEF3EF] border border-[#D7E0D9] flex items-center justify-center text-[#526258] shrink-0">
                             <MapPin className="w-4 h-4" />
                           </div>
                         )}
                         <div>
-                          <p className="font-semibold text-white text-xs sm:text-sm">{turf.name}</p>
-                          <p className="font-mono text-[10px] text-slate-400">{turf.slug}</p>
+                          <p className="font-semibold text-[#17231B] text-xs sm:text-sm">{turf.name}</p>
+                          <p className="font-mono text-[10px] text-[#526258]">{turf.slug}</p>
                         </div>
                       </div>
                     </td>
@@ -473,27 +473,27 @@ export const TurfsPage = () => {
                           turf.sports.map((sp) => (
                             <span
                               key={sp._id || sp}
-                              className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-800 text-emerald-300 border border-slate-700"
+                              className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]"
                             >
                               {sp.name || 'Sport'}
                             </span>
                           ))
                         ) : (
-                          <span className="text-slate-500 text-[11px]">—</span>
+                          <span className="text-[#647168] text-[11px]">—</span>
                         )}
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-slate-300">
+                    <td className="py-3 px-4 text-[#17231B]">
                       <p className="truncate max-w-[180px]">
                         {turf.address?.city || ''}, {turf.address?.state || ''}
                       </p>
-                      <p className="text-[10px] text-slate-500 truncate max-w-[180px]">
+                      <p className="text-[10px] text-[#526258] truncate max-w-[180px]">
                         {turf.address?.street}
                       </p>
                     </td>
-                    <td className="py-3 px-4 hidden lg:table-cell text-slate-400 text-[11px]">
+                    <td className="py-3 px-4 hidden lg:table-cell text-[#526258] text-[11px]">
                       <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-slate-500" />
+                        <Clock className="w-3 h-3 text-[#647168]" />
                         <span>
                           {turf.openingHours?.open} - {turf.openingHours?.close}
                         </span>
@@ -503,8 +503,8 @@ export const TurfsPage = () => {
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                           turf.isActive
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            ? 'bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]'
+                            : 'bg-[#EDF1EE] text-[#69756D] border border-[#D7E0D9]'
                         }`}
                       >
                         {turf.isActive ? 'Active' : 'Inactive'}
@@ -515,7 +515,7 @@ export const TurfsPage = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(turf)}
-                          className="p-1.5 rounded-lg text-slate-300 hover:text-emerald-300 hover:bg-slate-800 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-[#526258] hover:text-[#267A45] hover:bg-[#EEF3EF] transition-colors cursor-pointer"
                           title="Edit Turf Arena"
                         >
                           <Edit2 className="w-4 h-4" />
@@ -527,7 +527,7 @@ export const TurfsPage = () => {
                             setDeletingTurf(turf)
                             setIsDeleteModalOpen(true)
                           }}
-                          className="p-1.5 rounded-lg text-rose-400 hover:text-white hover:bg-rose-500/20 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-[#922B27] hover:text-[#922B27] hover:bg-[#FDF0EF] transition-colors cursor-pointer"
                           title="Delete Turf Arena"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -550,15 +550,15 @@ export const TurfsPage = () => {
           title="Delete Turf Arena?"
         >
           <div className="space-y-4 text-xs">
-            <p className="text-slate-300">
+            <p className="text-[#46564A]">
               Are you sure you want to permanently delete arena{' '}
-              <strong className="text-white">{deletingTurf.name}</strong>?
+              <strong className="text-[#17231B]">{deletingTurf.name}</strong>?
             </p>
-            <p className="text-rose-400">
+            <p className="text-[#922B27]">
               This will remove this arena from booking operations and inventory.
             </p>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#E2E8E3]">
               <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
                 Cancel
               </Button>
@@ -576,7 +576,7 @@ export const TurfsPage = () => {
 
       {/* Pagination Controls */}
       {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between text-xs text-slate-400 px-2">
+        <div className="flex items-center justify-between text-xs text-[#526258] px-2">
           <span>
             Page {pagination.page} of {pagination.totalPages}
           </span>
@@ -611,8 +611,8 @@ export const TurfsPage = () => {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           {serverError && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <div className="p-3 rounded-xl bg-[#FDF0EF] border border-[#F5C2BF] text-[#922B27] text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-[#922B27] shrink-0" />
               <span>{serverError}</span>
             </div>
           )}
@@ -640,10 +640,10 @@ export const TurfsPage = () => {
 
           {/* Supported Sports Selector */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-200 block">
-              Supported Sports <span className="text-rose-400">*</span>
+            <label className="text-xs font-semibold text-[#17231B] block">
+              Supported Sports <span className="text-[#922B27]">*</span>
             </label>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-[#526258]">
               Select one or more active sport disciplines for this arena:
             </p>
             <div className="flex flex-wrap gap-2 pt-1">
@@ -656,8 +656,8 @@ export const TurfsPage = () => {
                     onClick={() => toggleSportSelection(sport._id)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                       isSelected
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm'
-                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-300'
+                        ? 'bg-[#E7F3E9] text-[#1D6537] border-[#C9DFCE] shadow-xs'
+                        : 'bg-white text-[#526258] border-[#D7E0D9] hover:border-[#267A45] hover:text-[#17231B]'
                     }`}
                   >
                     {isSelected && '✓ '}
@@ -669,9 +669,9 @@ export const TurfsPage = () => {
           </div>
 
           {/* Location Fields */}
-          <div className="space-y-3 pt-2 border-t border-slate-800">
-            <p className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+          <div className="space-y-3 pt-2 border-t border-[#E2E8E3]">
+            <p className="text-xs font-bold text-[#17231B] flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-[#267A45]" />
               <span>Location Details</span>
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -738,7 +738,7 @@ export const TurfsPage = () => {
           </div>
 
           {/* Arena Specifications: Size & Surface */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#E2E8E3]">
             <FormField label="Field / Court Size" htmlFor="turfSize">
               <Input
                 id="turfSize"
@@ -753,7 +753,7 @@ export const TurfsPage = () => {
                 id="turfSurface"
                 value={formData.surface}
                 onChange={(e) => setFormData({ ...formData, surface: e.target.value })}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-emerald-500"
+                className="w-full bg-white border border-[#D7E0D9] rounded-xl px-3 py-2 text-sm text-[#17231B] focus:outline-none focus:border-[#267A45]"
               >
                 {SURFACES.map((surf) => (
                   <option key={surf} value={surf}>
@@ -765,13 +765,13 @@ export const TurfsPage = () => {
           </div>
 
           {/* Slot Rates & Peak Hours */}
-          <div className="space-y-3 pt-2 border-t border-slate-800">
-            <p className="text-xs font-bold text-slate-200 flex items-center justify-between">
+          <div className="space-y-3 pt-2 border-t border-[#E2E8E3]">
+            <p className="text-xs font-bold text-[#17231B] flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-emerald-400" />
+                <Tag className="w-3.5 h-3.5 text-[#267A45]" />
                 <span>Slot Rates & Dynamic Pricing (₹ per hour)</span>
               </span>
-              <span className="text-[11px] font-normal text-slate-400">
+              <span className="text-[11px] font-normal text-[#526258]">
                 Auto-adjusts for peak & weekend bookings
               </span>
             </p>
@@ -837,7 +837,7 @@ export const TurfsPage = () => {
               </FormField>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+            <div className="grid grid-cols-2 gap-3 bg-[#F6F8F6] p-2.5 rounded-xl border border-[#D7E0D9]">
               <FormField label="Peak Hours Start" htmlFor="peakStart">
                 <Input
                   id="peakStart"
@@ -877,7 +877,7 @@ export const TurfsPage = () => {
           </div>
 
           {/* Operational Hours & Capacity */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-[#E2E8E3]">
             <FormField label="Opening Time (24hr)" htmlFor="openTime">
               <Input
                 id="openTime"
@@ -928,8 +928,8 @@ export const TurfsPage = () => {
           </div>
 
           {/* Facilities Selector */}
-          <div className="space-y-1.5 pt-2 border-t border-slate-800">
-            <label className="text-xs font-semibold text-slate-200 block">
+          <div className="space-y-1.5 pt-2 border-t border-[#E2E8E3]">
+            <label className="text-xs font-semibold text-[#17231B] block">
               Amenities & Facilities
             </label>
             <div className="flex flex-wrap gap-1.5">
@@ -942,8 +942,8 @@ export const TurfsPage = () => {
                     onClick={() => toggleFacility(facility)}
                     className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
                       isSelected
-                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-300'
+                        ? 'bg-[#E7F3E9] text-[#1D6537] border-[#C9DFCE]'
+                        : 'bg-white text-[#526258] border-[#D7E0D9] hover:text-[#17231B]'
                     }`}
                   >
                     {isSelected && '✓ '}
@@ -955,13 +955,13 @@ export const TurfsPage = () => {
           </div>
 
           {/* Image Upload & Reference */}
-          <div className="space-y-2 pt-2 border-t border-slate-800">
-            <label className="text-xs font-semibold text-slate-200 block">
+          <div className="space-y-2 pt-2 border-t border-[#E2E8E3]">
+            <label className="text-xs font-semibold text-[#17231B] block">
               Arena Photo / Image
             </label>
             <div className="flex flex-col sm:flex-row items-center gap-3">
-              <label className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 hover:border-emerald-500 text-slate-200 text-xs font-semibold cursor-pointer transition-colors">
-                <Upload className="w-4 h-4 text-emerald-400" />
+              <label className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white border border-[#D7E0D9] hover:border-[#267A45] text-[#17231B] text-xs font-semibold cursor-pointer transition-colors shadow-xs">
+                <Upload className="w-4 h-4 text-[#267A45]" />
                 <span>Upload Image</span>
                 <input
                   type="file"
@@ -970,7 +970,7 @@ export const TurfsPage = () => {
                   className="hidden"
                 />
               </label>
-              <span className="text-slate-500 text-xs">or paste URL:</span>
+              <span className="text-[#647168] text-xs">or paste URL:</span>
               <div className="flex-1 w-full">
                 <Input
                   id="turfImage"
@@ -983,7 +983,7 @@ export const TurfsPage = () => {
               </div>
             </div>
             {formData.imageUrl && (
-              <div className="relative w-full h-32 rounded-xl overflow-hidden border border-slate-800 bg-slate-900 mt-2">
+              <div className="relative w-full h-32 rounded-xl overflow-hidden border border-[#D7E0D9] bg-[#F6F8F6] mt-2">
                 <img
                   src={formData.imageUrl}
                   alt="Turf preview"
@@ -993,7 +993,7 @@ export const TurfsPage = () => {
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E2E8E3]">
             <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>

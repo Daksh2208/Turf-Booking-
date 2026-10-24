@@ -16,23 +16,27 @@ export const Button = ({
   ...props
 }) => {
   const baseStyles =
-    'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950'
+    'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#267A45] focus-visible:ring-offset-2 focus-visible:ring-offset-white'
 
   const sizeStyles = {
-    sm: 'text-xs px-3 py-2 gap-1.5',
+    sm: 'text-xs px-3 py-1.5 gap-1.5',
     md: 'text-sm px-4 py-2.5 gap-2',
     lg: 'text-base px-5 py-3 gap-2.5',
   }
 
   const variantStyles = {
     primary:
-      'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 active:scale-[0.99] text-white shadow-md shadow-emerald-500/20 border border-emerald-400/20',
+      'bg-[#267A45] hover:bg-[#1E6338] active:scale-[0.99] text-white shadow-xs border border-transparent',
     secondary:
-      'bg-slate-800 hover:bg-slate-700 active:scale-[0.99] text-slate-100 border border-slate-700/80',
+      'bg-white hover:bg-[#F0F6F1] active:scale-[0.99] text-[#17231B] border border-[#D7E0D9]',
+    subtle:
+      'bg-[#E7F3E9] hover:bg-[#d8eedb] active:scale-[0.99] text-[#267A45] border border-[#C9DFCE]',
     outline:
-      'bg-transparent hover:bg-slate-800/60 text-slate-200 border border-slate-700 hover:border-slate-600',
+      'bg-transparent hover:bg-[#F0F6F1] active:scale-[0.99] text-[#17231B] border border-[#D7E0D9]',
     ghost:
-      'bg-transparent hover:bg-slate-800/40 text-slate-300 hover:text-white',
+      'bg-transparent hover:bg-[#E7F3E9] text-[#17231B] hover:text-[#267A45]',
+    danger:
+      'bg-[#922B27] hover:bg-[#7b231f] active:scale-[0.99] text-white shadow-xs border border-transparent',
   }
 
   return (

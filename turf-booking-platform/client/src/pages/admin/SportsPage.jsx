@@ -150,13 +150,13 @@ export const SportsPage = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#E2E8E3]">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2.5">
-            <Activity className="w-6 h-6 text-emerald-400" />
+          <h1 className="text-2xl font-black tracking-tight text-[#17231B] flex items-center gap-2.5">
+            <Activity className="w-6 h-6 text-[#267A45]" />
             <span>Sports Inventory</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-[#526258] mt-1">
             Manage sports categories, supported disciplines, and display metadata for arena turfs.
           </p>
         </div>
@@ -178,22 +178,22 @@ export const SportsPage = () => {
           role="status"
           className={`p-3.5 rounded-2xl flex items-center gap-3 text-xs leading-relaxed animate-in fade-in ${
             successToast.type === 'error'
-              ? 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
-              : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+              ? 'bg-[#FDF0EF] border border-[#F5C2BF] text-[#922B27]'
+              : 'bg-[#E7F3E9] border border-[#C9DFCE] text-[#1D6537]'
           }`}
         >
           {successToast.type === 'error' ? (
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-[#922B27] shrink-0" />
           ) : (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-[#267A45] shrink-0" />
           )}
           <span>{successToast.message}</span>
         </div>
       )}
 
       {/* Search Bar */}
-      <div className="flex items-center gap-3 bg-slate-900 p-2.5 rounded-2xl border border-slate-800">
-        <Search className="w-4 h-4 text-slate-400 ml-2" />
+      <div className="flex items-center gap-3 bg-white p-2.5 rounded-2xl border border-[#D7E0D9] shadow-xs">
+        <Search className="w-4 h-4 text-[#647168] ml-2" />
         <input
           type="text"
           placeholder="Search sports by name or slug..."
@@ -202,12 +202,12 @@ export const SportsPage = () => {
             setSearch(e.target.value)
             setPage(1)
           }}
-          className="bg-transparent border-none text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none flex-1"
+          className="bg-transparent border-none text-xs sm:text-sm text-[#17231B] placeholder-[#647168] focus:outline-none flex-1"
         />
         {search && (
           <button
             onClick={() => setSearch('')}
-            className="text-xs text-slate-400 hover:text-white px-2 cursor-pointer"
+            className="text-xs text-[#526258] hover:text-[#17231B] px-2 cursor-pointer"
           >
             Clear
           </button>
@@ -215,25 +215,25 @@ export const SportsPage = () => {
       </div>
 
       {/* Sports Table */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden shadow-xl">
+      <div className="rounded-2xl border border-[#D7E0D9] bg-white overflow-hidden shadow-xs">
         {isLoading ? (
           <div className="py-16 text-center flex flex-col items-center justify-center gap-2">
-            <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
-            <p className="text-xs text-slate-400">Loading sports inventory...</p>
+            <Loader2 className="w-6 h-6 text-[#267A45] animate-spin" />
+            <p className="text-xs text-[#526258]">Loading sports inventory...</p>
           </div>
         ) : isError ? (
-          <div className="py-12 text-center text-rose-400 text-xs">
+          <div className="py-12 text-center text-[#922B27] text-xs">
             Failed to load sports: {error?.message}
           </div>
         ) : sports.length === 0 ? (
-          <div className="py-16 text-center text-slate-400 text-xs">
+          <div className="py-16 text-center text-[#526258] text-xs">
             No sports found matching your criteria.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-slate-800 bg-slate-900/90 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+                <tr className="border-b border-[#D7E0D9] bg-[#F0F4F1] text-[#526258] font-semibold uppercase tracking-wider text-[10px]">
                   <th className="py-3.5 px-4">Sport</th>
                   <th className="py-3.5 px-4">Slug</th>
                   <th className="py-3.5 px-4 hidden sm:table-cell">Description</th>
@@ -241,40 +241,40 @@ export const SportsPage = () => {
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-[#E2E8E3] text-[#17231B]">
                 {sports.map((sport) => (
-                  <tr key={sport._id} className="hover:bg-slate-800/30 transition-colors">
+                  <tr key={sport._id} className="hover:bg-[#F0F6F1] transition-colors">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         {sport.image ? (
                           <img
                             src={sport.image}
                             alt={sport.name}
-                            className="w-8 h-8 rounded-xl object-cover border border-slate-700 shrink-0"
+                            className="w-8 h-8 rounded-xl object-cover border border-[#D7E0D9] shrink-0"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none'
                             }}
                           />
                         ) : (
-                          <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 shrink-0">
+                          <div className="w-8 h-8 rounded-xl bg-[#EEF3EF] border border-[#D7E0D9] flex items-center justify-center text-[#526258] shrink-0">
                             <Activity className="w-4 h-4" />
                           </div>
                         )}
-                        <span className="font-semibold text-white text-xs sm:text-sm">
+                        <span className="font-semibold text-[#17231B] text-xs sm:text-sm">
                           {sport.name}
                         </span>
                       </div>
                     </td>
-                    <td className="py-3 px-4 font-mono text-[11px] text-slate-400">{sport.slug}</td>
-                    <td className="py-3 px-4 hidden sm:table-cell text-slate-400 max-w-xs truncate">
+                    <td className="py-3 px-4 font-mono text-[11px] text-[#526258]">{sport.slug}</td>
+                    <td className="py-3 px-4 hidden sm:table-cell text-[#526258] max-w-xs truncate">
                       {sport.description || '—'}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                           sport.isActive
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-slate-800 text-slate-400 border border-slate-700'
+                            ? 'bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]'
+                            : 'bg-[#EDF1EE] text-[#69756D] border border-[#D7E0D9]'
                         }`}
                       >
                         {sport.isActive ? 'Active' : 'Inactive'}
@@ -285,7 +285,7 @@ export const SportsPage = () => {
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(sport)}
-                          className="p-1.5 rounded-lg text-slate-300 hover:text-emerald-300 hover:bg-slate-800 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-[#526258] hover:text-[#267A45] hover:bg-[#EEF3EF] transition-colors cursor-pointer"
                           title="Edit Sport"
                         >
                           <Edit2 className="w-4 h-4" />
@@ -299,8 +299,8 @@ export const SportsPage = () => {
                           disabled={toggleMutation.isPending}
                           className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                             sport.isActive
-                              ? 'text-rose-400 hover:bg-rose-500/10 hover:text-rose-300'
-                              : 'text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300'
+                              ? 'text-[#922B27] hover:bg-[#FDF0EF]'
+                              : 'text-[#267A45] hover:bg-[#E7F3E9]'
                           }`}
                           title={sport.isActive ? 'Deactivate Sport' : 'Activate Sport'}
                         >
@@ -313,7 +313,7 @@ export const SportsPage = () => {
                             setDeletingSport(sport)
                             setIsDeleteModalOpen(true)
                           }}
-                          className="p-1.5 rounded-lg text-rose-400 hover:text-white hover:bg-rose-500/20 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-[#922B27] hover:text-[#922B27] hover:bg-[#FDF0EF] transition-colors cursor-pointer"
                           title="Delete Sport"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -330,7 +330,7 @@ export const SportsPage = () => {
 
       {/* Pagination Controls */}
       {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between text-xs text-slate-400 px-2">
+        <div className="flex items-center justify-between text-xs text-[#526258] px-2">
           <span>
             Page {pagination.page} of {pagination.totalPages}
           </span>
@@ -364,8 +364,8 @@ export const SportsPage = () => {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           {serverError && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <div className="p-3 rounded-xl bg-[#FDF0EF] border border-[#F5C2BF] text-[#922B27] text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-[#922B27] shrink-0" />
               <span>{serverError}</span>
             </div>
           )}
@@ -400,7 +400,7 @@ export const SportsPage = () => {
               placeholder="Provide a brief summary of playing format and equipment..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none"
+              className="w-full px-4 py-2.5 rounded-xl bg-white border border-[#D7E0D9] text-[#17231B] text-xs focus:ring-1 focus:ring-[#267A45] focus:border-[#267A45] focus:outline-none placeholder-[#647168]"
             />
           </FormField>
 
@@ -419,7 +419,7 @@ export const SportsPage = () => {
             />
           </FormField>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E2E8E3]">
             <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
@@ -443,11 +443,11 @@ export const SportsPage = () => {
           size="sm"
         >
           <div className="space-y-4">
-            <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-300 text-xs">
-              Are you sure you want to delete <span className="font-bold text-white">"{deletingSport.name}"</span>? This will remove the sport from all filters and listings.
+            <div className="p-3 bg-[#FDF0EF] border border-[#F5C2BF] rounded-xl text-[#922B27] text-xs">
+              Are you sure you want to delete <span className="font-bold text-[#17231B]">"{deletingSport.name}"</span>? This will remove the sport from all filters and listings.
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-[#E2E8E3]">
               <Button
                 type="button"
                 variant="ghost"

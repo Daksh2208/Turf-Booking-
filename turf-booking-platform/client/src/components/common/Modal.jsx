@@ -26,7 +26,7 @@ export const Modal = ({ isOpen, onClose, title, subtitle, children, maxWidth = '
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity animate-in fade-in"
+        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity animate-in fade-in"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -35,18 +35,18 @@ export const Modal = ({ isOpen, onClose, title, subtitle, children, maxWidth = '
       <div
         role="dialog"
         aria-modal="true"
-        className={`relative w-full ${maxWidth} rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl shadow-emerald-950/30 text-slate-100 max-h-[90vh] flex flex-col z-10 animate-in zoom-in-95 duration-150`}
+        className={`relative w-full ${maxWidth} rounded-2xl bg-white border border-[#D7E0D9] shadow-xl text-[#17231B] max-h-[90vh] flex flex-col z-10 animate-in zoom-in-95 duration-150`}
       >
         {/* Header */}
-        <div className="flex items-start justify-between p-5 border-b border-slate-800">
+        <div className="flex items-start justify-between p-5 border-b border-[#E2E8E3]">
           <div>
-            <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
-            {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+            <h2 className="text-lg font-bold text-[#17231B] tracking-tight">{title}</h2>
+            {subtitle && <p className="text-xs text-[#526258] mt-0.5">{subtitle}</p>}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-xl text-[#526258] hover:text-[#17231B] hover:bg-[#F0F6F1] transition-colors cursor-pointer"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />

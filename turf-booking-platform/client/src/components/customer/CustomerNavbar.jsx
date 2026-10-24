@@ -47,7 +47,7 @@ export const CustomerNavbar = () => {
   const isCurrent = (path) => location.pathname === path
 
   return (
-    <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+    <header className="border-b border-[#E2E8E3] bg-white/95 backdrop-blur-md sticky top-0 z-50 shadow-2xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20 gap-4">
           {/* Brand Logo & Name */}
@@ -56,15 +56,15 @@ export const CustomerNavbar = () => {
             className="flex items-center gap-3 group shrink-0"
             onClick={() => setMobileMenuOpen(false)}
           >
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-sm shadow-emerald-500/20 group-hover:scale-105 group-hover:bg-emerald-500/25 transition-all">
-              <Trophy className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-[#E7F3E9] border border-[#C9DFCE] flex items-center justify-center text-[#267A45] shadow-xs group-hover:scale-105 transition-all">
+              <Trophy className="w-5 h-5 text-[#267A45]" />
             </div>
             <div>
-              <span className="text-xl font-black tracking-tight text-white block leading-none">
-                TURF<span className="text-emerald-400">SPOT</span>
+              <span className="text-xl font-black tracking-tight text-[#17231B] block leading-none">
+                TURF<span className="text-[#267A45]">SPOT</span>
               </span>
-              <span className="text-[10px] tracking-widest uppercase font-semibold text-slate-500">
-                Arena Platform
+              <span className="text-[10px] tracking-widest uppercase font-semibold text-[#526258]">
+                Sports Hub
               </span>
             </div>
           </Link>
@@ -74,13 +74,13 @@ export const CustomerNavbar = () => {
             onSubmit={handleSearchSubmit}
             className="hidden md:flex items-center flex-1 max-w-md mx-4 relative"
           >
-            <Search className="w-4 h-4 text-slate-500 absolute left-3.5 pointer-events-none" />
+            <Search className="w-4 h-4 text-[#647168] absolute left-3.5 pointer-events-none" />
             <input
               type="text"
               placeholder="Search by arena name, city, or area..."
               value={navSearch}
               onChange={(e) => setNavSearch(e.target.value)}
-              className="w-full bg-slate-900/90 text-xs text-white placeholder-slate-500 pl-10 pr-4 py-2.5 rounded-full border border-slate-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+              className="w-full bg-[#F6F8F6] text-xs text-[#17231B] placeholder-[#647168] pl-10 pr-4 py-2.5 rounded-full border border-[#D7E0D9] focus:outline-none focus:border-[#267A45] focus:bg-white focus:ring-1 focus:ring-[#267A45] transition-all"
             />
           </form>
 
@@ -91,11 +91,11 @@ export const CustomerNavbar = () => {
               state={{ from: '/turfs' }}
               className={`flex items-center gap-1.5 transition-colors ${
                 isCurrent('/turfs')
-                  ? 'text-emerald-400 font-bold'
-                  : 'text-slate-300 hover:text-white'
+                  ? 'text-[#267A45] font-bold'
+                  : 'text-[#46564A] hover:text-[#17231B]'
               }`}
             >
-              <Compass className="w-4 h-4 text-emerald-400" />
+              <Compass className="w-4 h-4 text-[#267A45]" />
               <span>Explore Turfs</span>
             </Link>
             {isAuthenticated && (
@@ -103,26 +103,26 @@ export const CustomerNavbar = () => {
                 to="/my-bookings"
                 className={`flex items-center gap-1.5 transition-colors ${
                   isCurrent('/my-bookings')
-                    ? 'text-emerald-400 font-bold'
-                    : 'text-slate-300 hover:text-white'
+                    ? 'text-[#267A45] font-bold'
+                    : 'text-[#46564A] hover:text-[#17231B]'
                 }`}
               >
-                <Calendar className="w-4 h-4 text-emerald-400" />
+                <Calendar className="w-4 h-4 text-[#267A45]" />
                 <span>My Bookings</span>
               </Link>
             )}
             <a
               href="/#sports"
-              className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors"
+              className="flex items-center gap-1.5 text-[#46564A] hover:text-[#17231B] transition-colors"
             >
-              <Layers className="w-4 h-4 text-slate-400" />
+              <Layers className="w-4 h-4 text-[#526258]" />
               <span>Sports</span>
             </a>
             <a
               href="/#how-it-works"
-              className="flex items-center gap-1.5 text-slate-300 hover:text-white transition-colors"
+              className="flex items-center gap-1.5 text-[#46564A] hover:text-[#17231B] transition-colors"
             >
-              <HelpCircle className="w-4 h-4 text-slate-400" />
+              <HelpCircle className="w-4 h-4 text-[#526258]" />
               <span>How It Works</span>
             </a>
           </nav>
@@ -131,12 +131,12 @@ export const CustomerNavbar = () => {
           <div className="hidden sm:flex items-center gap-3 shrink-0">
             {isAuthenticated ? (
               <div className="flex items-center gap-2.5">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
-                  <UserCheck className="w-4 h-4 text-emerald-400" />
-                  <span className="text-slate-200 font-medium max-w-[120px] truncate">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#F6F8F6] border border-[#D7E0D9] text-xs">
+                  <UserCheck className="w-4 h-4 text-[#267A45]" />
+                  <span className="text-[#17231B] font-semibold max-w-[120px] truncate">
                     {user?.name}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]">
                     {user?.role}
                   </span>
                 </div>
@@ -144,7 +144,7 @@ export const CustomerNavbar = () => {
                 {user?.role === 'admin' && (
                   <Link
                     to="/admin/dashboard"
-                    className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 shadow-sm shadow-emerald-500/20 transition-all inline-flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#267A45] hover:bg-[#1E6338] shadow-xs transition-all inline-flex items-center gap-1.5"
                     title="Open Admin Console"
                   >
                     <ShieldCheck className="w-3.5 h-3.5" />
@@ -154,16 +154,16 @@ export const CustomerNavbar = () => {
 
                 <Link
                   to="/settings"
-                  className="p-2 rounded-xl text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 transition-colors"
+                  className="p-2 rounded-xl text-[#46564A] hover:text-[#17231B] bg-white hover:bg-[#F0F6F1] border border-[#D7E0D9] transition-colors"
                   title="Account Settings"
                 >
-                  <Settings className="w-4 h-4 text-emerald-400" />
+                  <Settings className="w-4 h-4 text-[#267A45]" />
                 </Link>
 
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="p-2 rounded-xl text-slate-400 hover:text-rose-400 bg-slate-900 hover:bg-slate-800 border border-slate-800 transition-colors cursor-pointer"
+                  className="p-2 rounded-xl text-[#922B27] hover:bg-[#FDF0EF] bg-white border border-[#F8D2CE] transition-colors cursor-pointer"
                   title="Sign Out"
                 >
                   <LogOut className="w-4 h-4" />
@@ -174,15 +174,15 @@ export const CustomerNavbar = () => {
                 <Link
                   to="/login"
                   aria-label="Sign In"
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 transition-all inline-flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#17231B] hover:bg-[#F0F6F1] bg-white border border-[#D7E0D9] transition-all inline-flex items-center gap-1.5"
                 >
-                  <LogIn className="w-3.5 h-3.5 text-emerald-400" />
+                  <LogIn className="w-3.5 h-3.5 text-[#267A45]" />
                   <span>Sign In</span>
                 </Link>
                 <Link
                   to="/register"
                   aria-label="Create Account"
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-950 bg-emerald-400 hover:bg-emerald-300 shadow-md shadow-emerald-400/20 transition-all inline-flex items-center gap-1.5 font-bold"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#267A45] hover:bg-[#1E6338] shadow-xs transition-all inline-flex items-center gap-1.5"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>Create Account</span>
@@ -196,7 +196,7 @@ export const CustomerNavbar = () => {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-colors"
+              className="p-2 rounded-xl bg-white border border-[#D7E0D9] text-[#17231B] hover:bg-[#F0F6F1] transition-colors"
               aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -207,65 +207,65 @@ export const CustomerNavbar = () => {
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="sm:hidden border-t border-slate-800/90 bg-slate-950/95 backdrop-blur-xl px-4 pt-3 pb-6 space-y-4">
+        <div className="sm:hidden border-t border-[#E2E8E3] bg-white px-4 pt-3 pb-6 space-y-4 shadow-lg">
           <form onSubmit={handleSearchSubmit} className="relative">
-            <Search className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" />
+            <Search className="w-4 h-4 text-[#647168] absolute left-3 top-3 pointer-events-none" />
             <input
               type="text"
               placeholder="Search turfs or areas..."
               value={navSearch}
               onChange={(e) => setNavSearch(e.target.value)}
-              className="w-full bg-slate-900 text-xs text-white placeholder-slate-500 pl-9 pr-3 py-2.5 rounded-xl border border-slate-800 focus:outline-none focus:border-emerald-500"
+              className="w-full bg-[#F6F8F6] text-xs text-[#17231B] placeholder-[#647168] pl-9 pr-3 py-2.5 rounded-xl border border-[#D7E0D9] focus:outline-none focus:border-[#267A45]"
             />
           </form>
 
-          <nav className="flex flex-col gap-2 pt-2 text-sm font-semibold">
+          <nav className="flex flex-col gap-1.5 pt-1 text-sm font-semibold">
             <Link
               to={isAuthenticated ? '/turfs' : '/register'}
               state={{ from: '/turfs' }}
               onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-xl hover:bg-slate-900 text-slate-200 hover:text-white flex items-center gap-2.5"
+              className="px-3 py-2 rounded-xl hover:bg-[#F0F6F1] text-[#17231B] flex items-center gap-2.5"
             >
-              <Compass className="w-4 h-4 text-emerald-400" />
+              <Compass className="w-4 h-4 text-[#267A45]" />
               <span>Explore Turfs</span>
             </Link>
             {isAuthenticated && (
               <Link
                 to="/my-bookings"
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2 rounded-xl hover:bg-slate-900 text-slate-200 hover:text-white flex items-center gap-2.5"
+                className="px-3 py-2 rounded-xl hover:bg-[#F0F6F1] text-[#17231B] flex items-center gap-2.5"
               >
-                <Calendar className="w-4 h-4 text-emerald-400" />
+                <Calendar className="w-4 h-4 text-[#267A45]" />
                 <span>My Bookings</span>
               </Link>
             )}
             <a
               href="/#sports"
               onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-xl hover:bg-slate-900 text-slate-200 hover:text-white flex items-center gap-2.5"
+              className="px-3 py-2 rounded-xl hover:bg-[#F0F6F1] text-[#17231B] flex items-center gap-2.5"
             >
-              <Layers className="w-4 h-4 text-slate-400" />
+              <Layers className="w-4 h-4 text-[#526258]" />
               <span>Sports Categories</span>
             </a>
             <a
               href="/#how-it-works"
               onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-xl hover:bg-slate-900 text-slate-200 hover:text-white flex items-center gap-2.5"
+              className="px-3 py-2 rounded-xl hover:bg-[#F0F6F1] text-[#17231B] flex items-center gap-2.5"
             >
-              <HelpCircle className="w-4 h-4 text-slate-400" />
+              <HelpCircle className="w-4 h-4 text-[#526258]" />
               <span>How It Works</span>
             </a>
           </nav>
 
-          <div className="pt-3 border-t border-slate-800 space-y-2">
+          <div className="pt-3 border-t border-[#E2E8E3] space-y-2">
             {isAuthenticated ? (
               <>
-                <div className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+                <div className="px-3 py-2 rounded-xl bg-[#F6F8F6] border border-[#D7E0D9] flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-emerald-400" />
-                    <span className="font-medium text-white">{user?.name}</span>
+                    <UserCheck className="w-4 h-4 text-[#267A45]" />
+                    <span className="font-semibold text-[#17231B]">{user?.name}</span>
                   </div>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]">
                     {user?.role}
                   </span>
                 </div>
@@ -274,7 +274,7 @@ export const CustomerNavbar = () => {
                   <Link
                     to="/admin/dashboard"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 flex items-center justify-center gap-2"
+                    className="w-full px-3 py-2 rounded-xl text-xs font-semibold text-white bg-[#267A45] hover:bg-[#1E6338] flex items-center justify-center gap-2 shadow-xs"
                   >
                     <ShieldCheck className="w-4 h-4" />
                     <span>Admin Console</span>
@@ -285,15 +285,15 @@ export const CustomerNavbar = () => {
                   <Link
                     to="/settings"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex-1 px-3 py-2 rounded-xl text-xs font-semibold text-center text-slate-200 bg-slate-900 border border-slate-800 flex items-center justify-center gap-1.5"
+                    className="flex-1 px-3 py-2 rounded-xl text-xs font-semibold text-center text-[#17231B] bg-white border border-[#D7E0D9] hover:bg-[#F0F6F1] flex items-center justify-center gap-1.5"
                   >
-                    <Settings className="w-3.5 h-3.5 text-emerald-400" />
+                    <Settings className="w-3.5 h-3.5 text-[#267A45]" />
                     <span>Settings</span>
                   </Link>
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="flex-1 px-3 py-2 rounded-xl text-xs font-semibold text-center text-rose-300 bg-rose-500/10 border border-rose-500/20 flex items-center justify-center gap-1.5"
+                    className="flex-1 px-3 py-2 rounded-xl text-xs font-semibold text-center text-[#922B27] bg-[#FDF0EF] border border-[#F8D2CE] hover:bg-[#FBE4E2] flex items-center justify-center gap-1.5"
                   >
                     <LogOut className="w-3.5 h-3.5" />
                     <span>Sign Out</span>
@@ -306,7 +306,7 @@ export const CustomerNavbar = () => {
                   to="/login"
                   aria-label="Sign In"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold text-center text-white bg-slate-900 border border-slate-800"
+                  className="px-3 py-2 rounded-xl text-xs font-semibold text-center text-[#17231B] bg-white border border-[#D7E0D9] hover:bg-[#F0F6F1]"
                 >
                   Sign In
                 </Link>
@@ -314,7 +314,7 @@ export const CustomerNavbar = () => {
                   to="/register"
                   aria-label="Create Account"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="px-3 py-2 rounded-xl text-xs font-bold text-center text-slate-950 bg-emerald-400"
+                  className="px-3 py-2 rounded-xl text-xs font-bold text-center text-white bg-[#267A45] hover:bg-[#1E6338]"
                 >
                   Create Account
                 </Link>

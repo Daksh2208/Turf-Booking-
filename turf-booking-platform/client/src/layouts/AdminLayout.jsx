@@ -43,18 +43,18 @@ export const AdminLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col md:flex-row font-sans">
+    <div className="min-h-screen bg-[#F6F8F6] text-[#17231B] flex flex-col md:flex-row font-sans selection:bg-[#267A45] selection:text-white">
       {/* Mobile Top Header */}
-      <div className="md:hidden flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 sticky top-0 z-40">
+      <div className="md:hidden flex items-center justify-between p-4 bg-white border-b border-[#D7E0D9] sticky top-0 z-40">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+          <div className="w-8 h-8 rounded-xl bg-[#E7F3E9] border border-[#C9DFCE] flex items-center justify-center text-[#267A45]">
             <Trophy className="w-4 h-4" />
           </div>
           <div>
-            <span className="font-black text-sm tracking-tight text-white block">
-              TURF<span className="text-emerald-400">SPOT</span>
+            <span className="font-black text-sm tracking-tight text-[#17231B] block">
+              TURF<span className="text-[#267A45]">SPOT</span>
             </span>
-            <span className="text-[9px] uppercase font-bold tracking-widest text-emerald-400">
+            <span className="text-[9px] uppercase font-bold tracking-widest text-[#267A45]">
               Admin Portal
             </span>
           </div>
@@ -63,7 +63,7 @@ export const AdminLayout = () => {
         <button
           type="button"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 focus:outline-none cursor-pointer"
+          className="p-2 rounded-xl text-[#46564A] hover:text-[#17231B] hover:bg-[#F0F6F1] focus:outline-none cursor-pointer"
           aria-label="Toggle navigation"
         >
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -72,29 +72,30 @@ export const AdminLayout = () => {
 
       {/* Sidebar Desktop */}
       <aside
-        className={`fixed md:sticky top-0 left-0 h-screen w-64 bg-slate-900/95 border-r border-slate-800/80 flex flex-col justify-between z-50 transition-transform duration-200 backdrop-blur-md ${
+        className={`fixed md:sticky top-0 left-0 h-screen max-h-screen w-64 bg-white border-r border-[#D7E0D9] flex flex-col justify-between z-50 transition-transform duration-200 overflow-hidden ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        <div className="p-5 flex-1 flex flex-col">
+        {/* Scrollable Upper Area (Logo + Navigation Items) */}
+        <div className="p-4 sm:p-5 flex-1 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
           {/* Logo & Platform Name */}
-          <div className="flex items-center gap-3 pb-6 border-b border-slate-800">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-sm shadow-emerald-500/10">
+          <div className="flex items-center gap-3 pb-5 border-b border-[#E2E8E3] shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-[#E7F3E9] border border-[#C9DFCE] flex items-center justify-center text-[#267A45] shadow-xs shrink-0">
               <Trophy className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-lg font-black tracking-tight text-white block">
-                TURF<span className="text-emerald-400">SPOT</span>
+              <span className="text-lg font-black tracking-tight text-[#17231B] block">
+                TURF<span className="text-[#267A45]">SPOT</span>
               </span>
-              <span className="text-[10px] tracking-wider uppercase font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 inline-block">
+              <span className="text-[10px] tracking-wider uppercase font-bold text-[#1D6537] bg-[#E7F3E9] px-2 py-0.5 rounded-md border border-[#C9DFCE] inline-block">
                 Admin Console
               </span>
             </div>
           </div>
 
           {/* Navigation Links */}
-          <nav className="mt-6 space-y-1.5 flex-1" aria-label="Admin Sections">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pb-1">
+          <nav className="mt-4 space-y-1" aria-label="Admin Sections">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#526258] px-3 pb-1.5">
               Inventory & Operations
             </p>
 
@@ -106,9 +107,10 @@ export const AdminLayout = () => {
                   to={item.path}
                   onClick={() => setMobileMenuOpen(false)}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${isActive
-                      ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-sm shadow-emerald-500/5'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 border border-transparent'
+                    `flex items-center gap-3 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                      isActive
+                        ? 'bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE] shadow-xs'
+                        : 'text-[#46564A] hover:text-[#17231B] hover:bg-[#F0F6F1] border border-transparent'
                     }`
                   }
                 >
@@ -121,15 +123,15 @@ export const AdminLayout = () => {
         </div>
 
         {/* Admin User Profile, Settings & Sign Out Bottom Bar */}
-        <div className="p-3.5 border-t border-slate-800 bg-slate-950/60 backdrop-blur-sm">
+        <div className="p-3 border-t border-[#E2E8E3] bg-[#F6F8F6] shrink-0">
           {/* Admin Profile Row */}
-          <div className="flex items-center gap-3 mb-3 p-2 rounded-xl bg-slate-900/60 border border-slate-800/80">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 font-black text-xs shadow-sm">
+          <div className="flex items-center gap-2.5 mb-2.5 p-2 rounded-xl bg-white border border-[#D7E0D9]">
+            <div className="w-8 h-8 rounded-xl bg-[#E7F3E9] border border-[#C9DFCE] flex items-center justify-center text-[#267A45] shrink-0 font-black text-xs shadow-xs">
               {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-white truncate">{user?.name || 'Administrator'}</p>
-              <p className="text-[11px] text-slate-400 truncate">{user?.email}</p>
+              <p className="text-xs font-bold text-[#17231B] truncate">{user?.name || 'Administrator'}</p>
+              <p className="text-[10px] text-[#526258] truncate">{user?.email}</p>
             </div>
           </div>
 
@@ -139,25 +141,25 @@ export const AdminLayout = () => {
               to="/settings"
               onClick={() => setMobileMenuOpen(false)}
               className={({ isActive }) =>
-                `flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                `flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border-slate-800/90'
+                    ? 'bg-[#E7F3E9] text-[#1D6537] border-[#C9DFCE]'
+                    : 'text-[#46564A] hover:text-[#17231B] hover:bg-[#F0F6F1] bg-white border-[#D7E0D9]'
                 }`
               }
               title="Account Settings & Session"
             >
-              <Settings className="w-3.5 h-3.5 text-emerald-400" />
+              <Settings className="w-3.5 h-3.5 text-[#267A45]" />
               <span>Settings</span>
             </NavLink>
 
             <button
               type="button"
               onClick={logout}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-300 hover:text-white hover:bg-rose-500/20 border border-rose-500/30 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-[#922B27] hover:bg-[#FDF0EF] bg-white border border-[#F8D2CE] transition-colors cursor-pointer"
               title="Sign Out of Admin Console"
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <LogOut className="w-3.5 h-3.5 text-[#922B27]" />
               <span>Sign Out</span>
             </button>
           </div>
@@ -167,21 +169,21 @@ export const AdminLayout = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Desktop Bar */}
-        <header className="hidden md:flex items-center justify-between px-8 py-4 bg-slate-900/60 border-b border-slate-800/80 sticky top-0 z-30 backdrop-blur-md">
+        <header className="hidden md:flex items-center justify-between px-8 py-3.5 bg-white border-b border-[#E2E8E3] sticky top-0 z-30 shadow-2xs">
           {/* Breadcrumb */}
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <span>Admin</span>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-            <span className="font-semibold text-emerald-400">{currentNav.name}</span>
+          <div className="flex items-center gap-2 text-xs text-[#526258]">
+            <span className="font-medium">Admin</span>
+            <ChevronRight className="w-3.5 h-3.5 text-[#647168]" />
+            <span className="font-semibold text-[#267A45]">{currentNav.name}</span>
           </div>
 
           {/* Single Home Action Button */}
           <Link
             to="/"
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-200 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 transition-all cursor-pointer shadow-sm group"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-[#46564A] hover:text-[#17231B] bg-white hover:bg-[#F0F6F1] border border-[#D7E0D9] transition-all cursor-pointer shadow-xs group"
             title="Return to customer landing page"
           >
-            <Home className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+            <Home className="w-3.5 h-3.5 text-[#267A45] group-hover:scale-110 transition-transform" />
             <span>Home</span>
           </Link>
         </header>

@@ -2,16 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Trophy,
-  ArrowLeft,
   User,
   Mail,
   Shield,
   ShieldCheck,
   LogOut,
-  Calendar,
   CheckCircle2,
-  Clock,
-  ExternalLink,
   Home,
   Phone,
   Lock,
@@ -22,6 +18,7 @@ import {
   Loader2,
   ChevronRight,
   MapPin,
+  ExternalLink,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuery } from '../../hooks/useApi'
@@ -59,7 +56,6 @@ export const UserSettingsPage = () => {
   const {
     data: favorites = [],
     isLoading: favsLoading,
-    refetch: refetchFavs,
   } = useQuery({
     queryKey: ['myFavorites'],
     queryFn: () => customerInventoryService.getFavorites(),
@@ -134,19 +130,19 @@ export const UserSettingsPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
+    <div className="min-h-screen bg-[#F6F8F6] text-[#17231B] flex flex-col font-sans selection:bg-[#267A45] selection:text-white">
       {/* Top Navbar */}
-      <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
+      <header className="border-b border-[#E2E8E3] bg-white sticky top-0 z-40 shadow-2xs">
         <div className="max-w-4xl mx-auto px-4 py-3.5 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-sm group-hover:scale-105 transition-transform">
-              <Trophy className="w-4 h-4" />
+            <div className="w-9 h-9 rounded-xl bg-[#E7F3E9] border border-[#C9DFCE] flex items-center justify-center text-[#267A45] shadow-xs group-hover:scale-105 transition-transform">
+              <Trophy className="w-4 h-4 text-[#267A45]" />
             </div>
             <div>
-              <span className="font-black text-sm tracking-tight text-white block">
-                TURF<span className="text-emerald-400">SPOT</span>
+              <span className="font-black text-sm tracking-tight text-[#17231B] block">
+                TURF<span className="text-[#267A45]">SPOT</span>
               </span>
-              <span className="text-[9px] uppercase font-bold tracking-widest text-slate-500">
+              <span className="text-[9px] uppercase font-bold tracking-widest text-[#526258]">
                 Account Settings
               </span>
             </div>
@@ -156,18 +152,18 @@ export const UserSettingsPage = () => {
             {isAdmin && (
               <Link
                 to="/admin/sports"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#1D6537] bg-[#E7F3E9] hover:bg-[#C9DFCE] border border-[#C9DFCE] transition-all"
               >
-                <ShieldCheck className="w-3.5 h-3.5" />
+                <ShieldCheck className="w-3.5 h-3.5 text-[#267A45]" />
                 <span className="hidden sm:inline">Admin Console</span>
               </Link>
             )}
             <Link
               to="/"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#17231B] hover:bg-[#F0F6F1] bg-white border border-[#D7E0D9] transition-all shadow-xs"
               title="Return to Home"
             >
-              <Home className="w-3.5 h-3.5 text-emerald-400" />
+              <Home className="w-3.5 h-3.5 text-[#267A45]" />
               <span>Home</span>
             </Link>
           </div>
@@ -178,70 +174,70 @@ export const UserSettingsPage = () => {
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8 sm:py-12 space-y-8">
         {/* Header Title */}
         <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black text-[#17231B] tracking-tight">
             Account Settings
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400">
+          <p className="text-xs sm:text-sm text-[#526258]">
             Manage your personal profile, credentials, saved favourites, and active session.
           </p>
         </div>
 
         {/* Profile Card */}
-        <div className="p-6 sm:p-7 rounded-2xl bg-slate-900/70 border border-slate-800/80 shadow-xl backdrop-blur-md">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-800/80">
+        <div className="p-6 sm:p-7 rounded-2xl bg-white border border-[#D7E0D9] shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#E2E8E3]">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-2xl font-black shadow-inner shadow-emerald-500/10">
+              <div className="w-16 h-16 rounded-2xl bg-[#E7F3E9] border border-[#C9DFCE] flex items-center justify-center text-[#267A45] text-2xl font-black shadow-xs">
                 {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-bold text-white">{user?.name || 'User Profile'}</h2>
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <h2 className="text-lg font-bold text-[#17231B]">{user?.name || 'User Profile'}</h2>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]">
                     {user?.role || 'Customer'}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400">{user?.email}</p>
+                <p className="text-xs text-[#526258]">{user?.email}</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl self-start sm:self-center">
-              <CheckCircle2 className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-2 text-xs text-[#1D6537] bg-[#E7F3E9] border border-[#C9DFCE] px-3 py-1.5 rounded-xl self-start sm:self-center">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#267A45]" />
               <span className="font-semibold">Active Account</span>
             </div>
           </div>
 
           {/* User Attributes Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6">
-            <div className="p-4 rounded-xl bg-slate-950/50 border border-slate-800/60 space-y-1">
-              <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="p-4 rounded-xl bg-[#F6F8F6] border border-[#D7E0D9] space-y-1">
+              <span className="text-[11px] font-semibold text-[#526258] flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-[#267A45]" />
                 Full Name
               </span>
-              <p className="text-sm font-semibold text-slate-100">{user?.name || 'Not configured'}</p>
+              <p className="text-sm font-semibold text-[#17231B]">{user?.name || 'Not configured'}</p>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-950/50 border border-slate-800/60 space-y-1">
-              <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="p-4 rounded-xl bg-[#F6F8F6] border border-[#D7E0D9] space-y-1">
+              <span className="text-[11px] font-semibold text-[#526258] flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5 text-[#267A45]" />
                 Email Address
               </span>
-              <p className="text-sm font-semibold text-slate-100">{user?.email || 'Not configured'}</p>
+              <p className="text-sm font-semibold text-[#17231B]">{user?.email || 'Not configured'}</p>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-950/50 border border-slate-800/60 space-y-1">
-              <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="p-4 rounded-xl bg-[#F6F8F6] border border-[#D7E0D9] space-y-1">
+              <span className="text-[11px] font-semibold text-[#526258] flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-[#267A45]" />
                 Phone Number
               </span>
-              <p className="text-sm font-semibold text-slate-100">{user?.phone || 'Not configured'}</p>
+              <p className="text-sm font-semibold text-[#17231B]">{user?.phone || 'Not configured'}</p>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-950/50 border border-slate-800/60 space-y-1">
-              <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="p-4 rounded-xl bg-[#F6F8F6] border border-[#D7E0D9] space-y-1">
+              <span className="text-[11px] font-semibold text-[#526258] flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-[#267A45]" />
                 Account Role
               </span>
-              <p className="text-sm font-semibold text-emerald-400 capitalize">
+              <p className="text-sm font-semibold text-[#267A45] capitalize">
                 {user?.role || 'Customer'}
               </p>
             </div>
@@ -251,44 +247,44 @@ export const UserSettingsPage = () => {
         {/* Profile & Password Update Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Edit Profile Form */}
-          <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800/80 space-y-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <User className="w-4 h-4 text-emerald-400" />
+          <div className="p-6 rounded-2xl bg-white border border-[#D7E0D9] shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-[#17231B] flex items-center gap-2">
+              <User className="w-4 h-4 text-[#267A45]" />
               <span>Update Profile</span>
             </h3>
 
             {profileMsg && (
-              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <div className="p-2.5 rounded-xl bg-[#E7F3E9] border border-[#C9DFCE] text-[#1D6537] text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#267A45] shrink-0" />
                 <span>{profileMsg}</span>
               </div>
             )}
             {profileErr && (
-              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
+              <div className="p-2.5 rounded-xl bg-[#FDF0EF] border border-[#F8D2CE] text-[#922B27] text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-[#922B27] shrink-0" />
                 <span>{profileErr}</span>
               </div>
             )}
 
             <form onSubmit={handleUpdateProfile} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-400 font-semibold mb-1">Full Name</label>
+                <label className="block text-[#17231B] font-semibold mb-1">Full Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-white border border-[#D7E0D9] rounded-xl px-3 py-2 text-[#17231B] focus:outline-none focus:border-[#267A45]"
                   placeholder="Your full name"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 font-semibold mb-1">Mobile Phone</label>
+                <label className="block text-[#17231B] font-semibold mb-1">Mobile Phone</label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500 font-mono"
+                  className="w-full bg-white border border-[#D7E0D9] rounded-xl px-3 py-2 text-[#17231B] focus:outline-none focus:border-[#267A45] font-mono"
                   placeholder="e.g. 9876543210"
                 />
               </div>
@@ -296,7 +292,7 @@ export const UserSettingsPage = () => {
               <button
                 type="submit"
                 disabled={isSavingProfile}
-                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-500/20 disabled:opacity-50"
+                className="w-full py-2.5 rounded-xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
               >
                 {isSavingProfile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                 <span>Save Profile</span>
@@ -305,55 +301,55 @@ export const UserSettingsPage = () => {
           </div>
 
           {/* Change Password Form */}
-          <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800/80 space-y-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-emerald-400" />
+          <div className="p-6 rounded-2xl bg-white border border-[#D7E0D9] shadow-xs space-y-4">
+            <h3 className="text-sm font-bold text-[#17231B] flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-[#267A45]" />
               <span>Change Password</span>
             </h3>
 
             {passwordMsg && (
-              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <div className="p-2.5 rounded-xl bg-[#E7F3E9] border border-[#C9DFCE] text-[#1D6537] text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#267A45] shrink-0" />
                 <span>{passwordMsg}</span>
               </div>
             )}
             {passwordErr && (
-              <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
+              <div className="p-2.5 rounded-xl bg-[#FDF0EF] border border-[#F8D2CE] text-[#922B27] text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-[#922B27] shrink-0" />
                 <span>{passwordErr}</span>
               </div>
             )}
 
             <form onSubmit={handleChangePassword} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-400 font-semibold mb-1">Current Password</label>
+                <label className="block text-[#17231B] font-semibold mb-1">Current Password</label>
                 <input
                   type="password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-white border border-[#D7E0D9] rounded-xl px-3 py-2 text-[#17231B] focus:outline-none focus:border-[#267A45]"
                   placeholder="••••••••"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 font-semibold mb-1">New Password</label>
+                <label className="block text-[#17231B] font-semibold mb-1">New Password</label>
                 <input
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-white border border-[#D7E0D9] rounded-xl px-3 py-2 text-[#17231B] focus:outline-none focus:border-[#267A45]"
                   placeholder="Min 6 characters"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 font-semibold mb-1">Confirm New Password</label>
+                <label className="block text-[#17231B] font-semibold mb-1">Confirm New Password</label>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-white border border-[#D7E0D9] rounded-xl px-3 py-2 text-[#17231B] focus:outline-none focus:border-[#267A45]"
                   placeholder="Re-enter new password"
                 />
               </div>
@@ -361,9 +357,9 @@ export const UserSettingsPage = () => {
               <button
                 type="submit"
                 disabled={isChangingPassword}
-                className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border border-slate-700 disabled:opacity-50"
+                className="w-full py-2.5 rounded-xl bg-white hover:bg-[#F0F6F1] text-[#17231B] font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border border-[#D7E0D9] disabled:opacity-50"
               >
-                {isChangingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5" />}
+                {isChangingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5 text-[#267A45]" />}
                 <span>Update Password</span>
               </button>
             </form>
@@ -371,27 +367,27 @@ export const UserSettingsPage = () => {
         </div>
 
         {/* Saved Favourites Section */}
-        <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800/80 space-y-4">
+        <div className="p-6 rounded-2xl bg-white border border-[#D7E0D9] shadow-xs space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
+            <h3 className="text-sm font-bold text-[#17231B] flex items-center gap-2">
+              <Heart className="w-4 h-4 text-[#922B27] fill-[#922B27]" />
               <span>Saved Favourites</span>
             </h3>
-            <span className="text-xs text-slate-400 font-medium">
+            <span className="text-xs text-[#526258] font-medium">
               {favorites.length} {favorites.length === 1 ? 'Arena' : 'Arenas'}
             </span>
           </div>
 
           {favsLoading ? (
-            <div className="py-6 flex items-center justify-center gap-2 text-slate-500 text-xs">
-              <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+            <div className="py-6 flex items-center justify-center gap-2 text-[#526258] text-xs">
+              <Loader2 className="w-4 h-4 animate-spin text-[#267A45]" />
               <span>Loading saved turfs...</span>
             </div>
           ) : favorites.length === 0 ? (
-            <div className="py-8 text-center text-slate-500 text-xs space-y-2">
-              <Heart className="w-6 h-6 mx-auto text-slate-600" />
+            <div className="py-8 text-center text-[#526258] text-xs space-y-2">
+              <Heart className="w-6 h-6 mx-auto text-[#647168]" />
               <p>You haven't saved any favourite turfs yet.</p>
-              <Link to="/turfs" className="text-emerald-400 hover:underline font-semibold">
+              <Link to="/turfs" className="text-[#267A45] hover:underline font-semibold">
                 Explore Turfs
               </Link>
             </div>
@@ -401,18 +397,18 @@ export const UserSettingsPage = () => {
                 <Link
                   key={turf._id}
                   to={`/turfs/${turf.slug || turf._id}`}
-                  className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-emerald-500/40 transition-all flex items-center justify-between group"
+                  className="p-3.5 rounded-xl bg-[#F6F8F6] border border-[#D7E0D9] hover:border-[#267A45] hover:bg-white transition-all flex items-center justify-between group"
                 >
                   <div className="space-y-0.5">
-                    <h4 className="text-xs font-bold text-white group-hover:text-emerald-400 transition-colors">
+                    <h4 className="text-xs font-bold text-[#17231B] group-hover:text-[#267A45] transition-colors">
                       {turf.name}
                     </h4>
-                    <p className="text-[11px] text-slate-400 flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
+                    <p className="text-[11px] text-[#526258] flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-[#267A45] shrink-0" />
                       <span>{turf.address?.city || 'Sports Arena'}</span>
                     </p>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition-all" />
+                  <ChevronRight className="w-4 h-4 text-[#647168] group-hover:text-[#267A45] group-hover:translate-x-0.5 transition-all" />
                 </Link>
               ))}
             </div>
@@ -421,19 +417,19 @@ export const UserSettingsPage = () => {
 
         {/* Admin Quick Action Card (shown only if admin) */}
         {isAdmin && (
-          <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-950/30 to-slate-900 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="p-6 rounded-2xl bg-[#EDF5EF] border border-[#C9DFCE] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-sm font-bold text-white">Administrator Management</h3>
+                <ShieldCheck className="w-4 h-4 text-[#267A45]" />
+                <h3 className="text-sm font-bold text-[#17231B]">Administrator Management</h3>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[#526258]">
                 You have elevated privileges to configure sports, turfs, add-ons, banners, and business settings.
               </p>
             </div>
             <Link
-              to="/admin/sports"
-              className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 shrink-0"
+              to="/admin/dashboard"
+              className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-[#267A45] hover:bg-[#1E6338] shadow-xs transition-all flex items-center justify-center gap-2 shrink-0"
             >
               <span>Open Admin Console</span>
               <ExternalLink className="w-3.5 h-3.5" />
@@ -442,21 +438,21 @@ export const UserSettingsPage = () => {
         )}
 
         {/* Session Management & Sign Out Section */}
-        <div className="p-6 rounded-2xl bg-slate-900/70 border border-slate-800/80 space-y-4">
+        <div className="p-6 rounded-2xl bg-white border border-[#D7E0D9] shadow-xs space-y-4">
           <div className="space-y-1">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <LogOut className="w-4 h-4 text-rose-400" />
+            <h3 className="text-sm font-bold text-[#17231B] flex items-center gap-2">
+              <LogOut className="w-4 h-4 text-[#922B27]" />
               <span>Session & Logout</span>
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-[#526258]">
               Sign out of this session. You will need your email and password to log back in.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-rose-950/20 border border-rose-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="p-4 rounded-xl bg-[#FDF0EF] border border-[#F8D2CE] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold text-rose-200">Current Active Session</p>
-              <p className="text-[11px] text-rose-300/70">
+              <p className="text-xs font-semibold text-[#922B27]">Current Active Session</p>
+              <p className="text-[11px] text-[#922B27]/80">
                 Connected from current browser. Revokes the active refresh token.
               </p>
             </div>
@@ -465,7 +461,7 @@ export const UserSettingsPage = () => {
               type="button"
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-rose-600 hover:bg-rose-500 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-rose-950/40 shrink-0"
+              className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-[#922B27] hover:bg-[#78231F] active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs shrink-0"
             >
               <LogOut className="w-4 h-4" />
               <span>{isLoggingOut ? 'Signing Out...' : 'Sign Out'}</span>

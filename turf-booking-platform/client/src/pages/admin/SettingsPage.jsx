@@ -122,15 +122,15 @@ export const SettingsPage = () => {
   if (isLoading) {
     return (
       <div className="py-20 text-center flex flex-col items-center justify-center gap-3">
-        <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
-        <p className="text-xs text-slate-400">Loading business configuration...</p>
+        <Loader2 className="w-8 h-8 text-[#267A45] animate-spin" />
+        <p className="text-xs text-[#526258]">Loading business configuration...</p>
       </div>
     )
   }
 
   if (isError) {
     return (
-      <div className="p-6 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
+      <div className="p-6 rounded-2xl bg-[#FDF0EF] border border-[#F5C2BF] text-[#922B27] text-xs">
         Failed to load settings: {error?.message}
       </div>
     )
@@ -139,12 +139,12 @@ export const SettingsPage = () => {
   return (
     <div className="space-y-6 max-w-4xl">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2.5">
-          <Sliders className="w-6 h-6 text-emerald-400" />
+      <div className="pb-2 border-b border-[#E2E8E3]">
+        <h1 className="text-2xl font-black tracking-tight text-[#17231B] flex items-center gap-2.5">
+          <Sliders className="w-6 h-6 text-[#267A45]" />
           <span>Business Settings & Rules</span>
         </h1>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-[#526258] mt-1">
           Configure organization contact info, slot booking intervals, GST taxation, and customer policies.
         </p>
       </div>
@@ -153,9 +153,9 @@ export const SettingsPage = () => {
       {successToast && (
         <div
           role="status"
-          className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 flex items-center gap-3 text-xs leading-relaxed animate-in fade-in"
+          className="p-3.5 rounded-2xl bg-[#E7F3E9] border border-[#C9DFCE] text-[#1D6537] flex items-center gap-3 text-xs leading-relaxed animate-in fade-in"
         >
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <CheckCircle2 className="w-4 h-4 text-[#267A45] shrink-0" />
           <span>{successToast}</span>
         </div>
       )}
@@ -164,18 +164,18 @@ export const SettingsPage = () => {
       {serverError && (
         <div
           role="alert"
-          className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-center gap-3 text-xs leading-relaxed"
+          className="p-3.5 rounded-2xl bg-[#FDF0EF] border border-[#F5C2BF] text-[#922B27] flex items-center gap-3 text-xs leading-relaxed"
         >
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          <AlertCircle className="w-4 h-4 text-[#922B27] shrink-0" />
           <span>{serverError}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Section 1: Business Identity & Contact */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-6 space-y-4">
-          <h2 className="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-            <Building2 className="w-4 h-4 text-emerald-400" />
+        <div className="rounded-2xl border border-[#D7E0D9] bg-white p-5 sm:p-6 space-y-4 shadow-xs">
+          <h2 className="text-sm font-bold text-[#17231B] flex items-center gap-2 border-b border-[#E2E8E3] pb-3">
+            <Building2 className="w-4 h-4 text-[#267A45]" />
             <span>Organization Details</span>
           </h2>
 
@@ -226,9 +226,9 @@ export const SettingsPage = () => {
         </div>
 
         {/* Section 2: Booking Rules */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-6 space-y-4">
-          <h2 className="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-            <Clock className="w-4 h-4 text-emerald-400" />
+        <div className="rounded-2xl border border-[#D7E0D9] bg-white p-5 sm:p-6 space-y-4 shadow-xs">
+          <h2 className="text-sm font-bold text-[#17231B] flex items-center gap-2 border-b border-[#E2E8E3] pb-3">
+            <Clock className="w-4 h-4 text-[#267A45]" />
             <span>Slot Booking & Cancellation Rules</span>
           </h2>
 
@@ -325,14 +325,14 @@ export const SettingsPage = () => {
         </div>
 
         {/* Section 3: Tax Settings */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-6 space-y-4">
-          <h2 className="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-            <Percent className="w-4 h-4 text-emerald-400" />
+        <div className="rounded-2xl border border-[#D7E0D9] bg-white p-5 sm:p-6 space-y-4 shadow-xs">
+          <h2 className="text-sm font-bold text-[#17231B] flex items-center gap-2 border-b border-[#E2E8E3] pb-3">
+            <Percent className="w-4 h-4 text-[#267A45]" />
             <span>Taxation Settings</span>
           </h2>
 
           <div className="space-y-4">
-            <label className="flex items-center gap-2.5 cursor-pointer text-xs text-slate-300">
+            <label className="flex items-center gap-2.5 cursor-pointer text-xs text-[#17231B]">
               <input
                 type="checkbox"
                 id="taxEnabled"
@@ -346,9 +346,9 @@ export const SettingsPage = () => {
                     },
                   })
                 }
-                className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500/20 cursor-pointer"
+                className="w-4 h-4 rounded border-[#D7E0D9] accent-[#267A45] cursor-pointer"
               />
-              <span className="font-semibold text-white">Enable GST / Sales Tax at Checkout</span>
+              <span className="font-semibold text-[#17231B]">Enable GST / Sales Tax at Checkout</span>
             </label>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -393,9 +393,9 @@ export const SettingsPage = () => {
         </div>
 
         {/* Section 4: Public Business Info */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:p-6 space-y-4">
-          <h2 className="text-sm font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-            <FileText className="w-4 h-4 text-emerald-400" />
+        <div className="rounded-2xl border border-[#D7E0D9] bg-white p-5 sm:p-6 space-y-4 shadow-xs">
+          <h2 className="text-sm font-bold text-[#17231B] flex items-center gap-2 border-b border-[#E2E8E3] pb-3">
+            <FileText className="w-4 h-4 text-[#267A45]" />
             <span>Customer-Facing Policies</span>
           </h2>
 
@@ -405,7 +405,7 @@ export const SettingsPage = () => {
               rows={3}
               value={formData.aboutText}
               onChange={(e) => setFormData({ ...formData, aboutText: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700/80 text-white text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-none"
+              className="w-full px-4 py-2.5 rounded-xl bg-white border border-[#D7E0D9] text-[#17231B] text-xs focus:ring-1 focus:ring-[#267A45] focus:border-[#267A45] focus:outline-none placeholder-[#647168]"
             />
           </FormField>
 
@@ -435,7 +435,7 @@ export const SettingsPage = () => {
             variant="primary"
             size="lg"
             isLoading={updateMutation.isPending}
-            className="cursor-pointer shadow-lg shadow-emerald-500/20"
+            className="cursor-pointer shadow-xs"
           >
             <Save className="w-4 h-4 mr-2" />
             <span>Save Configuration</span>

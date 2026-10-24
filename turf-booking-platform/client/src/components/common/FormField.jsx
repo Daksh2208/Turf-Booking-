@@ -19,12 +19,12 @@ export const FormField = ({
         <div className="flex items-center justify-between">
           <label
             htmlFor={htmlFor}
-            className="block text-xs font-semibold uppercase tracking-wider text-slate-300"
+            className="block text-xs font-semibold text-[#17231B]"
           >
             {label}
-            {required && <span className="ml-1 text-emerald-400">*</span>}
+            {required && <span className="ml-1 text-[#267A45] font-bold">*</span>}
           </label>
-          {hint && <span className="text-xs text-slate-500">{hint}</span>}
+          {hint && <span className="text-xs text-[#526258]">{hint}</span>}
         </div>
       )}
 
@@ -33,7 +33,7 @@ export const FormField = ({
       {error && (
         <p
           id={htmlFor ? `${htmlFor}-error` : undefined}
-          className="flex items-center gap-1.5 text-xs text-rose-400 font-medium transition-all duration-150"
+          className="flex items-center gap-1.5 text-xs text-[#922B27] font-medium transition-all duration-150"
           role="alert"
         >
           <AlertCircle className="w-3.5 h-3.5 shrink-0" />

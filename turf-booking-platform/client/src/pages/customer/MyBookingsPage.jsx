@@ -4,12 +4,10 @@ import {
   Calendar,
   Clock,
   MapPin,
-  Tag,
   ChevronRight,
   Loader2,
   AlertCircle,
   Trophy,
-  Filter,
   CheckCircle2,
   Clock3,
   XCircle,
@@ -36,7 +34,7 @@ export const MyBookingsPage = () => {
         limit: 8,
         status: statusFilter,
       }),
-    refetchInterval: 5000, // Sync status live (e.g. if admin marks completed or cancelled)
+    refetchInterval: 5000,
   })
 
   const bookings = data?.bookings || []
@@ -53,45 +51,45 @@ export const MyBookingsPage = () => {
     switch (status) {
       case 'confirmed':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-            <CheckCircle2 className="w-3 h-3" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]">
+            <CheckCircle2 className="w-3 h-3 text-[#267A45]" />
             <span>Confirmed</span>
           </span>
         )
       case 'completed':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/30">
-            <Trophy className="w-3 h-3" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#EFF6FF] text-[#1B4E82] border border-[#BFDBFE]">
+            <Trophy className="w-3 h-3 text-[#1B4E82]" />
             <span>Completed</span>
           </span>
         )
       case 'cancelled':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-400 border border-rose-500/30">
-            <XCircle className="w-3 h-3" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#FDF0EF] text-[#922B27] border border-[#F8D2CE]">
+            <XCircle className="w-3 h-3 text-[#922B27]" />
             <span>Cancelled</span>
           </span>
         )
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/30">
-            <Clock3 className="w-3 h-3" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#FDF4E7] text-[#79420D] border border-[#F6E1C4]">
+            <Clock3 className="w-3 h-3 text-[#79420D]" />
             <span>{status || 'Pending'}</span>
           </span>
         )
     }
   }
 
-  const getPaymentBadge = (paymentStatus, paymentMethod) => {
+  const getPaymentBadge = (paymentStatus) => {
     if (paymentStatus === 'paid') {
       return (
-        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]">
           Paid
         </span>
       )
     }
     return (
-      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-amber-500/10 text-amber-400 border border-amber-500/20">
+      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#FDF4E7] text-[#79420D] border border-[#F6E1C4]">
         Pay at Venue ({paymentStatus || 'Unpaid'})
       </span>
     )
@@ -102,17 +100,17 @@ export const MyBookingsPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-black text-[#17231B] tracking-tight">
             My Bookings
           </h1>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-[#526258] mt-1">
             Track your reserved match slots, review passes, and view payment details.
           </p>
         </div>
 
         <Link
           to="/turfs"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition-all self-start sm:self-auto"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-xs shadow-xs transition-all self-start sm:self-auto cursor-pointer"
         >
           <Trophy className="w-4 h-4" />
           <span>Book a New Turf</span>
@@ -120,7 +118,7 @@ export const MyBookingsPage = () => {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#E2E8E3] pb-3">
         {statusTabs.map((tab) => (
           <button
             key={tab.value}
@@ -131,8 +129,8 @@ export const MyBookingsPage = () => {
             }}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               statusFilter === tab.value
-                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                : 'text-slate-400 hover:text-white bg-slate-900 border border-slate-800'
+                ? 'bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]'
+                : 'text-[#46564A] hover:text-[#17231B] bg-white border border-[#D7E0D9] hover:bg-[#F0F6F1]'
             }`}
           >
             {tab.label}
@@ -142,33 +140,33 @@ export const MyBookingsPage = () => {
 
       {/* Bookings List Content */}
       {isLoading ? (
-        <div className="min-h-[40vh] flex flex-col items-center justify-center gap-3 text-slate-400 text-xs">
-          <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+        <div className="min-h-[40vh] flex flex-col items-center justify-center gap-3 text-[#526258] text-xs">
+          <Loader2 className="w-8 h-8 text-[#267A45] animate-spin" />
           <span>Loading your match bookings...</span>
         </div>
       ) : isError ? (
-        <div className="p-6 rounded-3xl bg-rose-500/10 border border-rose-500/20 text-center max-w-md mx-auto space-y-3">
-          <AlertCircle className="w-8 h-8 text-rose-400 mx-auto" />
-          <h2 className="text-base font-bold text-white">Failed to load bookings</h2>
-          <p className="text-xs text-rose-300">
+        <div className="p-6 rounded-3xl bg-[#FDF0EF] border border-[#F8D2CE] text-center max-w-md mx-auto space-y-3">
+          <AlertCircle className="w-8 h-8 text-[#922B27] mx-auto" />
+          <h2 className="text-base font-bold text-[#17231B]">Failed to load bookings</h2>
+          <p className="text-xs text-[#922B27]">
             {error?.response?.data?.error?.message || 'Unable to retrieve your booking records.'}
           </p>
           <button
             type="button"
             onClick={() => refetch()}
-            className="px-4 py-2 rounded-xl bg-slate-900 text-xs font-semibold text-white border border-slate-800 hover:bg-slate-800 transition-colors"
+            className="px-4 py-2 rounded-xl bg-white text-xs font-semibold text-[#17231B] border border-[#D7E0D9] hover:bg-[#F0F6F1] transition-colors"
           >
             Try Again
           </button>
         </div>
       ) : bookings.length === 0 ? (
-        <div className="p-12 rounded-3xl bg-slate-900/50 border border-slate-800/80 text-center max-w-lg mx-auto space-y-4">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+        <div className="p-12 rounded-3xl bg-white border border-[#D7E0D9] text-center max-w-lg mx-auto space-y-4 shadow-xs">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-[#E7F3E9] border border-[#C9DFCE] flex items-center justify-center text-[#267A45]">
             <Calendar className="w-7 h-7" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-white">No Bookings Found</h2>
-            <p className="text-xs text-slate-400 mt-1">
+            <h2 className="text-lg font-bold text-[#17231B]">No Bookings Found</h2>
+            <p className="text-xs text-[#526258] mt-1">
               {statusFilter
                 ? `You have no ${statusFilter} bookings.`
                 : "You haven't reserved any turf match slots yet. Ready to hit the pitch?"}
@@ -176,7 +174,7 @@ export const MyBookingsPage = () => {
           </div>
           <Link
             to="/turfs"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition-all"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-xs shadow-xs transition-all"
           >
             <span>Explore Turfs</span>
             <ChevronRight className="w-4 h-4" />
@@ -199,12 +197,12 @@ export const MyBookingsPage = () => {
               return (
                 <div
                   key={booking._id}
-                  className="p-5 rounded-3xl bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-slate-700/80 transition-all shadow-sm flex flex-col justify-between gap-4 group"
+                  className="p-5 rounded-3xl bg-white hover:border-[#267A45]/60 border border-[#D7E0D9] transition-all shadow-xs flex flex-col justify-between gap-4 group"
                 >
                   <div className="space-y-3">
                     {/* Top Row: Ref & Badges */}
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-xs font-bold text-emerald-400 tracking-wider">
+                      <span className="font-mono text-xs font-bold text-[#267A45] tracking-wider">
                         {booking.bookingId}
                       </span>
                       <div className="flex items-center gap-2">
@@ -214,12 +212,12 @@ export const MyBookingsPage = () => {
 
                     {/* Turf Name & Address */}
                     <div>
-                      <h2 className="text-base font-bold text-white group-hover:text-emerald-400 transition-colors">
+                      <h2 className="text-base font-bold text-[#17231B] group-hover:text-[#267A45] transition-colors">
                         {booking.turf?.name || 'Turf Arena'}
                       </h2>
                       {booking.turf?.address && (
-                        <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <p className="text-xs text-[#46564A] flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3 text-[#267A45] shrink-0" />
                           <span className="truncate">
                             {booking.turf.address.street}, {booking.turf.address.city}
                           </span>
@@ -228,47 +226,47 @@ export const MyBookingsPage = () => {
                     </div>
 
                     {/* Date & Time Slot & Squad */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2.5 rounded-2xl bg-slate-950/60 border border-slate-800/80 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2.5 rounded-2xl bg-[#F6F8F6] border border-[#D7E0D9] text-xs">
                       <div className="flex items-center gap-2">
-                        <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="text-slate-200">{formattedDate}</span>
+                        <Calendar className="w-3.5 h-3.5 text-[#267A45] shrink-0" />
+                        <span className="text-[#17231B] font-medium">{formattedDate}</span>
                       </div>
                       <div className="flex items-center gap-2 font-mono">
-                        <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="text-slate-200">
+                        <Clock className="w-3.5 h-3.5 text-[#267A45] shrink-0" />
+                        <span className="text-[#17231B] font-medium">
                           {booking.startTime} - {booking.endTime}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-slate-300">
-                        <span className="text-emerald-400 font-bold">
+                      <div className="flex items-center gap-2 text-[#46564A]">
+                        <span className="text-[#267A45] font-bold">
                           {booking.durationMinutes ? `${Math.round(booking.durationMinutes / 60)}h` : '1h'}
                         </span>
-                        <span className="text-slate-500">•</span>
+                        <span className="text-[#D7E0D9]">•</span>
                         <span>{booking.playerCount || 10} Players</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Bottom Row: Total & Action */}
-                  <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                  <div className="pt-3 border-t border-[#E2E8E3] flex items-center justify-between gap-2">
                     <div>
-                      <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                      <span className="text-[10px] uppercase font-bold text-[#526258] block">
                         Total Amount
                       </span>
                       <div className="flex items-center gap-2">
-                        <span className="text-base font-black font-mono text-white">
+                        <span className="text-base font-black font-mono text-[#17231B]">
                           ₹{(booking.totalAmount / 100).toFixed(2)}
                         </span>
-                        {getPaymentBadge(booking.paymentStatus, booking.paymentMethod)}
+                        {getPaymentBadge(booking.paymentStatus)}
                       </div>
                     </div>
 
                     <Link
                       to={`/bookings/success/${booking._id}`}
-                      className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-semibold border border-slate-700/60 transition-all inline-flex items-center gap-1.5"
+                      className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#F0F6F1] text-[#17231B] text-xs font-semibold border border-[#D7E0D9] transition-all inline-flex items-center gap-1.5 cursor-pointer"
                     >
                       <span>View Pass</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
+                      <ExternalLink className="w-3.5 h-3.5 text-[#267A45]" />
                     </Link>
                   </div>
                 </div>
@@ -278,7 +276,7 @@ export const MyBookingsPage = () => {
 
           {/* Pagination Controls */}
           {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4 border-t border-slate-800 text-xs text-slate-400">
+            <div className="flex items-center justify-between pt-4 border-t border-[#E2E8E3] text-xs text-[#526258]">
               <span>
                 Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total bookings)
               </span>
@@ -287,7 +285,7 @@ export const MyBookingsPage = () => {
                   type="button"
                   disabled={currentPage <= 1}
                   onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-white border border-[#D7E0D9] hover:bg-[#F0F6F1] disabled:opacity-40 disabled:cursor-not-allowed text-[#17231B] transition-colors cursor-pointer"
                 >
                   Previous
                 </button>
@@ -295,7 +293,7 @@ export const MyBookingsPage = () => {
                   type="button"
                   disabled={currentPage >= pagination.totalPages}
                   onClick={() => setCurrentPage((prev) => Math.min(pagination.totalPages, prev + 1))}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed text-white transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-white border border-[#D7E0D9] hover:bg-[#F0F6F1] disabled:opacity-40 disabled:cursor-not-allowed text-[#17231B] transition-colors cursor-pointer"
                 >
                   Next
                 </button>

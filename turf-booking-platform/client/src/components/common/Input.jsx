@@ -21,7 +21,7 @@ export const Input = forwardRef(
     return (
       <div className="relative flex items-center">
         {Icon && (
-          <div className="absolute left-3.5 pointer-events-none text-slate-500 flex items-center justify-center">
+          <div className="absolute left-3.5 pointer-events-none text-[#647168] flex items-center justify-center">
             <Icon className="w-4 h-4" />
           </div>
         )}
@@ -35,12 +35,12 @@ export const Input = forwardRef(
           placeholder={placeholder}
           aria-invalid={!!error}
           aria-describedby={error && id ? `${id}-error` : undefined}
-          className={`w-full bg-slate-900/80 border rounded-xl text-sm text-slate-100 placeholder:text-slate-500 transition-all duration-200 outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`w-full bg-white border rounded-xl text-sm text-[#17231B] placeholder:text-[#647168] transition-all duration-150 outline-none disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-[#EDF1EE] disabled:text-[#69756D] ${
             Icon ? 'pl-10 pr-3.5' : 'px-3.5'
           } py-2.5 ${
             error
-              ? 'border-rose-500/80 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-              : 'border-slate-800 hover:border-slate-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+              ? 'border-[#922B27] focus:border-[#922B27] focus:ring-2 focus:ring-[#922B27]/20'
+              : 'border-[#D7E0D9] hover:border-[#C9DFCE] focus:border-[#267A45] focus:ring-2 focus:ring-[#267A45]/20'
           } ${className}`}
           {...props}
         />

@@ -9,7 +9,6 @@ import {
   AlertCircle,
   CheckCircle2,
   ExternalLink,
-  ArrowRight,
   Loader2,
 } from 'lucide-react'
 import adminInventoryService from '../../services/admin/inventory.service'
@@ -91,7 +90,7 @@ export const BannersPage = () => {
       showToast('Banner removed successfully.')
     },
     onError: (err) => {
-      showToast(err.response?.data?.error?.message || 'Failed to delete banner.', 'error')
+      showToast(err.response?.data?.message || 'Failed to delete banner.', 'error')
     },
   })
 
@@ -162,13 +161,13 @@ export const BannersPage = () => {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-[#E2E8E3]">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2.5">
-            <ImageIcon className="w-6 h-6 text-emerald-400" />
+          <h1 className="text-2xl font-black tracking-tight text-[#17231B] flex items-center gap-2.5">
+            <ImageIcon className="w-6 h-6 text-[#267A45]" />
             <span>Homepage Banners</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-[#526258] mt-1">
             Manage hero banners, tournaments announcements, call-to-actions, and carousel sequences.
           </p>
         </div>
@@ -190,14 +189,14 @@ export const BannersPage = () => {
           role="status"
           className={`p-3.5 rounded-2xl flex items-center gap-3 text-xs leading-relaxed animate-in fade-in ${
             successToast.type === 'error'
-              ? 'bg-rose-500/10 border border-rose-500/30 text-rose-300'
-              : 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300'
+              ? 'bg-[#FDF0EF] border border-[#F5C2BF] text-[#922B27]'
+              : 'bg-[#E7F3E9] border border-[#C9DFCE] text-[#1D6537]'
           }`}
         >
           {successToast.type === 'error' ? (
-            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <AlertCircle className="w-4 h-4 text-[#922B27] shrink-0" />
           ) : (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="w-4 h-4 text-[#267A45] shrink-0" />
           )}
           <span>{successToast.message}</span>
         </div>
@@ -206,15 +205,15 @@ export const BannersPage = () => {
       {/* Banner Cards Grid */}
       {isLoading ? (
         <div className="py-16 text-center flex flex-col items-center justify-center gap-2">
-          <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
-          <p className="text-xs text-slate-400">Loading banners...</p>
+          <Loader2 className="w-6 h-6 text-[#267A45] animate-spin" />
+          <p className="text-xs text-[#526258]">Loading banners...</p>
         </div>
       ) : isError ? (
-        <div className="py-12 text-center text-rose-400 text-xs">
+        <div className="py-12 text-center text-[#922B27] text-xs">
           Failed to load banners: {error?.message}
         </div>
       ) : banners.length === 0 ? (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-12 text-center text-slate-400 text-xs">
+        <div className="rounded-2xl border border-[#D7E0D9] bg-white p-12 text-center text-[#526258] text-xs">
           No banners configured. Click &quot;Add New Banner&quot; to highlight tournaments or promotions.
         </div>
       ) : (
@@ -222,30 +221,30 @@ export const BannersPage = () => {
           {banners.map((banner) => (
             <div
               key={banner._id}
-              className="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden flex flex-col justify-between group shadow-lg"
+              className="rounded-2xl border border-[#D7E0D9] bg-white overflow-hidden flex flex-col justify-between group shadow-xs"
             >
-              {/* Image Preview Container */}
-              <div className="relative h-44 bg-slate-950 overflow-hidden">
+              {/* Image Preview Container with high-contrast gradient overlay */}
+              <div className="relative h-44 bg-[#17231B] overflow-hidden">
                 <img
                   src={banner.image}
                   alt={banner.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90"
                   onError={(e) => {
                     e.currentTarget.src =
                       'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80'
                   }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#17231B] via-[#17231B]/40 to-transparent" />
 
                 <div className="absolute top-3 left-3 flex items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-xl text-[10px] font-bold bg-slate-900/90 text-emerald-400 border border-slate-700/80 backdrop-blur-md">
+                  <span className="px-2.5 py-1 rounded-xl text-[10px] font-bold bg-[#17231B]/80 text-[#FFFFFF] border border-[#267A45]/40 backdrop-blur-md">
                     Order #{banner.order}
                   </span>
                   <span
                     className={`px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider backdrop-blur-md ${
                       banner.isActive
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                        : 'bg-slate-900/80 text-slate-400 border border-slate-700'
+                        ? 'bg-[#1D6537]/80 text-[#FFFFFF] border border-[#C9DFCE]'
+                        : 'bg-[#17231B]/80 text-[#D7E0D9] border border-[#69756D]'
                     }`}
                   >
                     {banner.isActive ? 'Active' : 'Inactive'}
@@ -253,17 +252,17 @@ export const BannersPage = () => {
                 </div>
 
                 <div className="absolute bottom-3 left-4 right-4">
-                  <h3 className="font-bold text-white text-base truncate">{banner.title}</h3>
+                  <h3 className="font-bold text-[#FFFFFF] text-base truncate">{banner.title}</h3>
                   {banner.subtitle && (
-                    <p className="text-xs text-slate-300 truncate mt-0.5">{banner.subtitle}</p>
+                    <p className="text-xs text-[#E2E8E3] truncate mt-0.5">{banner.subtitle}</p>
                   )}
                 </div>
               </div>
 
               {/* Card Footer / Details */}
-              <div className="p-4 flex items-center justify-between border-t border-slate-800 bg-slate-900/80 text-xs">
-                <div className="flex items-center gap-1.5 text-slate-400 truncate max-w-[200px]">
-                  <ExternalLink className="w-3.5 h-3.5 shrink-0 text-slate-500" />
+              <div className="p-4 flex items-center justify-between border-t border-[#E2E8E3] bg-[#F6F8F6] text-xs">
+                <div className="flex items-center gap-1.5 text-[#526258] truncate max-w-[200px]">
+                  <ExternalLink className="w-3.5 h-3.5 shrink-0 text-[#647168]" />
                   <span className="truncate">{banner.link || 'No link assigned'}</span>
                 </div>
 
@@ -271,7 +270,7 @@ export const BannersPage = () => {
                   <button
                     type="button"
                     onClick={() => handleOpenEdit(banner)}
-                    className="p-1.5 rounded-lg text-slate-300 hover:text-emerald-300 hover:bg-slate-800 transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg text-[#526258] hover:text-[#267A45] hover:bg-[#EEF3EF] transition-colors cursor-pointer"
                     title="Edit Banner"
                   >
                     <Edit2 className="w-4 h-4" />
@@ -285,8 +284,8 @@ export const BannersPage = () => {
                     disabled={toggleMutation.isPending}
                     className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
                       banner.isActive
-                        ? 'text-rose-400 hover:bg-rose-500/10 hover:text-rose-300'
-                        : 'text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300'
+                        ? 'text-[#922B27] hover:bg-[#FDF0EF]'
+                        : 'text-[#267A45] hover:bg-[#E7F3E9]'
                     }`}
                     title={banner.isActive ? 'Deactivate Banner' : 'Activate Banner'}
                   >
@@ -297,7 +296,7 @@ export const BannersPage = () => {
                     type="button"
                     onClick={() => handleDelete(banner)}
                     disabled={deleteMutation.isPending}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg text-[#526258] hover:text-[#922B27] hover:bg-[#FDF0EF] transition-colors cursor-pointer"
                     title="Delete Banner"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -318,8 +317,8 @@ export const BannersPage = () => {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           {serverError && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <div className="p-3 rounded-xl bg-[#FDF0EF] border border-[#F5C2BF] text-[#922B27] text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-[#922B27] shrink-0" />
               <span>{serverError}</span>
             </div>
           )}
@@ -362,7 +361,7 @@ export const BannersPage = () => {
 
           {/* Real-time live image preview */}
           {formData.image && (
-            <div className="rounded-xl overflow-hidden border border-slate-800 h-28 bg-slate-950 relative">
+            <div className="rounded-xl overflow-hidden border border-[#D7E0D9] h-28 bg-[#17231B] relative">
               <img
                 src={formData.image}
                 alt="Live Preview"
@@ -371,7 +370,7 @@ export const BannersPage = () => {
                   e.currentTarget.style.display = 'none'
                 }}
               />
-              <span className="absolute bottom-2 left-2 text-[10px] font-bold bg-slate-900/90 text-slate-300 px-2 py-0.5 rounded border border-slate-700">
+              <span className="absolute bottom-2 left-2 text-[10px] font-bold bg-[#17231B]/90 text-[#FFFFFF] px-2 py-0.5 rounded border border-[#267A45]/40">
                 Live Image Preview
               </span>
             </div>
@@ -409,7 +408,7 @@ export const BannersPage = () => {
             </FormField>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E2E8E3]">
             <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>

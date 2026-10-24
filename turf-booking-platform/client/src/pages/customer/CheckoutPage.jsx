@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useRef } from 'react'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
 import {
   Calendar,
@@ -13,7 +13,6 @@ import {
   User,
   Mail,
   Phone,
-  Sparkles,
   Info,
   Tag,
   Building2,
@@ -36,17 +35,14 @@ export const CheckoutPage = () => {
     date,
     startTime,
     endTime,
-    durationHours = 1,
     playerCount = 10,
     selectedAddOns = [],
   } = checkoutState
 
-  // Persistent idempotency key for this checkout session to protect against duplicate submissions
   const idempotencyKeyRef = useRef(
     `IDEM-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
   )
 
-  // Player Contact Details
   const [contactDetails, setContactDetails] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -56,8 +52,7 @@ export const CheckoutPage = () => {
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Fetch full turf details if not completely passed
-  const { data: turfData, isLoading: turfLoading } = useQuery({
+  const { data: turfData } = useQuery({
     queryKey: ['checkoutTurf', turfId],
     queryFn: () => customerInventoryService.getTurfById(turfId),
     enabled: !!turfId && !passedTurf?.address,
@@ -65,7 +60,6 @@ export const CheckoutPage = () => {
 
   const turf = passedTurf || turfData
 
-  // 1. Authoritative Server-Side Pricing Quote
   const {
     data: quote,
     isLoading: quoteLoading,
@@ -88,7 +82,6 @@ export const CheckoutPage = () => {
     enabled: !!turfId && !!date && !!startTime && !!endTime,
   })
 
-  // Format date helper
   const formattedDate = date
     ? new Date(date + 'T00:00:00Z').toLocaleDateString('en-IN', {
         weekday: 'long',
@@ -154,7 +147,6 @@ export const CheckoutPage = () => {
         idempotencyKeyRef.current
       )
 
-      // Navigate to Booking Success Page
       navigate(`/bookings/success/${booking._id}`, {
         state: { booking },
         replace: true,
@@ -171,22 +163,21 @@ export const CheckoutPage = () => {
     }
   }
 
-  // If user entered without selecting a slot or turf
   if (!turfId || !date || !startTime || !endTime) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <div className="w-16 h-16 mx-auto rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-6">
+        <div className="w-16 h-16 mx-auto rounded-3xl bg-[#FDF4E7] border border-[#F6E1C4] flex items-center justify-center text-[#79420D] mb-6">
           <Calendar className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-black text-white tracking-tight mb-2">
+        <h2 className="text-2xl font-black text-[#17231B] tracking-tight mb-2">
           No Match Slot Selected
         </h2>
-        <p className="text-sm text-slate-400 max-w-md mx-auto mb-8">
+        <p className="text-sm text-[#526258] max-w-md mx-auto mb-8">
           To checkout, please select a sports turf arena, desired calendar date, and an available time slot first.
         </p>
         <Link
           to="/turfs"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/20 transition-all"
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-sm shadow-xs transition-all"
         >
           <ChevronLeft className="w-4 h-4" />
           <span>Browse Available Turfs</span>
@@ -202,32 +193,32 @@ export const CheckoutPage = () => {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs text-[#526258] hover:text-[#17231B] transition-colors cursor-pointer"
         >
           <ChevronLeft className="w-4 h-4" />
           <span>Back to Turf Details</span>
         </button>
-        <div className="flex items-center gap-2 text-xs text-emerald-400 font-semibold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
-          <ShieldCheck className="w-4 h-4" />
+        <div className="flex items-center gap-2 text-xs text-[#1D6537] font-semibold bg-[#E7F3E9] border border-[#C9DFCE] px-3 py-1 rounded-full">
+          <ShieldCheck className="w-4 h-4 text-[#267A45]" />
           <span>Secure Checkout</span>
         </div>
       </div>
 
       <div>
-        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+        <h1 className="text-2xl sm:text-3xl font-black text-[#17231B] tracking-tight">
           Review & Confirm Booking
         </h1>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
+        <p className="text-xs sm:text-sm text-[#526258] mt-1">
           Complete your contact details and reserve your slot. No upfront card payment required.
         </p>
       </div>
 
       {submitError && (
-        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-start gap-3 animate-shake">
+        <div className="p-4 rounded-2xl bg-[#FDF0EF] border border-[#F8D2CE] text-[#922B27] text-xs flex items-start gap-3">
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
           <div>
             <p className="font-bold text-sm">Booking could not be confirmed</p>
-            <p className="mt-0.5 text-rose-300">{submitError}</p>
+            <p className="mt-0.5">{submitError}</p>
           </div>
         </div>
       )}
@@ -236,18 +227,18 @@ export const CheckoutPage = () => {
         {/* Left Column: Booking Info & Contact Details */}
         <div className="lg:col-span-7 space-y-6">
           {/* Turf & Slot Summary Card */}
-          <div className="p-5 sm:p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-emerald-400" />
+          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-[#D7E0D9] shadow-xs space-y-4">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-[#17231B] flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-[#267A45]" />
               <span>Arena & Time Slot</span>
             </h2>
 
             <div className="space-y-3 pt-1">
               <div>
-                <h3 className="text-lg font-black text-white">{turf?.name || 'Selected Arena'}</h3>
+                <h3 className="text-lg font-black text-[#17231B]">{turf?.name || 'Selected Arena'}</h3>
                 {turf?.address && (
-                  <p className="text-xs text-slate-400 flex items-center gap-1.5 mt-1">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <p className="text-xs text-[#46564A] flex items-center gap-1.5 mt-1">
+                    <MapPin className="w-3.5 h-3.5 text-[#267A45] shrink-0" />
                     <span>
                       {turf.address.street}, {turf.address.city}, {turf.address.state}
                     </span>
@@ -256,35 +247,35 @@ export const CheckoutPage = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                <div className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800/80 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                <div className="p-3 rounded-2xl bg-[#F6F8F6] border border-[#D7E0D9] flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#E7F3E9] border border-[#C9DFCE] flex items-center justify-center text-[#267A45] shrink-0">
                     <Calendar className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Date</span>
-                    <span className="text-xs font-semibold text-white">{formattedDate}</span>
+                    <span className="text-[10px] uppercase font-bold text-[#526258] block">Date</span>
+                    <span className="text-xs font-semibold text-[#17231B]">{formattedDate}</span>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800/80 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                <div className="p-3 rounded-2xl bg-[#F6F8F6] border border-[#D7E0D9] flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#E7F3E9] border border-[#C9DFCE] flex items-center justify-center text-[#267A45] shrink-0">
                     <Clock className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Time Slot</span>
-                    <span className="text-xs font-semibold text-white">
+                    <span className="text-[10px] uppercase font-bold text-[#526258] block">Time Slot</span>
+                    <span className="text-xs font-semibold text-[#17231B]">
                       {startTime} - {endTime}
                     </span>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800/80 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                <div className="p-3 rounded-2xl bg-[#F6F8F6] border border-[#D7E0D9] flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#E7F3E9] border border-[#C9DFCE] flex items-center justify-center text-[#267A45] shrink-0">
                     <User className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Squad Size</span>
-                    <span className="text-xs font-semibold text-white">
+                    <span className="text-[10px] uppercase font-bold text-[#526258] block">Squad Size</span>
+                    <span className="text-xs font-semibold text-[#17231B]">
                       {playerCount} Players (Max {turf?.capacity?.maxPlayers || 22})
                     </span>
                   </div>
@@ -294,22 +285,22 @@ export const CheckoutPage = () => {
           </div>
 
           {/* Player Contact Details Form */}
-          <div className="p-5 sm:p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <User className="w-4 h-4 text-emerald-400" />
+          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-[#D7E0D9] shadow-xs space-y-4">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-[#17231B] flex items-center gap-2">
+              <User className="w-4 h-4 text-[#267A45]" />
               <span>Player / Contact Information</span>
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-[#526258]">
               The booking reference and venue access pass will be issued under these contact details.
             </p>
 
             <div className="space-y-4 pt-1">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Full Name <span className="text-rose-400">*</span>
+                <label className="block text-xs font-semibold text-[#17231B] mb-1.5">
+                  Full Name <span className="text-[#922B27]">*</span>
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                  <User className="w-4 h-4 text-[#647168] absolute left-3.5 top-3" />
                   <input
                     type="text"
                     value={contactDetails.name}
@@ -317,24 +308,24 @@ export const CheckoutPage = () => {
                       setContactDetails({ ...contactDetails, name: e.target.value })
                     }
                     placeholder="Enter player/booker full name"
-                    className={`w-full bg-slate-950 text-xs text-white placeholder-slate-600 pl-10 pr-4 py-2.5 rounded-xl border focus:outline-none transition-all ${
+                    className={`w-full bg-white text-xs text-[#17231B] placeholder-[#647168] pl-10 pr-4 py-2.5 rounded-xl border focus:outline-none transition-all ${
                       fieldErrors.name
-                        ? 'border-rose-500 ring-1 ring-rose-500'
-                        : 'border-slate-800 focus:border-emerald-500'
+                        ? 'border-[#922B27] ring-1 ring-[#922B27]'
+                        : 'border-[#D7E0D9] focus:border-[#267A45]'
                     }`}
                   />
                 </div>
                 {fieldErrors.name && (
-                  <p className="text-[11px] text-rose-400 mt-1">{fieldErrors.name}</p>
+                  <p className="text-[11px] text-[#922B27] mt-1">{fieldErrors.name}</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Email Address <span className="text-rose-400">*</span>
+                <label className="block text-xs font-semibold text-[#17231B] mb-1.5">
+                  Email Address <span className="text-[#922B27]">*</span>
                 </label>
                 <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                  <Mail className="w-4 h-4 text-[#647168] absolute left-3.5 top-3" />
                   <input
                     type="email"
                     value={contactDetails.email}
@@ -342,24 +333,24 @@ export const CheckoutPage = () => {
                       setContactDetails({ ...contactDetails, email: e.target.value })
                     }
                     placeholder="name@example.com"
-                    className={`w-full bg-slate-950 text-xs text-white placeholder-slate-600 pl-10 pr-4 py-2.5 rounded-xl border focus:outline-none transition-all ${
+                    className={`w-full bg-white text-xs text-[#17231B] placeholder-[#647168] pl-10 pr-4 py-2.5 rounded-xl border focus:outline-none transition-all ${
                       fieldErrors.email
-                        ? 'border-rose-500 ring-1 ring-rose-500'
-                        : 'border-slate-800 focus:border-emerald-500'
+                        ? 'border-[#922B27] ring-1 ring-[#922B27]'
+                        : 'border-[#D7E0D9] focus:border-[#267A45]'
                     }`}
                   />
                 </div>
                 {fieldErrors.email && (
-                  <p className="text-[11px] text-rose-400 mt-1">{fieldErrors.email}</p>
+                  <p className="text-[11px] text-[#922B27] mt-1">{fieldErrors.email}</p>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Contact Mobile Number <span className="text-rose-400">*</span>
+                <label className="block text-xs font-semibold text-[#17231B] mb-1.5">
+                  Contact Mobile Number <span className="text-[#922B27]">*</span>
                 </label>
                 <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                  <Phone className="w-4 h-4 text-[#647168] absolute left-3.5 top-3" />
                   <input
                     type="tel"
                     value={contactDetails.phone}
@@ -367,39 +358,39 @@ export const CheckoutPage = () => {
                       setContactDetails({ ...contactDetails, phone: e.target.value })
                     }
                     placeholder="e.g. 9876543210"
-                    className={`w-full bg-slate-950 text-xs text-white placeholder-slate-600 pl-10 pr-4 py-2.5 rounded-xl border focus:outline-none transition-all ${
+                    className={`w-full bg-white text-xs text-[#17231B] placeholder-[#647168] pl-10 pr-4 py-2.5 rounded-xl border focus:outline-none transition-all ${
                       fieldErrors.phone
-                        ? 'border-rose-500 ring-1 ring-rose-500'
-                        : 'border-slate-800 focus:border-emerald-500'
+                        ? 'border-[#922B27] ring-1 ring-[#922B27]'
+                        : 'border-[#D7E0D9] focus:border-[#267A45]'
                     }`}
                   />
                 </div>
                 {fieldErrors.phone && (
-                  <p className="text-[11px] text-rose-400 mt-1">{fieldErrors.phone}</p>
+                  <p className="text-[11px] text-[#922B27] mt-1">{fieldErrors.phone}</p>
                 )}
               </div>
             </div>
           </div>
 
           {/* Payment Method Selection: Pay at Venue */}
-          <div className="p-5 sm:p-6 rounded-3xl bg-slate-900/80 border border-slate-800 space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-emerald-400" />
+          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-[#D7E0D9] shadow-xs space-y-4">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-[#17231B] flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-[#267A45]" />
               <span>Payment Option</span>
             </h2>
 
-            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-4">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
-                <CheckCircle2 className="w-5 h-5" />
+            <div className="p-4 rounded-2xl bg-[#E7F3E9] border border-[#C9DFCE] flex items-start gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-white border border-[#C9DFCE] flex items-center justify-center text-[#267A45] shrink-0">
+                <CheckCircle2 className="w-5 h-5 text-[#267A45]" />
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-white">Pay at Venue</span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  <span className="text-sm font-bold text-[#17231B]">Pay at Venue</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-white text-[#1D6537] border border-[#C9DFCE]">
                     Recommended
                   </span>
                 </div>
-                <p className="text-xs text-slate-300">
+                <p className="text-xs text-[#46564A]">
                   Pay securely at the arena counter via Cash, UPI, or Card on arrival. Your booking is confirmed immediately without advance deduction.
                 </p>
               </div>
@@ -409,43 +400,43 @@ export const CheckoutPage = () => {
 
         {/* Right Column: Authoritative Price Breakdown & Submit */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="p-5 sm:p-6 rounded-3xl bg-slate-900 border border-slate-800 sticky top-24 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                <Tag className="w-4 h-4 text-emerald-400" />
+          <div className="p-5 sm:p-6 rounded-3xl bg-white border border-[#D7E0D9] shadow-xs sticky top-24 space-y-5">
+            <div className="flex items-center justify-between border-b border-[#E2E8E3] pb-3">
+              <h2 className="text-sm font-bold text-[#17231B] flex items-center gap-2">
+                <Tag className="w-4 h-4 text-[#267A45]" />
                 <span>Price Breakdown</span>
               </h2>
               {quoteLoading && (
-                <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                  <Loader2 className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+                <div className="flex items-center gap-1.5 text-xs text-[#526258]">
+                  <Loader2 className="w-3.5 h-3.5 text-[#267A45] animate-spin" />
                   <span>Computing...</span>
                 </div>
               )}
             </div>
 
             {quoteLoading ? (
-              <div className="py-8 text-center text-slate-500 text-xs">
-                <Loader2 className="w-6 h-6 text-emerald-400 animate-spin mx-auto mb-2" />
+              <div className="py-8 text-center text-[#526258] text-xs">
+                <Loader2 className="w-6 h-6 text-[#267A45] animate-spin mx-auto mb-2" />
                 <span>Fetching authoritative rates and taxes...</span>
               </div>
             ) : quote ? (
               <div className="space-y-4 text-xs">
                 {/* Hourly Segments */}
                 <div className="space-y-2">
-                  <span className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">
+                  <span className="text-[11px] font-bold uppercase text-[#526258] tracking-wider">
                     Turf Slot Charges
                   </span>
                   {quote.hourlySegments?.map((seg, idx) => (
-                    <div key={idx} className="flex justify-between items-center text-slate-300">
+                    <div key={idx} className="flex justify-between items-center text-[#46564A]">
                       <div>
                         <span>
                           {seg.startTime} - {seg.endTime}
                         </span>
-                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-emerald-400 uppercase font-mono">
+                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-[#E7F3E9] text-[#1D6537] uppercase font-mono border border-[#C9DFCE]">
                           {seg.rateType}
                         </span>
                       </div>
-                      <span className="font-mono text-white">
+                      <span className="font-mono text-[#17231B] font-bold">
                         ₹{(seg.segmentPrice / 100).toFixed(2)}
                       </span>
                     </div>
@@ -454,16 +445,16 @@ export const CheckoutPage = () => {
 
                 {/* Selected Add-Ons */}
                 {quote.addOns && quote.addOns.length > 0 && (
-                  <div className="space-y-2 pt-2 border-t border-slate-800/80">
-                    <span className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">
+                  <div className="space-y-2 pt-2 border-t border-[#E2E8E3]">
+                    <span className="text-[11px] font-bold uppercase text-[#526258] tracking-wider">
                       Add-Ons & Gear
                     </span>
                     {quote.addOns.map((addon, idx) => (
-                      <div key={idx} className="flex justify-between items-center text-slate-300">
+                      <div key={idx} className="flex justify-between items-center text-[#46564A]">
                         <span>
                           {addon.name} × {addon.quantity}
                         </span>
-                        <span className="font-mono text-white">
+                        <span className="font-mono text-[#17231B] font-bold">
                           ₹{(addon.totalAmount / 100).toFixed(2)}
                         </span>
                       </div>
@@ -472,10 +463,10 @@ export const CheckoutPage = () => {
                 )}
 
                 {/* Subtotal & Taxes */}
-                <div className="space-y-2 pt-3 border-t border-slate-800 text-slate-400">
+                <div className="space-y-2 pt-3 border-t border-[#E2E8E3] text-[#526258]">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span className="font-mono text-white">
+                    <span className="font-mono text-[#17231B] font-bold">
                       ₹{(quote.subtotal / 100).toFixed(2)}
                     </span>
                   </div>
@@ -484,25 +475,25 @@ export const CheckoutPage = () => {
                     <span>
                       {quote.tax?.taxName || 'GST'} ({quote.tax?.taxPercentage || 0}%)
                     </span>
-                    <span className="font-mono text-white">
+                    <span className="font-mono text-[#17231B] font-bold">
                       ₹{((quote.tax?.taxAmount || 0) / 100).toFixed(2)}
                     </span>
                   </div>
 
                   {/* Final Total Amount */}
-                  <div className="pt-3 border-t border-slate-800 flex justify-between items-center">
+                  <div className="pt-3 border-t border-[#E2E8E3] flex justify-between items-center">
                     <div>
-                      <span className="text-sm font-bold text-white block">Total Payable</span>
-                      <span className="text-[10px] text-slate-500">Pay at venue reception</span>
+                      <span className="text-sm font-bold text-[#17231B] block">Total Payable</span>
+                      <span className="text-[10px] text-[#526258]">Pay at venue reception</span>
                     </div>
-                    <span className="font-mono text-xl sm:text-2xl font-black text-emerald-400">
+                    <span className="font-mono text-xl sm:text-2xl font-black text-[#267A45]">
                       ₹{(quote.finalTotal / 100).toFixed(2)}
                     </span>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/90 text-[11px] text-slate-400 flex items-start gap-2">
-                  <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="p-3 rounded-2xl bg-[#F0F4F1] border border-[#D7E0D9] text-[11px] text-[#526258] flex items-start gap-2">
+                  <Info className="w-4 h-4 text-[#267A45] shrink-0 mt-0.5" />
                   <span>
                     Your slot will be reserved immediately upon clicking Confirm. Pricing snapshots are locked to protect against future price revisions.
                   </span>
@@ -512,23 +503,23 @@ export const CheckoutPage = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting || quoteLoading}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-emerald-400 hover:bg-emerald-300 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-black text-sm tracking-wide shadow-lg shadow-emerald-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-3.5 px-6 rounded-2xl bg-[#267A45] hover:bg-[#1E6338] disabled:bg-[#EDF1EE] disabled:text-[#69756D] text-white font-black text-sm tracking-wide shadow-xs hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
                       <span>Confirming Slot Reservation...</span>
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-4 h-4 text-slate-950" />
+                      <CheckCircle2 className="w-4 h-4 text-white" />
                       <span>Confirm & Book (Pay at Venue)</span>
                     </>
                   )}
                 </button>
               </div>
             ) : quoteError ? (
-              <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
+              <div className="p-4 rounded-xl bg-[#FDF0EF] border border-[#F8D2CE] text-[#922B27] text-xs">
                 <AlertCircle className="w-4 h-4 inline mr-1" />
                 <span>
                   {quoteErrObj?.response?.data?.error?.message ||
