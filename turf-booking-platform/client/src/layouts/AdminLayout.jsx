@@ -16,11 +16,13 @@ import {
   LayoutDashboard,
   Calendar,
   Clock,
+  Users,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
 const NAV_ITEMS = [
   { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
+  { name: 'Customers', path: '/admin/customers', icon: Users },
   { name: 'Bookings', path: '/admin/bookings', icon: Calendar },
   { name: 'Blocked Slots', path: '/admin/blocked-slots', icon: Clock },
   { name: 'Turf Arenas', path: '/admin/turfs', icon: MapPin },

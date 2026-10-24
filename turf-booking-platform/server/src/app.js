@@ -9,6 +9,7 @@ import healthRoutes from './routes/health.routes.js'
 import authRoutes from './routes/auth.routes.js'
 import adminInventoryRoutes from './routes/admin/inventory.routes.js'
 import adminBookingRoutes from './routes/admin/booking.routes.js'
+import adminCustomerRoutes from './routes/admin/customer.routes.js'
 import customerInventoryRoutes from './routes/customer/inventory.routes.js'
 import customerBookingRoutes from './routes/customer/booking.routes.js'
 import customerPricingRoutes from './routes/customer/pricing.routes.js'
@@ -47,6 +48,7 @@ app.use('/api/v1/health', healthRoutes)
 app.use('/api/v1/auth', authRoutes)
 app.use('/api/v1/admin', adminInventoryRoutes)
 app.use('/api/v1/admin', adminBookingRoutes)
+app.use('/api/v1/admin', adminCustomerRoutes)
 app.use('/api/v1/bookings', customerBookingRoutes)
 app.use('/api/v1/pricing', customerPricingRoutes)
 app.use('/api/v1/availability', customerAvailabilityRoutes)
