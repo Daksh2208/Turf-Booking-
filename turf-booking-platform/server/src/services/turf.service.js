@@ -295,17 +295,56 @@ export const turfService = {
   },
 
   /**
-   * Public listing of active turfs with optional sport filtering and search
+   * Public listing of active turfs with optional sport filtering, area, facilities, price, and sorting
    */
-  async getPublicTurfs({ page = 1, limit = 12, search = '', sportSlug } = {}) {
+  async getPublicTurfs({
+    page = 1,
+    limit = 12,
+    search = '',
+    sportSlug,
+    city,
+    facilities,
+    minPrice,
+    maxPrice,
+    sort = 'name_asc',
+  } = {}) {
     const query = { isActive: true }
 
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
         { 'address.city': { $regex: search, $options: 'i' } },
+        { 'address.street': { $regex: search, $options: 'i' } },
         { 'address.landmark': { $regex: search, $options: 'i' } },
       ]
+    }
+
+    // Filter by city / area
+    if (city) {
+      query['address.city'] = { $regex: city, $options: 'i' }
+    }
+
+    // Filter by facilities (e.g. floodlights, parking)
+    if (facilities) {
+      const facilityList = Array.isArray(facilities)
+        ? facilities
+        : String(facilities).split(',').map((f) => f.trim()).filter(Boolean)
+
+      if (facilityList.length > 0) {
+        query.facilities = {
+          $all: facilityList.map((f) => new RegExp(`^${f}$`, 'i')),
+        }
+      }
+    }
+
+    // Price range filters (in INR or Paise, normalized to Paise)
+    if (minPrice !== undefined && minPrice !== null && minPrice !== '') {
+      const minPaise = Number(minPrice) > 5000 ? Number(minPrice) : Number(minPrice) * 100
+      query['pricing.baseRate'] = { ...(query['pricing.baseRate'] || {}), $gte: minPaise }
+    }
+    if (maxPrice !== undefined && maxPrice !== null && maxPrice !== '') {
+      const maxPaise = Number(maxPrice) > 5000 ? Number(maxPrice) : Number(maxPrice) * 100
+      query['pricing.baseRate'] = { ...(query['pricing.baseRate'] || {}), $lte: maxPaise }
     }
 
     // Filter by sport slug if provided
@@ -322,12 +361,33 @@ export const turfService = {
       }
     }
 
+    // Sorting
+    let sortQuery = { name: 1 }
+    switch (sort) {
+      case 'price_asc':
+        sortQuery = { 'pricing.baseRate': 1, name: 1 }
+        break
+      case 'price_desc':
+        sortQuery = { 'pricing.baseRate': -1, name: 1 }
+        break
+      case 'name_desc':
+        sortQuery = { name: -1 }
+        break
+      case 'newest':
+        sortQuery = { createdAt: -1 }
+        break
+      case 'name_asc':
+      default:
+        sortQuery = { name: 1 }
+        break
+    }
+
     const skip = (Number(page) - 1) * Number(limit)
     const [turfs, total] = await Promise.all([
       Turf.find(query)
         .populate('sports', 'name slug icon')
-        .select('name slug description sports address images capacity facilities openingHours timezone')
-        .sort({ name: 1 })
+        .select('name slug description sports address images capacity facilities openingHours timezone size surface pricing isActive createdAt')
+        .sort(sortQuery)
         .skip(skip)
         .limit(Number(limit)),
       Turf.countDocuments(query),
@@ -345,12 +405,24 @@ export const turfService = {
   },
 
   /**
-   * Public get active turf by slug
+   * Public get active turf by slug or ID
    */
-  async getPublicTurfBySlug(slug) {
-    const turf = await Turf.findOne({ slug: slug.toLowerCase(), isActive: true })
+  async getPublicTurfBySlug(slugOrId) {
+    if (!slugOrId) {
+      const error = new Error('Turf identifier is required.')
+      error.statusCode = 400
+      error.code = 'INVALID_IDENTIFIER'
+      throw error
+    }
+
+    const isObjectId = mongoose.Types.ObjectId.isValid(slugOrId)
+    const query = isObjectId
+      ? { $or: [{ _id: slugOrId }, { slug: slugOrId.toLowerCase() }], isActive: true }
+      : { slug: slugOrId.toLowerCase(), isActive: true }
+
+    const turf = await Turf.findOne(query)
       .populate('sports', 'name slug icon')
-      .select('name slug description sports address images capacity facilities openingHours timezone')
+      .select('name slug description sports address images capacity facilities openingHours timezone size surface pricing isActive createdAt')
 
     if (!turf) {
       const error = new Error('Turf not found or is currently inactive.')

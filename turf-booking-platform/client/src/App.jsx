@@ -5,10 +5,14 @@ import { AuthProvider } from './features/auth/context/AuthContext'
 import { ProtectedRoute } from './components/common/ProtectedRoute'
 import { AdminLayout } from './layouts/AdminLayout'
 
-// Public & Auth Pages
+import { CustomerLayout } from './layouts/CustomerLayout'
+
+// Public & Customer Pages
+import { HomePage } from './pages/customer/HomePage'
+import { TurfListingPage } from './pages/customer/TurfListingPage'
+import { TurfDetailPage } from './pages/customer/TurfDetailPage'
 import { LoginPage } from './features/auth/pages/LoginPage'
 import { RegisterPage } from './features/auth/pages/RegisterPage'
-import { LandingPlaceholder } from './pages/public/LandingPlaceholder'
 import { NotFoundPage } from './pages/public/NotFoundPage'
 import { UserSettingsPage } from './pages/customer/UserSettingsPage'
 
@@ -38,8 +42,12 @@ export function App() {
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            {/* Default Customer Landing View */}
-            <Route path="/" element={<LandingPlaceholder />} />
+            {/* Customer Website Routes wrapped in CustomerLayout */}
+            <Route element={<CustomerLayout />}>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/turfs" element={<TurfListingPage />} />
+              <Route path="/turfs/:slug" element={<TurfDetailPage />} />
+            </Route>
 
             {/* Public Authentication Routes */}
             <Route path="/login" element={<LoginPage />} />
