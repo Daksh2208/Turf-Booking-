@@ -40,10 +40,14 @@ const seedAdmin = async () => {
         process.exit(1)
       }
 
-      // Rule 5: If the account already exists as admin, do not reset password silently
-      console.log(
-        `ℹ️  Administrator account already exists for "${email}". Existing credentials preserved.`
-      )
+      // If administrator already exists, sync password from ADMIN_PASSWORD
+      existingUser.passwordHash = await User.hashPassword(password)
+      existingUser.name = name
+      existingUser.isActive = true
+      await existingUser.save()
+      console.log('====================================================')
+      console.log(`✅ Administrator credentials updated for "${email}"!`)
+      console.log('====================================================')
       return
     }
 
