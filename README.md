@@ -8,6 +8,7 @@ Built for multi-sport arenas catering to **Box Cricket**, **Football**, **Pickle
 
 ## 📑 Table of Contents
 
+- [Technical Documentation Guides](#-technical-documentation-guides)
 - [Key Highlights](#-key-highlights)
 - [Platform Showcase & UI Screenshots](#-platform-showcase--ui-screenshots)
   - [Customer Portal](#1-customer-portal)
@@ -26,6 +27,18 @@ Built for multi-sport arenas catering to **Box Cricket**, **Football**, **Pickle
 - [API Endpoints Overview](#-api-endpoints-overview)
 - [Testing & Quality Assurance](#-testing--quality-assurance)
 - [License](#-license)
+
+---
+
+## 📚 Technical Documentation Guides
+
+For in-depth architectural specifications, step-by-step installation instructions, and implemented security mechanisms, refer to the dedicated technical documents in the `docs/` directory:
+
+| Document | Description |
+| :--- | :--- |
+| **[Project Report](docs/PROJECT_REPORT.md)** | Problem statement, core features, MERN architecture, database schemas & relationships, and workflows (dynamic pricing, slot holds, cancellation). |
+| **[Setup & Installation Guide](docs/SETUP.md)** | Complete prerequisites, step-by-step local execution guide, environment variables reference, seeding procedures, and common troubleshooting FAQs. |
+| **[Security Architecture Document](docs/SECURITY.md)** | Technical breakdown of JWT token rotation, bcrypt salt rounds, RBAC middleware, Zod runtime validation, Helmet headers, CORS policies, and Stripe webhook verification. |
 
 ---
 
@@ -168,6 +181,10 @@ Built for multi-sport arenas catering to **Box Cricket**, **Football**, **Pickle
 
 ```
 Turf-Booking-/
+├── docs/                                # Technical reports, setup & security guides
+│   ├── PROJECT_REPORT.md
+│   ├── SETUP.md
+│   └── SECURITY.md
 ├── screenshots/                         # Platform UI showcase screenshots
 │   ├── 01_landing_page.png
 │   ├── 02_customer_registration.png
@@ -212,12 +229,9 @@ Turf-Booking-/
 │   │   ├── tests/                       # Automated test suites
 │   │   ├── .env.example                 # Backend environment variable template
 │   │   └── package.json
-│   │
-│   └── docs/                            # Project specifications & PRD
-│       └── PRD/
-│           └── prd.txt
 ├── .gitignore
 ├── LICENSE
+├── prd.txt                              # Practical Round PRD & project requirements
 └── README.md                            # Comprehensive project guide (this file)
 ```
 
