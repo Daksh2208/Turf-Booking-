@@ -14,6 +14,7 @@ import {
   Settings,
   LayoutDashboard,
   Calendar,
+  CalendarDays,
   Clock,
   Users,
   Tag,
@@ -24,6 +25,7 @@ import { AdminTourProvider, useAdminTour } from '../features/tour'
 
 const NAV_ITEMS = [
   { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard, tourKey: 'nav-dashboard' },
+  { name: 'Booking Calendar', path: '/admin/calendar', icon: CalendarDays, tourKey: 'nav-calendar' },
   { name: 'Customers', path: '/admin/customers', icon: Users, tourKey: 'nav-customers' },
   { name: 'Bookings', path: '/admin/bookings', icon: Calendar, tourKey: 'nav-bookings' },
   { name: 'Blocked Slots', path: '/admin/blocked-slots', icon: Clock, tourKey: 'nav-blocked-slots' },

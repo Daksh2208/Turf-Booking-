@@ -1,6 +1,8 @@
 import { BlockedSlot } from '../models/BlockedSlot.js'
 import { Turf } from '../models/Turf.js'
 import { Booking } from '../models/Booking.js'
+import { HeldSlot } from '../models/HeldSlot.js'
+import { BusinessSettings } from '../models/BusinessSettings.js'
 import { logAudit } from '../utils/auditLogger.js'
 import { broadcastAvailabilityUpdate } from '../socket.js'
 
@@ -54,6 +56,21 @@ export const blockedSlotService = {
       const err = new Error(`Cannot block slot: A conflicting active booking (${conflictingBooking.bookingId}) already occupies this time range.`)
       err.statusCode = 409
       err.code = 'BOOKING_CONFLICT'
+      throw err
+    }
+
+    // 3. Reject block if it conflicts with an active customer temporary hold
+    const conflictingHold = await HeldSlot.findOne({
+      turf: turfId,
+      date,
+      status: 'active',
+      expiresAt: { $gt: new Date() },
+      slotTime: { $gte: startTime, $lt: endTime },
+    })
+    if (conflictingHold) {
+      const err = new Error('Cannot block slot: A customer currently holds an active temporary reservation on this slot.')
+      err.statusCode = 409
+      err.code = 'RESERVATION_HOLD_CONFLICT'
       throw err
     }
   },

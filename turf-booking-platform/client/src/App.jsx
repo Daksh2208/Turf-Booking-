@@ -22,6 +22,7 @@ import { UserSettingsPage } from './pages/customer/UserSettingsPage'
 
 // Admin Inventory & Operations Pages
 import { DashboardPage } from './pages/admin/DashboardPage'
+import { CalendarPage } from './pages/admin/CalendarPage'
 import { CustomersPage } from './pages/admin/CustomersPage'
 import { BookingsPage } from './pages/admin/BookingsPage'
 import { BlockedSlotsPage } from './pages/admin/BlockedSlotsPage'
@@ -142,6 +143,7 @@ export function App() {
           >
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="calendar" element={<CalendarPage />} />
             <Route path="customers" element={<CustomersPage />} />
             <Route path="bookings" element={<BookingsPage />} />
             <Route path="blocked-slots" element={<BlockedSlotsPage />} />

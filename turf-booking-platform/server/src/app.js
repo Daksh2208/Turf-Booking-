@@ -10,6 +10,7 @@ import authRoutes from './routes/auth.routes.js'
 import adminInventoryRoutes from './routes/admin/inventory.routes.js'
 import adminBookingRoutes from './routes/admin/booking.routes.js'
 import adminCustomerRoutes from './routes/admin/customer.routes.js'
+import adminCalendarRoutes from './routes/admin/calendar.routes.js'
 import customerInventoryRoutes from './routes/customer/inventory.routes.js'
 import customerBookingRoutes from './routes/customer/booking.routes.js'
 import customerPricingRoutes from './routes/customer/pricing.routes.js'
@@ -83,6 +84,8 @@ app.use('/api/v1/auth', authRoutes)
 app.use('/api/v1/admin', adminInventoryRoutes)
 app.use('/api/v1/admin', adminBookingRoutes)
 app.use('/api/v1/admin', adminCustomerRoutes)
+app.use('/api/v1/admin/calendar', adminCalendarRoutes)
+app.use('/api/admin/calendar', adminCalendarRoutes)
 app.use('/api/v1/admin/coupons', adminCouponRoutes)
 app.use('/api/v1/coupons', customerCouponRoutes)
 app.use('/api/v1/bookings', customerBookingRoutes)
