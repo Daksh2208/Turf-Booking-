@@ -49,7 +49,7 @@ export const createTurfValidator = [
     .isLength({ min: 2, max: 100 })
     .withMessage('Turf name must be between 2 and 100 characters'),
   body('slug')
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
     .withMessage('Slug must be in lowercase alphanumeric hyphenated format'),
@@ -62,18 +62,22 @@ export const createTurfValidator = [
     .isArray({ min: 1 })
     .withMessage('Turf must support at least one sport reference'),
   body('address.street')
+    .if((value, { req }) => !req.body.isDraft)
     .trim()
     .notEmpty()
     .withMessage('Street address is required'),
   body('address.city')
+    .if((value, { req }) => !req.body.isDraft)
     .trim()
     .notEmpty()
     .withMessage('City is required'),
   body('address.state')
+    .if((value, { req }) => !req.body.isDraft)
     .trim()
     .notEmpty()
     .withMessage('State is required'),
   body('address.zipCode')
+    .if((value, { req }) => !req.body.isDraft)
     .trim()
     .notEmpty()
     .withMessage('Postal/Zip code is required'),
@@ -106,16 +110,17 @@ export const createTurfValidator = [
     .isInt({ min: 0 })
     .withMessage('Weekend rate must be a non-negative integer represented in paise'),
   body('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
+  body('isDraft').optional().isBoolean().withMessage('isDraft must be a boolean'),
 ]
 
 export const updateTurfValidator = [
   body('name')
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .isLength({ min: 2, max: 100 })
     .withMessage('Turf name must be between 2 and 100 characters'),
   body('slug')
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
     .withMessage('Slug must be in lowercase alphanumeric hyphenated format'),
@@ -128,6 +133,42 @@ export const updateTurfValidator = [
     .optional()
     .isArray({ min: 1 })
     .withMessage('Turf must support at least one sport reference'),
+  body('address.street')
+    .optional({ checkFalsy: true })
+    .trim()
+    .notEmpty()
+    .withMessage('Street address cannot be empty'),
+  body('address.city')
+    .optional({ checkFalsy: true })
+    .trim()
+    .notEmpty()
+    .withMessage('City cannot be empty'),
+  body('address.state')
+    .optional({ checkFalsy: true })
+    .trim()
+    .notEmpty()
+    .withMessage('State cannot be empty'),
+  body('address.zipCode')
+    .optional({ checkFalsy: true })
+    .trim()
+    .notEmpty()
+    .withMessage('Postal/Zip code cannot be empty'),
+  body('capacity.minPlayers')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Minimum players must be at least 1'),
+  body('capacity.maxPlayers')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Maximum players must be at least 1'),
+  body('openingHours.open')
+    .optional()
+    .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
+    .withMessage('Opening time must be in HH:mm 24-hour format'),
+  body('openingHours.close')
+    .optional()
+    .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
+    .withMessage('Closing time must be in HH:mm 24-hour format'),
   body('pricing.baseRate')
     .optional()
     .isInt({ min: 0 })
@@ -141,6 +182,7 @@ export const updateTurfValidator = [
     .isInt({ min: 0 })
     .withMessage('Weekend rate must be a non-negative integer represented in paise'),
   body('isActive').optional().isBoolean().withMessage('isActive must be a boolean'),
+  body('isDraft').optional().isBoolean().withMessage('isDraft must be a boolean'),
 ]
 
 export const createAddOnValidator = [

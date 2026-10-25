@@ -329,9 +329,12 @@ export const bookingService = {
         playerCount: quote.playerCount,
         capacity: quote.capacity,
       },
-      status: 'confirmed',
-      paymentStatus: 'unpaid',
-      paymentMethod: 'Pay at Venue',
+      status: paymentMethod === 'stripe' ? 'pending' : 'confirmed',
+      paymentStatus: paymentMethod === 'stripe' ? 'pending' : 'unpaid',
+      paymentMethod: paymentMethod === 'stripe' ? 'stripe' : (paymentMethod || 'Pay at Venue'),
+      amountPaid: 0,
+      amountDue: quote.finalTotal,
+      paymentExpiresAt: paymentMethod === 'stripe' ? new Date(Date.now() + 15 * 60 * 1000) : null,
       idempotencyKey: idempotencyKey ? idempotencyKey.trim() : undefined,
     }
 
@@ -574,8 +577,17 @@ export const bookingService = {
       throw error
     }
 
+    if (booking.paymentMethod === 'stripe' && booking.paymentStatus !== 'paid') {
+      const error = new Error('Stripe payments must be verified online via Stripe and cannot be manually marked as paid by an administrator.')
+      error.statusCode = 400
+      error.code = 'MANUAL_STRIPE_PAYMENT_FORBIDDEN'
+      throw error
+    }
+
     const previousPaymentStatus = booking.paymentStatus
     booking.paymentStatus = 'paid'
+    booking.amountPaid = booking.totalAmount
+    booking.amountDue = 0
     booking.paidAt = new Date()
     booking.paymentRecordedBy = adminUser._id
     if (paymentMethod) {

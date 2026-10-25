@@ -86,11 +86,33 @@ export const MyBookingsPage = () => {
     }
   }
 
-  const getPaymentBadge = (paymentStatus) => {
+  const getPaymentBadge = (paymentStatus, paymentMethod) => {
+    const isStripe = paymentMethod === 'stripe'
     if (paymentStatus === 'paid') {
       return (
         <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]">
-          Paid
+          {isStripe ? 'Paid (Stripe)' : 'Paid'}
+        </span>
+      )
+    }
+    if (paymentStatus === 'refunded') {
+      return (
+        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#EFF6FF] text-[#1B4E82] border border-[#BFDBFE]">
+          Refunded
+        </span>
+      )
+    }
+    if (paymentStatus === 'failed') {
+      return (
+        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#FDF0EF] text-[#922B27] border border-[#F8D2CE]">
+          Payment Failed
+        </span>
+      )
+    }
+    if (paymentStatus === 'pending') {
+      return (
+        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#FDF4E7] text-[#79420D] border border-[#F6E1C4]">
+          {isStripe ? 'Stripe (Pending)' : 'Pending'}
         </span>
       )
     }
@@ -263,7 +285,7 @@ export const MyBookingsPage = () => {
                         <span className="text-base font-black font-mono text-[#17231B]">
                           ₹{(booking.totalAmount / 100).toFixed(2)}
                         </span>
-                        {getPaymentBadge(booking.paymentStatus)}
+                        {getPaymentBadge(booking.paymentStatus, booking.paymentMethod)}
                       </div>
                     </div>
 

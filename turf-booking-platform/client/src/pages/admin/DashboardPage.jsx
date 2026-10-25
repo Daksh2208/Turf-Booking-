@@ -139,7 +139,10 @@ export const DashboardPage = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* Page Top Header with Live Indicator & Date */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#E2E8E3]">
+      <div
+        data-tour="admin-dashboard-header"
+        className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#E2E8E3]"
+      >
         <div>
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-2xl sm:text-3xl font-black text-[#17231B] tracking-tight">
@@ -206,7 +209,10 @@ export const DashboardPage = () => {
       </div>
 
       {/* 4 Core Daily KPI Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      <div
+        data-tour="dashboard-metrics"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5"
+      >
         {/* Metric 1: Today's Bookings */}
         <div className="p-5 rounded-2xl bg-white border border-[#D7E0D9] shadow-xs relative overflow-hidden group hover:border-[#267A45]/50 transition-all">
           <div className="flex items-center justify-between">
@@ -298,7 +304,10 @@ export const DashboardPage = () => {
       </div>
 
       {/* Today's Financial Health Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div
+        data-tour="financial-health"
+        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+      >
         <div className="p-4 rounded-2xl bg-white border border-[#D7E0D9] shadow-xs flex items-center justify-between">
           <div>
             <span className="text-[11px] uppercase font-bold text-[#526258] block">
@@ -424,7 +433,10 @@ export const DashboardPage = () => {
       </div>
 
       {/* Today's Live Schedule / Reservations Table */}
-      <div className="p-5 sm:p-6 rounded-2xl bg-white border border-[#D7E0D9] shadow-xs space-y-4">
+      <div
+        data-tour="schedule-table"
+        className="p-5 sm:p-6 rounded-2xl bg-white border border-[#D7E0D9] shadow-xs space-y-4"
+      >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-[#E7F3E9] border border-[#C9DFCE] flex items-center justify-center text-[#267A45]">

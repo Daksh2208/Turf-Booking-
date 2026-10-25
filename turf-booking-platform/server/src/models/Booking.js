@@ -195,14 +195,50 @@ const bookingSchema = new mongoose.Schema(
     },
     paymentStatus: {
       type: String,
-      enum: ['unpaid', 'pending', 'paid', 'refunded'],
+      enum: ['unpaid', 'pending', 'paid', 'refunded', 'failed'],
       default: 'unpaid',
       index: true,
     },
     paymentMethod: {
       type: String,
-      enum: ['Pay at Venue', 'pay_at_venue', 'online', 'card', 'upi'],
+      enum: ['Pay at Venue', 'pay_at_venue', 'stripe', 'online', 'card', 'upi', 'Cash', 'cash'],
       default: 'Pay at Venue',
+    },
+    amountPaid: {
+      type: Number,
+      default: 0,
+      min: 0,
+    }, // in integer paise
+    amountDue: {
+      type: Number,
+      default: 0,
+      min: 0,
+    }, // in integer paise
+    stripeCheckoutSessionId: {
+      type: String,
+      trim: true,
+      sparse: true,
+      index: true,
+    },
+    stripePaymentIntentId: {
+      type: String,
+      trim: true,
+      sparse: true,
+      index: true,
+    },
+    stripePaymentDetails: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    paymentFailureReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    paymentExpiresAt: {
+      type: Date,
+      default: null,
+      index: true,
     },
     // Safe retry and duplicate submission prevention
     idempotencyKey: {

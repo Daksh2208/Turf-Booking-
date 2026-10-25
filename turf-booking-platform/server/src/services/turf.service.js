@@ -80,6 +80,8 @@ export const getFacilityFilterRegex = (facilityName) => {
   return new RegExp(escaped, 'i')
 }
 
+const safeEscapeRegex = (str) => String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
 export const turfService = {
   /**
    * Helper to validate that all provided sport IDs exist in the database
@@ -116,7 +118,7 @@ export const turfService = {
    * Create a new Turf (Admin only)
    */
   async createTurf(data, adminUser, ip = '') {
-    const slug = data.slug ? slugify(data.slug) : slugify(data.name)
+    const slug = data.slug && data.slug.trim() ? slugify(data.slug.trim()) : slugify(data.name)
 
     const existing = await Turf.findOne({ slug })
     if (existing) {
@@ -129,22 +131,38 @@ export const turfService = {
     // Validate referenced sports
     await this.validateSportReferences(data.sports)
 
+    const isDraft = Boolean(data.isDraft)
+
+    // When saving a draft, fill placeholder defaults for required fields that
+    // haven't been filled yet (Steps 2 & 3) so Mongoose validation passes.
+    const draftAddressDefaults = { street: 'TBD', city: 'TBD', state: 'TBD', zipCode: '000000' }
+    const address = isDraft
+      ? {
+          street: data.address?.street?.trim() || draftAddressDefaults.street,
+          city: data.address?.city?.trim() || draftAddressDefaults.city,
+          state: data.address?.state?.trim() || draftAddressDefaults.state,
+          zipCode: data.address?.zipCode?.trim() || draftAddressDefaults.zipCode,
+          landmark: data.address?.landmark?.trim() || '',
+          coordinates: { lat: 0, lng: 0 },
+        }
+      : {
+          street: data.address?.street?.trim() || '',
+          city: data.address?.city?.trim() || '',
+          state: data.address?.state?.trim() || '',
+          zipCode: data.address?.zipCode?.trim() || '',
+          landmark: data.address?.landmark ? data.address.landmark.trim() : '',
+          coordinates: {
+            lat: data.address?.coordinates?.lat || 0,
+            lng: data.address?.coordinates?.lng || 0,
+          },
+        }
+
     const turf = await Turf.create({
       name: data.name.trim(),
       slug,
       description: data.description ? data.description.trim() : '',
       sports: data.sports,
-      address: {
-        street: data.address.street.trim(),
-        city: data.address.city.trim(),
-        state: data.address.state.trim(),
-        zipCode: data.address.zipCode.trim(),
-        landmark: data.address.landmark ? data.address.landmark.trim() : '',
-        coordinates: {
-          lat: data.address.coordinates?.lat || 0,
-          lng: data.address.coordinates?.lng || 0,
-        },
-      },
+      address,
       images: Array.isArray(data.images) ? data.images : [],
       capacity: {
         minPlayers: data.capacity?.minPlayers || 2,
@@ -169,7 +187,8 @@ export const turfService = {
         weekendDays: Array.isArray(data.pricing?.weekendDays) ? data.pricing.weekendDays : [0, 6],
       },
       timezone: data.timezone || 'Asia/Kolkata',
-      isActive: data.isActive !== undefined ? Boolean(data.isActive) : true,
+      isActive: data.isActive !== undefined ? Boolean(data.isActive) : !isDraft,
+      isDraft,
     })
 
     await logAudit({
@@ -197,16 +216,18 @@ export const turfService = {
     }
 
     // Check slug uniqueness if changed
-    if (data.slug && data.slug !== turf.slug) {
-      const newSlug = slugify(data.slug)
-      const duplicate = await Turf.findOne({ slug: newSlug, _id: { $ne: id } })
-      if (duplicate) {
-        const error = new Error(`A turf with slug "${newSlug}" already exists.`)
-        error.statusCode = 409
-        error.code = 'DUPLICATE_SLUG'
-        throw error
+    if (data.slug && data.slug.trim()) {
+      const newSlug = slugify(data.slug.trim())
+      if (newSlug !== turf.slug) {
+        const duplicate = await Turf.findOne({ slug: newSlug, _id: { $ne: id } })
+        if (duplicate) {
+          const error = new Error(`A turf with slug "${newSlug}" already exists.`)
+          error.statusCode = 409
+          error.code = 'DUPLICATE_SLUG'
+          throw error
+        }
+        turf.slug = newSlug
       }
-      turf.slug = newSlug
     }
 
     // Validate sports if updated
@@ -259,6 +280,8 @@ export const turfService = {
     }
     if (data.timezone !== undefined) turf.timezone = data.timezone
     if (data.isActive !== undefined) turf.isActive = Boolean(data.isActive)
+    // Allow promoting a draft to published (isDraft: false)
+    if (data.isDraft !== undefined) turf.isDraft = Boolean(data.isDraft)
 
     await turf.save()
 
@@ -385,10 +408,10 @@ export const turfService = {
     maxPrice,
     sort = 'name_asc',
   } = {}) {
-    const query = { isActive: true }
+    const query = { isActive: true, isDraft: { $ne: true } }
 
     if (search) {
-      const cleanSearch = search.trim()
+      const cleanSearch = safeEscapeRegex(search.trim())
       // Resolve any sports matching search text (e.g. 'box cricket', 'football')
       const matchingSports = await Sport.find({
         $or: [
@@ -411,7 +434,7 @@ export const turfService = {
 
     // Filter by city / area
     if (city) {
-      query['address.city'] = { $regex: city, $options: 'i' }
+      query['address.city'] = { $regex: safeEscapeRegex(city.trim()), $options: 'i' }
     }
 
     // Filter by facilities (intelligent flexible matcher: 'Floodlights' matches 'High-Power Floodlights', 'LED Floodlights', etc.)
@@ -442,7 +465,7 @@ export const turfService = {
       const cleanSlug = String(sportSlug).toLowerCase().trim()
       const sport = await Sport.findOne({ slug: cleanSlug, isActive: true })
       if (sport) {
-        const baseName = sport.name.replace(/\s*\d+$/, '').trim()
+        const baseName = safeEscapeRegex(sport.name.replace(/\s*\d+$/, '').trim())
         const related = await Sport.find({
           isActive: true,
           $or: [
@@ -453,9 +476,10 @@ export const turfService = {
         const relatedIds = related.map((r) => r._id)
         query.sports = { $in: relatedIds }
       } else {
+        const escapedSlugSearch = safeEscapeRegex(cleanSlug.replace(/-/g, ' '))
         const byName = await Sport.find({
           isActive: true,
-          name: { $regex: new RegExp(cleanSlug.replace(/-/g, ' '), 'i') },
+          name: { $regex: new RegExp(escapedSlugSearch, 'i') },
         }).select('_id')
         if (byName.length > 0) {
           query.sports = { $in: byName.map((s) => s._id) }
@@ -525,8 +549,8 @@ export const turfService = {
 
     const isObjectId = mongoose.Types.ObjectId.isValid(slugOrId)
     const query = isObjectId
-      ? { $or: [{ _id: slugOrId }, { slug: slugOrId.toLowerCase() }], isActive: true }
-      : { slug: slugOrId.toLowerCase(), isActive: true }
+      ? { $or: [{ _id: slugOrId }, { slug: slugOrId.toLowerCase() }], isActive: true, isDraft: { $ne: true } }
+      : { slug: slugOrId.toLowerCase(), isActive: true, isDraft: { $ne: true } }
 
     const turf = await Turf.findOne(query)
       .populate('sports', 'name slug icon')

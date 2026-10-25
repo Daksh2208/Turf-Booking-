@@ -12,6 +12,8 @@ import { TurfListingPage } from './pages/customer/TurfListingPage'
 import { TurfDetailPage } from './pages/customer/TurfDetailPage'
 import { CheckoutPage } from './pages/customer/CheckoutPage'
 import { BookingSuccessPage } from './pages/customer/BookingSuccessPage'
+import { PaymentSuccessPage } from './pages/customer/PaymentSuccessPage'
+import { PaymentCancelledPage } from './pages/customer/PaymentCancelledPage'
 import { MyBookingsPage } from './pages/customer/MyBookingsPage'
 import { LoginPage } from './features/auth/pages/LoginPage'
 import { RegisterPage } from './features/auth/pages/RegisterPage'
@@ -68,6 +70,38 @@ export function App() {
               element={
                 <ProtectedRoute requireCustomer={true} redirectTo="/register">
                   <BookingSuccessPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/bookings/payment-success"
+              element={
+                <ProtectedRoute requireCustomer={true} redirectTo="/login">
+                  <PaymentSuccessPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/bookings/payment-cancelled"
+              element={
+                <ProtectedRoute requireCustomer={true} redirectTo="/login">
+                  <PaymentCancelledPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payment-success"
+              element={
+                <ProtectedRoute requireCustomer={true} redirectTo="/login">
+                  <PaymentSuccessPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/payment-cancelled"
+              element={
+                <ProtectedRoute requireCustomer={true} redirectTo="/login">
+                  <PaymentCancelledPage />
                 </ProtectedRoute>
               }
             />

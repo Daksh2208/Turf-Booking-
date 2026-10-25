@@ -48,6 +48,13 @@ const validateEnv = () => {
   const JWT_REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d'
   const COOKIE_SECRET = process.env.COOKIE_SECRET || 'dev_cookie_secret_key_999'
 
+  // 6. Stripe Payment Configuration (Disabled by default, safe defaults)
+  const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || ''
+  const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY || ''
+  const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || ''
+  const STRIPE_CURRENCY = (process.env.STRIPE_CURRENCY || 'inr').toLowerCase()
+  const STRIPE_PAYMENT_ENABLED = process.env.STRIPE_PAYMENT_ENABLED === 'true'
+
   if (errors.length > 0) {
     console.error('❌ Environment configuration error:')
     errors.forEach((err) => console.error(`  - ${err}`))
@@ -64,6 +71,11 @@ const validateEnv = () => {
     JWT_ACCESS_EXPIRES_IN,
     JWT_REFRESH_EXPIRES_IN,
     COOKIE_SECRET,
+    STRIPE_SECRET_KEY,
+    STRIPE_PUBLISHABLE_KEY,
+    STRIPE_WEBHOOK_SECRET,
+    STRIPE_CURRENCY,
+    STRIPE_PAYMENT_ENABLED,
   }
 }
 

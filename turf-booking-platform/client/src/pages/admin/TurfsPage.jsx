@@ -1,114 +1,50 @@
-import React, { useState } from 'react'
+﻿import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '../../hooks/useApi'
 import {
   Plus,
   Search,
   Edit2,
-  Power,
   MapPin,
   AlertCircle,
   CheckCircle2,
   Clock,
-  Users,
-  Image as ImageIcon,
   Loader2,
-  Tag,
   Trash2,
-  Upload,
+  FileEdit,
 } from 'lucide-react'
 import adminInventoryService from '../../services/admin/inventory.service'
 import { Modal } from '../../components/common/Modal'
 import { Button } from '../../components/common/Button'
-import { FormField } from '../../components/common/FormField'
-import { Input } from '../../components/common/Input'
-
-const COMMON_FACILITIES = [
-  'LED Floodlights',
-  'Changing Rooms',
-  'Drinking Water',
-  'Free Parking',
-  'Equipment Rental',
-  'Showers',
-  'Spectator Seating',
-  'First Aid Kit',
-  'Cafeteria',
-]
-
-const SURFACES = [
-  'Artificial Turf',
-  'Natural Grass',
-  'Hard Court',
-  'Wooden',
-  'Clay',
-  'Synthetic Mat',
-  'Other',
-]
+import { TurfStepperForm } from '../../components/admin/TurfStepperForm'
 
 export const TurfsPage = () => {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1)
+  const [page,   setPage]   = useState(1)
 
   // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isModalOpen,       setIsModalOpen]       = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [editingTurf, setEditingTurf] = useState(null)
-  const [deletingTurf, setDeletingTurf] = useState(null)
-  const [serverError, setServerError] = useState(null)
-  const [successToast, setSuccessToast] = useState(null)
+  const [editingTurf,       setEditingTurf]       = useState(null)
+  const [deletingTurf,      setDeletingTurf]      = useState(null)
+  const [successToast,      setSuccessToast]      = useState(null)
 
-  // Form Fields
-  const [formData, setFormData] = useState({
-    name: '',
-    slug: '',
-    description: '',
-    sports: [],
-    size: '100x60 ft (Box Cricket)',
-    surface: 'Artificial Turf',
-    pricing: {
-      baseRate: 800,
-      peakRate: 1200,
-      weekendRate: 1400,
-      peakHours: {
-        start: '18:00',
-        end: '23:00',
-      },
-    },
-    address: {
-      street: '',
-      city: '',
-      state: 'Gujarat',
-      zipCode: '',
-      landmark: '',
-    },
-    capacity: {
-      minPlayers: 2,
-      maxPlayers: 22,
-    },
-    facilities: ['LED Floodlights', 'Drinking Water'],
-    openingHours: {
-      open: '06:00',
-      close: '23:00',
-    },
-    imageUrl: '',
-  })
-
-  // 1. Fetch Turfs
+  // ── Data Fetching ────────────────────────────────────────────────────────────
   const { data: turfsData, isLoading, isError, error } = useQuery({
     queryKey: ['admin-turfs', { search, page }],
     queryFn: () => adminInventoryService.getTurfs({ search, page, limit: 10 }),
   })
 
-  // 2. Fetch Sports for selection
   const { data: sportsData } = useQuery({
     queryKey: ['admin-sports-options'],
     queryFn: () => adminInventoryService.getSports({ limit: 50, isActive: true }),
   })
 
-  const turfs = turfsData?.turfs || []
+  const turfs      = turfsData?.turfs      || []
   const pagination = turfsData?.pagination || { page: 1, totalPages: 1 }
-  const sportsList = sportsData?.sports || []
+  const sportsList = sportsData?.sports    || []
 
+  // ── Cache Invalidation ───────────────────────────────────────────────────────
   const invalidateAllTurfQueries = () => {
     queryClient.invalidateQueries({ queryKey: ['admin-turfs'] })
     queryClient.invalidateQueries({ queryKey: ['publicTurfs'] })
@@ -119,33 +55,19 @@ export const TurfsPage = () => {
     queryClient.invalidateQueries({ queryKey: ['pricingQuote'] })
   }
 
-  // Create Turf Mutation
+  // ── Mutations ────────────────────────────────────────────────────────────────
   const createMutation = useMutation({
     mutationFn: (newTurf) => adminInventoryService.createTurf(newTurf),
-    onSuccess: (created) => {
-      invalidateAllTurfQueries()
-      setIsModalOpen(false)
-      showToast(`Turf "${created.name}" created successfully.`)
-    },
-    onError: (err) => {
-      setServerError(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to create turf arena.')
-    },
+    onSuccess: () => invalidateAllTurfQueries(),
+    onError: () => {},   // errors handled inside TurfStepperForm
   })
 
-  // Update Turf Mutation
   const updateMutation = useMutation({
     mutationFn: ({ id, updates }) => adminInventoryService.updateTurf(id, updates),
-    onSuccess: (updated) => {
-      invalidateAllTurfQueries()
-      setIsModalOpen(false)
-      showToast(`Turf "${updated.name}" updated successfully.`)
-    },
-    onError: (err) => {
-      setServerError(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to update turf arena.')
-    },
+    onSuccess: () => invalidateAllTurfQueries(),
+    onError: () => {},
   })
 
-  // Toggle Turf Status
   const toggleMutation = useMutation({
     mutationFn: ({ id, isActive }) => adminInventoryService.toggleTurfStatus(id, isActive),
     onSuccess: (turf) => {
@@ -157,7 +79,6 @@ export const TurfsPage = () => {
     },
   })
 
-  // Delete Turf Mutation
   const deleteMutation = useMutation({
     mutationFn: (id) => adminInventoryService.deleteTurf(id),
     onSuccess: () => {
@@ -170,183 +91,34 @@ export const TurfsPage = () => {
     },
   })
 
+  // ── Toast ────────────────────────────────────────────────────────────────────
   const showToast = (message, type = 'success') => {
     setSuccessToast({ message, type })
     setTimeout(() => setSuccessToast(null), 4000)
   }
 
-  const handleImageFileUpload = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      setFormData((prev) => ({ ...prev, imageUrl: event.target.result }))
-    }
-    reader.readAsDataURL(file)
-  }
-
+  // ── Handlers ─────────────────────────────────────────────────────────────────
   const handleOpenCreate = () => {
     setEditingTurf(null)
-    setFormData({
-      name: '',
-      slug: '',
-      description: '',
-      sports: sportsList.length > 0 ? [sportsList[0]._id] : [],
-      size: '100x60 ft (Box Cricket)',
-      surface: 'Artificial Turf',
-      pricing: {
-        baseRate: 800,
-        peakRate: 1200,
-        weekendRate: 1400,
-        peakHours: {
-          start: '18:00',
-          end: '23:00',
-        },
-      },
-      address: { street: '', city: 'Ahmedabad', state: 'Gujarat', zipCode: '380015', landmark: '' },
-      capacity: { minPlayers: 2, maxPlayers: 22 },
-      facilities: ['LED Floodlights', 'Drinking Water'],
-      openingHours: { open: '06:00', close: '23:00' },
-      imageUrl: '',
-    })
-    setServerError(null)
     setIsModalOpen(true)
   }
 
   const handleOpenEdit = (turf) => {
     setEditingTurf(turf)
-    setFormData({
-      name: turf.name || '',
-      slug: turf.slug || '',
-      description: turf.description || '',
-      sports: turf.sports ? turf.sports.map((s) => (s._id ? s._id : s)) : [],
-      size: turf.size || '100x60 ft (Box Cricket)',
-      surface: turf.surface || 'Artificial Turf',
-      pricing: {
-        baseRate: turf.pricing?.baseRate ? turf.pricing.baseRate / 100 : 800,
-        peakRate: turf.pricing?.peakRate ? turf.pricing.peakRate / 100 : 1200,
-        weekendRate: turf.pricing?.weekendRate ? turf.pricing.weekendRate / 100 : 1400,
-        peakHours: {
-          start: turf.pricing?.peakHours?.start || '18:00',
-          end: turf.pricing?.peakHours?.end || '23:00',
-        },
-      },
-      address: {
-        street: turf.address?.street || '',
-        city: turf.address?.city || '',
-        state: turf.address?.state || 'Gujarat',
-        zipCode: turf.address?.zipCode || '',
-        landmark: turf.address?.landmark || '',
-      },
-      capacity: {
-        minPlayers: turf.capacity?.minPlayers || 2,
-        maxPlayers: turf.capacity?.maxPlayers || 22,
-      },
-      facilities: turf.facilities || [],
-      openingHours: {
-        open: turf.openingHours?.open || '06:00',
-        close: turf.openingHours?.close || '23:00',
-      },
-      imageUrl: turf.images && turf.images.length > 0 ? turf.images[0] : '',
-    })
-    setServerError(null)
     setIsModalOpen(true)
   }
 
-  const toggleFacility = (facility) => {
-    setFormData((prev) => {
-      const exists = prev.facilities.includes(facility)
-      return {
-        ...prev,
-        facilities: exists
-          ? prev.facilities.filter((f) => f !== facility)
-          : [...prev.facilities, facility],
-      }
-    })
+  const handleStepperSuccess = (message) => {
+    setIsModalOpen(false)
+    showToast(message)
   }
 
-  const toggleSportSelection = (sportId) => {
-    setFormData((prev) => {
-      const exists = prev.sports.includes(sportId)
-      return {
-        ...prev,
-        sports: exists ? prev.sports.filter((s) => s !== sportId) : [...prev.sports, sportId],
-      }
-    })
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setEditingTurf(null)
   }
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    setServerError(null)
-
-    if (!formData.name.trim()) {
-      setServerError('Turf name is required.')
-      return
-    }
-
-    if (formData.sports.length === 0) {
-      setServerError('Please select at least one supported sport.')
-      return
-    }
-
-    if (!formData.address.street.trim() || !formData.address.city.trim()) {
-      setServerError('Street address and city are required.')
-      return
-    }
-
-    if (isNaN(formData.pricing.baseRate) || Number(formData.pricing.baseRate) < 0) {
-      setServerError('Base rate must be a non-negative number.')
-      return
-    }
-
-    if (isNaN(formData.pricing.peakRate) || Number(formData.pricing.peakRate) < 0) {
-      setServerError('Peak-hour rate must be a non-negative number.')
-      return
-    }
-
-    if (isNaN(formData.pricing.weekendRate) || Number(formData.pricing.weekendRate) < 0) {
-      setServerError('Weekend rate must be a non-negative number.')
-      return
-    }
-
-    if (formData.pricing.peakHours.start >= formData.pricing.peakHours.end) {
-      setServerError('Peak hours start time must be before peak hours end time.')
-      return
-    }
-
-    const payload = {
-      name: formData.name.trim(),
-      slug: formData.slug.trim(),
-      description: formData.description.trim(),
-      sports: formData.sports,
-      size: formData.size.trim(),
-      surface: formData.surface,
-      pricing: {
-        baseRate: Math.round(Number(formData.pricing.baseRate) * 100),
-        peakRate: Math.round(Number(formData.pricing.peakRate) * 100),
-        weekendRate: Math.round(Number(formData.pricing.weekendRate) * 100),
-        peakHours: formData.pricing.peakHours,
-      },
-      address: {
-        street: formData.address.street.trim(),
-        city: formData.address.city.trim(),
-        state: formData.address.state.trim(),
-        zipCode: formData.address.zipCode.trim(),
-        landmark: formData.address.landmark.trim(),
-      },
-      capacity: formData.capacity,
-      facilities: formData.facilities,
-      openingHours: formData.openingHours,
-      images: formData.imageUrl ? [formData.imageUrl.trim()] : [],
-    }
-
-    if (editingTurf) {
-      updateMutation.mutate({ id: editingTurf._id, updates: payload })
-    } else {
-      createMutation.mutate(payload)
-    }
-  }
-
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -372,7 +144,7 @@ export const TurfsPage = () => {
         </Button>
       </div>
 
-      {/* Toast Notification */}
+      {/* Toast */}
       {successToast && (
         <div
           role="status"
@@ -391,24 +163,18 @@ export const TurfsPage = () => {
         </div>
       )}
 
-      {/* Search Bar */}
+      {/* Search */}
       <div className="flex items-center gap-3 bg-white p-2.5 rounded-2xl border border-[#D7E0D9] shadow-xs">
         <Search className="w-4 h-4 text-[#647168] ml-2" />
         <input
           type="text"
           placeholder="Search turfs by name, city, or landmark..."
           value={search}
-          onChange={(e) => {
-            setSearch(e.target.value)
-            setPage(1)
-          }}
+          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
           className="bg-transparent border-none text-xs sm:text-sm text-[#17231B] placeholder-[#647168] focus:outline-none flex-1"
         />
         {search && (
-          <button
-            onClick={() => setSearch('')}
-            className="text-xs text-[#526258] hover:text-[#17231B] px-2 cursor-pointer"
-          >
+          <button onClick={() => setSearch('')} className="text-xs text-[#526258] hover:text-[#17231B] px-2 cursor-pointer">
             Clear
           </button>
         )}
@@ -452,9 +218,7 @@ export const TurfsPage = () => {
                             src={turf.images[0]}
                             alt={turf.name}
                             className="w-10 h-10 rounded-xl object-cover border border-[#D7E0D9] shrink-0"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none'
-                            }}
+                            onError={(e) => { e.currentTarget.style.display = 'none' }}
                           />
                         ) : (
                           <div className="w-10 h-10 rounded-xl bg-[#EEF3EF] border border-[#D7E0D9] flex items-center justify-center text-[#526258] shrink-0">
@@ -499,21 +263,26 @@ export const TurfsPage = () => {
                     <td className="py-3 px-4 hidden lg:table-cell text-[#526258] text-[11px]">
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3 text-[#647168]" />
-                        <span>
-                          {turf.openingHours?.open} - {turf.openingHours?.close}
-                        </span>
+                        <span>{turf.openingHours?.open} - {turf.openingHours?.close}</span>
                       </div>
                     </td>
                     <td className="py-3 px-4 text-center">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          turf.isActive
-                            ? 'bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]'
-                            : 'bg-[#EDF1EE] text-[#69756D] border border-[#D7E0D9]'
-                        }`}
-                      >
-                        {turf.isActive ? 'Active' : 'Inactive'}
-                      </span>
+                      {turf.isDraft ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+                          <FileEdit className="w-2.5 h-2.5" />
+                          Draft
+                        </span>
+                      ) : (
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            turf.isActive
+                              ? 'bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]'
+                              : 'bg-[#EDF1EE] text-[#69756D] border border-[#D7E0D9]'
+                          }`}
+                        >
+                          {turf.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -521,17 +290,14 @@ export const TurfsPage = () => {
                           type="button"
                           onClick={() => handleOpenEdit(turf)}
                           className="p-1.5 rounded-lg text-[#526258] hover:text-[#267A45] hover:bg-[#EEF3EF] transition-colors cursor-pointer"
-                          title="Edit Turf Arena"
+                          title={turf.isDraft ? 'Resume Registration' : 'Edit Turf Arena'}
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
 
                         <button
                           type="button"
-                          onClick={() => {
-                            setDeletingTurf(turf)
-                            setIsDeleteModalOpen(true)
-                          }}
+                          onClick={() => { setDeletingTurf(turf); setIsDeleteModalOpen(true) }}
                           className="p-1.5 rounded-lg text-[#922B27] hover:text-[#922B27] hover:bg-[#FDF0EF] transition-colors cursor-pointer"
                           title="Delete Turf Arena"
                         >
@@ -547,7 +313,7 @@ export const TurfsPage = () => {
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Modal */}
       {isDeleteModalOpen && deletingTurf && (
         <Modal
           isOpen={isDeleteModalOpen}
@@ -562,11 +328,8 @@ export const TurfsPage = () => {
             <p className="text-[#922B27]">
               This will remove this arena from booking operations and inventory.
             </p>
-
             <div className="flex justify-end gap-2 pt-2 border-t border-[#E2E8E3]">
-              <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
-                Cancel
-              </Button>
+              <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
               <Button
                 variant="danger"
                 isLoading={deleteMutation.isPending}
@@ -579,454 +342,44 @@ export const TurfsPage = () => {
         </Modal>
       )}
 
-      {/* Pagination Controls */}
+      {/* Pagination */}
       {pagination.totalPages > 1 && (
         <div className="flex items-center justify-between text-xs text-[#526258] px-2">
-          <span>
-            Page {pagination.page} of {pagination.totalPages}
-          </span>
+          <span>Page {pagination.page} of {pagination.totalPages}</span>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-            >
+            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
               Previous
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
-              disabled={page >= pagination.totalPages}
-            >
+            <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))} disabled={page >= pagination.totalPages}>
               Next
             </Button>
           </div>
         </div>
       )}
 
-      {/* Create / Edit Turf Modal */}
+      {/* Create / Edit Stepper Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingTurf ? 'Edit Turf Arena' : 'Register New Turf Arena'}
-        subtitle="Manage arena facilities, operating hours, and multi-sport game assignments."
-        maxWidth="max-w-3xl"
+        onClose={handleCloseModal}
+        title={editingTurf
+          ? (editingTurf.isDraft ? 'Resume Turf Registration' : 'Edit Turf Arena')
+          : 'Register New Turf Arena'
+        }
+        subtitle={
+          editingTurf?.isDraft
+            ? 'Pick up where you left off — complete all steps to publish this arena.'
+            : 'Complete all 3 steps to register or update your arena.'
+        }
+        maxWidth="max-w-2xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {serverError && (
-            <div className="p-3 rounded-xl bg-[#FDF0EF] border border-[#F5C2BF] text-[#922B27] text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-[#922B27] shrink-0" />
-              <span>{serverError}</span>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField label="Arena Name" htmlFor="turfName" required>
-              <Input
-                id="turfName"
-                placeholder="e.g. Alpha Box Cricket Arena"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-              />
-            </FormField>
-
-            <FormField label="Unique Slug" htmlFor="turfSlug" hint="Leave blank to auto-generate">
-              <Input
-                id="turfSlug"
-                placeholder="e.g. alpha-box-cricket"
-                value={formData.slug}
-                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-              />
-            </FormField>
-          </div>
-
-          <FormField
-            label="Arena Description"
-            htmlFor="turfDescription"
-            hint="Brief overview of turf ground, pitch qualities, and amenities"
-          >
-            <textarea
-              id="turfDescription"
-              rows={3}
-              placeholder="e.g. Spacious floodlit box cricket arena with FIFA-grade synthetic turf, high safety nets, and modern amenities..."
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              maxLength={2000}
-              className="w-full bg-white border border-[#D7E0D9] hover:border-[#C9DFCE] focus:border-[#267A45] focus:ring-2 focus:ring-[#267A45]/20 rounded-xl text-sm text-[#17231B] placeholder:text-[#647168] px-3.5 py-2.5 transition-all outline-none resize-y min-h-[76px]"
-            />
-          </FormField>
-
-          {/* Supported Sports Selector */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#17231B] block">
-              Supported Sports <span className="text-[#922B27]">*</span>
-            </label>
-            <p className="text-[11px] text-[#526258]">
-              Select one or more active sport disciplines for this arena:
-            </p>
-            <div className="flex flex-wrap gap-2 pt-1">
-              {sportsList.map((sport) => {
-                const isSelected = formData.sports.includes(sport._id)
-                return (
-                  <button
-                    key={sport._id}
-                    type="button"
-                    onClick={() => toggleSportSelection(sport._id)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#E7F3E9] text-[#1D6537] border-[#C9DFCE] shadow-xs'
-                        : 'bg-white text-[#526258] border-[#D7E0D9] hover:border-[#267A45] hover:text-[#17231B]'
-                    }`}
-                  >
-                    {isSelected && '✓ '}
-                    {sport.name}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Location Fields */}
-          <div className="space-y-3 pt-2 border-t border-[#E2E8E3]">
-            <p className="text-xs font-bold text-[#17231B] flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-[#267A45]" />
-              <span>Location Details</span>
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <FormField label="Street Address" htmlFor="turfStreet" required>
-                <Input
-                  id="turfStreet"
-                  placeholder="e.g. Plot 42, SG Highway"
-                  value={formData.address.street}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      address: { ...formData.address, street: e.target.value },
-                    })
-                  }
-                  required
-                />
-              </FormField>
-
-              <FormField label="City" htmlFor="turfCity" required>
-                <Input
-                  id="turfCity"
-                  placeholder="e.g. Ahmedabad"
-                  value={formData.address.city}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      address: { ...formData.address, city: e.target.value },
-                    })
-                  }
-                  required
-                />
-              </FormField>
-
-              <FormField label="State" htmlFor="turfState" required>
-                <Input
-                  id="turfState"
-                  placeholder="Gujarat"
-                  value={formData.address.state}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      address: { ...formData.address, state: e.target.value },
-                    })
-                  }
-                  required
-                />
-              </FormField>
-
-              <FormField label="Postal / ZIP Code" htmlFor="turfZip" required>
-                <Input
-                  id="turfZip"
-                  placeholder="380054"
-                  value={formData.address.zipCode}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      address: { ...formData.address, zipCode: e.target.value },
-                    })
-                  }
-                  required
-                />
-              </FormField>
-            </div>
-          </div>
-
-          {/* Arena Specifications: Size & Surface */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#E2E8E3]">
-            <FormField label="Field / Court Size" htmlFor="turfSize">
-              <Input
-                id="turfSize"
-                placeholder="e.g. 100x60 ft (Box Cricket) or 7-a-side"
-                value={formData.size}
-                onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-              />
-            </FormField>
-
-            <FormField label="Surface Material" htmlFor="turfSurface">
-              <select
-                id="turfSurface"
-                value={formData.surface}
-                onChange={(e) => setFormData({ ...formData, surface: e.target.value })}
-                className="w-full bg-white border border-[#D7E0D9] rounded-xl px-3 py-2 text-sm text-[#17231B] focus:outline-none focus:border-[#267A45]"
-              >
-                {SURFACES.map((surf) => (
-                  <option key={surf} value={surf}>
-                    {surf}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-          </div>
-
-          {/* Slot Rates & Peak Hours */}
-          <div className="space-y-3 pt-2 border-t border-[#E2E8E3]">
-            <p className="text-xs font-bold text-[#17231B] flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-[#267A45]" />
-                <span>Slot Rates & Dynamic Pricing (₹ per hour)</span>
-              </span>
-              <span className="text-[11px] font-normal text-[#526258]">
-                Auto-adjusts for peak & weekend bookings
-              </span>
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <FormField label="Base Rate (₹/hr)" htmlFor="baseRate" required>
-                <Input
-                  id="baseRate"
-                  type="number"
-                  min="0"
-                  step="50"
-                  value={formData.pricing.baseRate}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      pricing: {
-                        ...formData.pricing,
-                        baseRate: parseFloat(e.target.value) || 0,
-                      },
-                    })
-                  }
-                  required
-                />
-              </FormField>
-
-              <FormField label="Peak-Hour Rate (₹/hr)" htmlFor="peakRate" required>
-                <Input
-                  id="peakRate"
-                  type="number"
-                  min="0"
-                  step="50"
-                  value={formData.pricing.peakRate}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      pricing: {
-                        ...formData.pricing,
-                        peakRate: parseFloat(e.target.value) || 0,
-                      },
-                    })
-                  }
-                  required
-                />
-              </FormField>
-
-              <FormField label="Weekend Rate (₹/hr)" htmlFor="weekendRate" required>
-                <Input
-                  id="weekendRate"
-                  type="number"
-                  min="0"
-                  step="50"
-                  value={formData.pricing.weekendRate}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      pricing: {
-                        ...formData.pricing,
-                        weekendRate: parseFloat(e.target.value) || 0,
-                      },
-                    })
-                  }
-                  required
-                />
-              </FormField>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 bg-[#F6F8F6] p-2.5 rounded-xl border border-[#D7E0D9]">
-              <FormField label="Peak Hours Start" htmlFor="peakStart">
-                <Input
-                  id="peakStart"
-                  type="text"
-                  placeholder="18:00"
-                  value={formData.pricing.peakHours.start}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      pricing: {
-                        ...formData.pricing,
-                        peakHours: { ...formData.pricing.peakHours, start: e.target.value },
-                      },
-                    })
-                  }
-                />
-              </FormField>
-
-              <FormField label="Peak Hours End" htmlFor="peakEnd">
-                <Input
-                  id="peakEnd"
-                  type="text"
-                  placeholder="23:00"
-                  value={formData.pricing.peakHours.end}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      pricing: {
-                        ...formData.pricing,
-                        peakHours: { ...formData.pricing.peakHours, end: e.target.value },
-                      },
-                    })
-                  }
-                />
-              </FormField>
-            </div>
-          </div>
-
-          {/* Operational Hours & Capacity */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-[#E2E8E3]">
-            <FormField label="Opening Time (24hr)" htmlFor="openTime">
-              <Input
-                id="openTime"
-                type="text"
-                placeholder="06:00"
-                value={formData.openingHours.open}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    openingHours: { ...formData.openingHours, open: e.target.value },
-                  })
-                }
-              />
-            </FormField>
-
-            <FormField label="Closing Time (24hr)" htmlFor="closeTime">
-              <Input
-                id="closeTime"
-                type="text"
-                placeholder="23:00"
-                value={formData.openingHours.close}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    openingHours: { ...formData.openingHours, close: e.target.value },
-                  })
-                }
-              />
-            </FormField>
-
-            <FormField label="Max Players" htmlFor="maxPlayers">
-              <Input
-                id="maxPlayers"
-                type="number"
-                min="1"
-                value={formData.capacity.maxPlayers}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    capacity: {
-                      ...formData.capacity,
-                      maxPlayers: parseInt(e.target.value, 10) || 22,
-                    },
-                  })
-                }
-              />
-            </FormField>
-          </div>
-
-          {/* Facilities Selector */}
-          <div className="space-y-1.5 pt-2 border-t border-[#E2E8E3]">
-            <label className="text-xs font-semibold text-[#17231B] block">
-              Amenities & Facilities
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {COMMON_FACILITIES.map((facility) => {
-                const isSelected = formData.facilities.includes(facility)
-                return (
-                  <button
-                    key={facility}
-                    type="button"
-                    onClick={() => toggleFacility(facility)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#E7F3E9] text-[#1D6537] border-[#C9DFCE]'
-                        : 'bg-white text-[#526258] border-[#D7E0D9] hover:text-[#17231B]'
-                    }`}
-                  >
-                    {isSelected && '✓ '}
-                    {facility}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Image Upload & Reference */}
-          <div className="space-y-2 pt-2 border-t border-[#E2E8E3]">
-            <label className="text-xs font-semibold text-[#17231B] block">
-              Arena Photo / Image
-            </label>
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <label className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white border border-[#D7E0D9] hover:border-[#267A45] text-[#17231B] text-xs font-semibold cursor-pointer transition-colors shadow-xs">
-                <Upload className="w-4 h-4 text-[#267A45]" />
-                <span>Upload Image</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageFileUpload}
-                  className="hidden"
-                />
-              </label>
-              <span className="text-[#647168] text-xs">or paste URL:</span>
-              <div className="flex-1 w-full">
-                <Input
-                  id="turfImage"
-                  type="url"
-                  placeholder="https://images.unsplash.com/..."
-                  value={formData.imageUrl}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  icon={ImageIcon}
-                />
-              </div>
-            </div>
-            {formData.imageUrl && (
-              <div className="relative w-full h-32 rounded-xl overflow-hidden border border-[#D7E0D9] bg-[#F6F8F6] mt-2">
-                <img
-                  src={formData.imageUrl}
-                  alt="Turf preview"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E2E8E3]">
-            <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              isLoading={createMutation.isPending || updateMutation.isPending}
-            >
-              {editingTurf ? 'Save Arena' : 'Register Arena'}
-            </Button>
-          </div>
-        </form>
+        <TurfStepperForm
+          editingTurf={editingTurf}
+          sportsList={sportsList}
+          onSuccess={handleStepperSuccess}
+          onClose={handleCloseModal}
+          createMutation={createMutation}
+          updateMutation={updateMutation}
+        />
       </Modal>
     </div>
   )

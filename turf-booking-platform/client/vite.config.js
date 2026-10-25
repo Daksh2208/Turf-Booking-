@@ -8,6 +8,9 @@ export default defineConfig({
     tailwindcss(),
     react(),
   ],
+  optimizeDeps: {
+    include: ['driver.js'],
+  },
   test: {
     globals: true,
     environment: 'jsdom',

@@ -26,6 +26,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useQuery } from '../../hooks/useApi'
 import customerBookingService from '../../services/customer/booking.service'
 import customerInventoryService from '../../services/customer/inventory.service'
+import customerPaymentService from '../../services/customer/payment.service'
 
 export const CheckoutPage = () => {
   const location = useLocation()
@@ -63,6 +64,14 @@ export const CheckoutPage = () => {
   const [fieldErrors, setFieldErrors] = useState({})
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('pay_at_venue') // 'pay_at_venue' | 'stripe'
+
+  // Fetch safe public Stripe configuration (enabled, publishableKey, currency)
+  const { data: stripeConfig } = useQuery({
+    queryKey: ['stripeConfig'],
+    queryFn: () => customerPaymentService.getStripeConfig(),
+  })
+  const isStripeEnabled = stripeConfig?.enabled === true
 
   // Coupon Code State
   const [couponInput, setCouponInput] = useState('')
@@ -243,20 +252,43 @@ export const CheckoutPage = () => {
           email: contactDetails.email.trim().toLowerCase(),
           phone: contactDetails.phone.trim(),
         },
-        paymentMethod: 'Pay at Venue',
+        paymentMethod: selectedPaymentMethod === 'stripe' ? 'stripe' : 'Pay at Venue',
         couponCode: appliedCoupon?.code || undefined,
         idempotencyKey: idempotencyKeyRef.current,
       }
 
-      const booking = await customerBookingService.createBooking(
-        bookingPayload,
-        idempotencyKeyRef.current
-      )
+      if (selectedPaymentMethod === 'stripe') {
+        if (!isStripeEnabled) {
+          setSubmitError('Online payment is not configured yet. Please choose Pay at Venue.')
+          setIsSubmitting(false)
+          return
+        }
 
-      navigate(`/bookings/success/${booking._id}`, {
-        state: { booking },
-        replace: true,
-      })
+        const sessionData = await customerPaymentService.createCheckoutSession(
+          {
+            bookingData: bookingPayload,
+          },
+          idempotencyKeyRef.current
+        )
+
+        if (sessionData?.url) {
+          // Redirect directly to the real Stripe-hosted checkout page
+          window.location.href = sessionData.url
+          return
+        } else {
+          throw new Error('Unable to generate Stripe checkout session. Please try again or select Pay at Venue.')
+        }
+      } else {
+        const booking = await customerBookingService.createBooking(
+          bookingPayload,
+          idempotencyKeyRef.current
+        )
+
+        navigate(`/bookings/success/${booking._id}`, {
+          state: { booking },
+          replace: true,
+        })
+      }
     } catch (err) {
       const msg =
         err.response?.data?.error?.message ||
@@ -480,27 +512,132 @@ export const CheckoutPage = () => {
             </div>
           </div>
 
-          {/* Payment Method Selection: Pay at Venue */}
+          {/* Payment Method Selection */}
           <div className="p-5 sm:p-6 rounded-3xl bg-white border border-[#D7E0D9] shadow-xs space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-wider text-[#17231B] flex items-center gap-2">
               <CreditCard className="w-4 h-4 text-[#267A45]" />
-              <span>Payment Option</span>
+              <span>Select Payment Option</span>
             </h2>
 
-            <div className="p-4 rounded-2xl bg-[#E7F3E9] border border-[#C9DFCE] flex items-start gap-4">
-              <div className="w-10 h-10 rounded-2xl bg-white border border-[#C9DFCE] flex items-center justify-center text-[#267A45] shrink-0">
-                <CheckCircle2 className="w-5 h-5 text-[#267A45]" />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-[#17231B]">Pay at Venue</span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-white text-[#1D6537] border border-[#C9DFCE]">
-                    Recommended
-                  </span>
+            <div className="space-y-3">
+              {/* Option 1: Pay Online with Stripe */}
+              <div
+                onClick={() => {
+                  if (isStripeEnabled) {
+                    setSelectedPaymentMethod('stripe')
+                  }
+                }}
+                className={`p-4 rounded-2xl border transition-all ${
+                  !isStripeEnabled
+                    ? 'bg-[#F9FAF9] border-[#E2E8E3] cursor-not-allowed opacity-90'
+                    : selectedPaymentMethod === 'stripe'
+                    ? 'bg-[#E7F3E9] border-[#267A45] ring-2 ring-[#267A45]/20 cursor-pointer shadow-xs'
+                    : 'bg-white border-[#D7E0D9] hover:border-[#267A45]/50 cursor-pointer'
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div
+                    className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${
+                      !isStripeEnabled
+                        ? 'bg-[#F0F2F0] border-[#D7E0D9] text-[#717171]'
+                        : selectedPaymentMethod === 'stripe'
+                        ? 'bg-white border-[#C9DFCE] text-[#267A45]'
+                        : 'bg-[#F6F8F6] border-[#D7E0D9] text-[#526258]'
+                    }`}
+                  >
+                    {!isStripeEnabled ? (
+                      <Lock className="w-4 h-4 text-[#717171]" />
+                    ) : (
+                      <CreditCard className="w-5 h-5 text-[#267A45]" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-[#17231B]">Pay Online with Stripe</span>
+                        {isStripeEnabled ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-white text-[#1D6537] border border-[#C9DFCE]">
+                            Cards & NetBanking
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#FDF0EF] text-[#922B27] border border-[#F8D2CE]">
+                            Unavailable
+                          </span>
+                        )}
+                      </div>
+
+                      <input
+                        type="radio"
+                        name="paymentMethodRadio"
+                        value="stripe"
+                        checked={selectedPaymentMethod === 'stripe'}
+                        disabled={!isStripeEnabled}
+                        onChange={() => {
+                          if (isStripeEnabled) setSelectedPaymentMethod('stripe')
+                        }}
+                        className="text-[#267A45] focus:ring-[#267A45] h-4 w-4 cursor-pointer disabled:opacity-40"
+                      />
+                    </div>
+
+                    {isStripeEnabled ? (
+                      <p className="text-xs text-[#46564A]">
+                        Pay now using credit/debit card, net banking, or international cards through Stripe's certified PCI-DSS Level 1 gateway.
+                      </p>
+                    ) : (
+                      <div className="mt-1 p-2.5 rounded-xl bg-[#FDF4E7] border border-[#F6E1C4] text-[11px] text-[#79420D] flex items-center gap-2">
+                        <Info className="w-3.5 h-3.5 shrink-0 text-[#B26213]" />
+                        <span className="font-medium">Online payment is not configured yet. Please choose Pay at Venue.</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <p className="text-xs text-[#46564A]">
-                  Pay securely at the arena counter via Cash, UPI, or Card on arrival. Your booking is confirmed immediately without advance deduction.
-                </p>
+              </div>
+
+              {/* Option 2: Pay at Venue */}
+              <div
+                onClick={() => setSelectedPaymentMethod('pay_at_venue')}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                  selectedPaymentMethod === 'pay_at_venue'
+                    ? 'bg-[#E7F3E9] border-[#267A45] ring-2 ring-[#267A45]/20 shadow-xs'
+                    : 'bg-white border-[#D7E0D9] hover:border-[#267A45]/50'
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div
+                    className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${
+                      selectedPaymentMethod === 'pay_at_venue'
+                        ? 'bg-white border-[#C9DFCE] text-[#267A45]'
+                        : 'bg-[#F6F8F6] border-[#D7E0D9] text-[#526258]'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-5 h-5 text-[#267A45]" />
+                  </div>
+
+                  <div className="flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-[#17231B]">Pay at Venue</span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-white text-[#1D6537] border border-[#C9DFCE]">
+                          Recommended
+                        </span>
+                      </div>
+
+                      <input
+                        type="radio"
+                        name="paymentMethodRadio"
+                        value="pay_at_venue"
+                        checked={selectedPaymentMethod === 'pay_at_venue'}
+                        onChange={() => setSelectedPaymentMethod('pay_at_venue')}
+                        className="text-[#267A45] focus:ring-[#267A45] h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+
+                    <p className="text-xs text-[#46564A]">
+                      Pay securely at the arena counter via Cash, UPI, or Card on arrival. Your booking is confirmed immediately without advance deduction.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -855,7 +992,11 @@ export const CheckoutPage = () => {
                   <div className="pt-3 border-t border-[#E2E8E3] flex justify-between items-center">
                     <div>
                       <span className="text-sm font-bold text-[#17231B] block">Total Payable</span>
-                      <span className="text-[10px] text-[#526258]">Pay at venue reception</span>
+                      <span className="text-[10px] text-[#526258]">
+                        {selectedPaymentMethod === 'stripe'
+                          ? 'Online payment via Stripe'
+                          : 'Pay at venue reception'}
+                      </span>
                     </div>
                     <span className="font-mono text-xl sm:text-2xl font-black text-[#267A45]">
                       ₹{(quote.finalTotal / 100).toFixed(2)}
@@ -866,7 +1007,9 @@ export const CheckoutPage = () => {
                 <div className="p-3 rounded-2xl bg-[#F0F4F1] border border-[#D7E0D9] text-[11px] text-[#526258] flex items-start gap-2">
                   <Info className="w-4 h-4 text-[#267A45] shrink-0 mt-0.5" />
                   <span>
-                    Your slot will be reserved immediately upon clicking Confirm. Pricing snapshots are locked to protect against future price revisions.
+                    {selectedPaymentMethod === 'stripe'
+                      ? 'You will be redirected to the official Stripe hosted checkout page to complete your payment securely.'
+                      : 'Your slot will be reserved immediately upon clicking Confirm. Pricing snapshots are locked to protect against future price revisions.'}
                   </span>
                 </div>
 
@@ -879,12 +1022,25 @@ export const CheckoutPage = () => {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin text-white" />
-                      <span>Confirming Slot Reservation...</span>
+                      <span>
+                        {selectedPaymentMethod === 'stripe'
+                          ? 'Connecting to Stripe Checkout...'
+                          : 'Confirming Slot Reservation...'}
+                      </span>
                     </>
                   ) : (
                     <>
-                      <CheckCircle2 className="w-4 h-4 text-white" />
-                      <span>Confirm & Book (Pay at Venue)</span>
+                      {selectedPaymentMethod === 'stripe' ? (
+                        <>
+                          <CreditCard className="w-4 h-4 text-white" />
+                          <span>Pay ₹{(quote.finalTotal / 100).toFixed(2)} with Stripe</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 text-white" />
+                          <span>Confirm & Book (Pay at Venue)</span>
+                        </>
+                      )}
                     </>
                   )}
                 </button>

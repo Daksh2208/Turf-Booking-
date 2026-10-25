@@ -17,24 +17,27 @@ import {
   Clock,
   Users,
   Tag,
+  Compass,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
+import { AdminTourProvider, useAdminTour } from '../features/tour'
 
 const NAV_ITEMS = [
-  { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard },
-  { name: 'Customers', path: '/admin/customers', icon: Users },
-  { name: 'Bookings', path: '/admin/bookings', icon: Calendar },
-  { name: 'Blocked Slots', path: '/admin/blocked-slots', icon: Clock },
-  { name: 'Turf Arenas', path: '/admin/turfs', icon: MapPin },
-  { name: 'Sports', path: '/admin/sports', icon: Activity },
-  { name: 'Add-Ons', path: '/admin/addons', icon: Sparkles },
-  { name: 'Coupons', path: '/admin/coupons', icon: Tag },
-  { name: 'Homepage Banners', path: '/admin/banners', icon: Image },
-  { name: 'Business Settings', path: '/admin/settings', icon: Sliders },
+  { name: 'Dashboard', path: '/admin/dashboard', icon: LayoutDashboard, tourKey: 'nav-dashboard' },
+  { name: 'Customers', path: '/admin/customers', icon: Users, tourKey: 'nav-customers' },
+  { name: 'Bookings', path: '/admin/bookings', icon: Calendar, tourKey: 'nav-bookings' },
+  { name: 'Blocked Slots', path: '/admin/blocked-slots', icon: Clock, tourKey: 'nav-blocked-slots' },
+  { name: 'Turf Arenas', path: '/admin/turfs', icon: MapPin, tourKey: 'nav-turfs' },
+  { name: 'Sports', path: '/admin/sports', icon: Activity, tourKey: 'nav-sports' },
+  { name: 'Add-Ons', path: '/admin/addons', icon: Sparkles, tourKey: 'nav-addons' },
+  { name: 'Coupons', path: '/admin/coupons', icon: Tag, tourKey: 'nav-coupons' },
+  { name: 'Homepage Banners', path: '/admin/banners', icon: Image, tourKey: 'nav-banners' },
+  { name: 'Business Settings', path: '/admin/settings', icon: Sliders, tourKey: 'nav-settings' },
 ]
 
-export const AdminLayout = () => {
+const AdminLayoutContent = () => {
   const { user, logout } = useAuth()
+  const { startTour } = useAdminTour()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const location = useLocation()
 
@@ -61,18 +64,33 @@ export const AdminLayout = () => {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-xl text-[#46564A] hover:text-[#17231B] hover:bg-[#F0F6F1] focus:outline-none cursor-pointer"
-          aria-label="Toggle navigation"
-        >
-          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Mobile Tour Replay Button */}
+          <button
+            type="button"
+            onClick={startTour}
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold text-[#1D6537] bg-[#E7F3E9] border border-[#C9DFCE] transition-all cursor-pointer"
+            title="Replay Admin Tour"
+            aria-label="Replay Admin Tour"
+          >
+            <Compass className="w-3.5 h-3.5 text-[#267A45]" />
+            <span>Tour</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-2 rounded-xl text-[#46564A] hover:text-[#17231B] hover:bg-[#F0F6F1] focus:outline-none cursor-pointer"
+            aria-label="Toggle navigation"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
       </div>
 
       {/* Sidebar Desktop */}
       <aside
+        data-tour="admin-sidebar"
         className={`fixed md:sticky top-0 left-0 h-screen max-h-screen w-64 bg-white border-r border-[#D7E0D9] flex flex-col justify-between z-50 transition-transform duration-200 overflow-hidden ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
@@ -106,6 +124,7 @@ export const AdminLayout = () => {
                 <NavLink
                   key={item.path}
                   to={item.path}
+                  data-tour={item.tourKey}
                   onClick={() => setMobileMenuOpen(false)}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
@@ -177,6 +196,19 @@ export const AdminLayout = () => {
             <ChevronRight className="w-3.5 h-3.5 text-[#647168]" />
             <span className="font-semibold text-[#267A45]">{currentNav.name}</span>
           </div>
+
+          {/* Tour Guide Replay Button */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={startTour}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#1D6537] bg-[#E7F3E9] hover:bg-[#D4EBD8] border border-[#C9DFCE] shadow-2xs transition-all cursor-pointer group"
+              title="Replay Admin Onboarding Tour"
+            >
+              <Compass className="w-3.5 h-3.5 text-[#267A45] group-hover:rotate-45 transition-transform" />
+              <span>Tour Guide</span>
+            </button>
+          </div>
         </header>
 
         {/* Page Container */}
@@ -185,6 +217,14 @@ export const AdminLayout = () => {
         </main>
       </div>
     </div>
+  )
+}
+
+export const AdminLayout = () => {
+  return (
+    <AdminTourProvider>
+      <AdminLayoutContent />
+    </AdminTourProvider>
   )
 }
 

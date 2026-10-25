@@ -16,6 +16,8 @@ import customerPricingRoutes from './routes/customer/pricing.routes.js'
 import customerAvailabilityRoutes from './routes/customer/availability.routes.js'
 import adminCouponRoutes from './routes/admin/coupon.routes.js'
 import customerCouponRoutes from './routes/customer/coupon.routes.js'
+import stripeRoutes from './routes/stripe.routes.js'
+import { handleWebhook } from './controllers/stripe.controller.js'
 import { notFoundMiddleware } from './middleware/not-found.middleware.js'
 import { errorMiddleware } from './middleware/error.middleware.js'
 
@@ -62,6 +64,13 @@ app.use(
   })
 )
 
+// Stripe Webhook Endpoint (Raw Body parser BEFORE express.json for cryptographic signature verification)
+app.post(
+  ['/api/v1/payments/stripe/webhook', '/api/payments/stripe/webhook'],
+  express.raw({ type: 'application/json' }),
+  handleWebhook
+)
+
 // 4. Request Body and Cookie Parsers
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
@@ -78,6 +87,8 @@ app.use('/api/v1/coupons', customerCouponRoutes)
 app.use('/api/v1/bookings', customerBookingRoutes)
 app.use('/api/v1/pricing', customerPricingRoutes)
 app.use('/api/v1/availability', customerAvailabilityRoutes)
+app.use('/api/v1/payments/stripe', stripeRoutes)
+app.use('/api/payments/stripe', stripeRoutes)
 app.use('/api/v1', customerInventoryRoutes)
 
 // 6. 404 Route Not Found Middleware

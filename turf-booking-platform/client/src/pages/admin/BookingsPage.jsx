@@ -142,6 +142,10 @@ export const BookingsPage = () => {
   }
 
   const handleOpenPaymentModal = (booking) => {
+    if (booking.paymentMethod === 'stripe') {
+      setServerError('Stripe online payments cannot be manually recorded by an administrator. They must be verified via Stripe.')
+      return
+    }
     setSelectedBooking(booking)
     setPaymentMethod(booking.paymentMethod || 'Pay at Venue')
     setPaymentNotes('')
@@ -436,8 +440,13 @@ export const BookingsPage = () => {
                         <div className="space-y-1">
                           <div>{getPaymentBadge(b.paymentStatus)}</div>
                           <span className="text-[10px] text-[#526258] block capitalize">
-                            {b.paymentMethod?.replace(/_/g, ' ')}
+                            {b.paymentMethod === 'stripe' ? 'Stripe Online' : (b.paymentMethod?.replace(/_/g, ' ') || 'Pay at Venue')}
                           </span>
+                          {b.amountPaid > 0 && (
+                            <span className="text-[10px] text-[#1D6537] font-semibold block">
+                              Paid: ₹{((b.amountPaid || 0) / 100).toFixed(2)}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3.5 whitespace-nowrap">
@@ -460,7 +469,7 @@ export const BookingsPage = () => {
                           Details
                         </button>
 
-                        {isUnpaid && (
+                        {isUnpaid && b.paymentMethod !== 'stripe' && (
                           <button
                             type="button"
                             onClick={() => handleOpenPaymentModal(b)}
