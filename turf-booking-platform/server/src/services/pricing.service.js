@@ -2,6 +2,7 @@ import mongoose from 'mongoose'
 import { Turf } from '../models/Turf.js'
 import { AddOn } from '../models/AddOn.js'
 import { BusinessSettings } from '../models/BusinessSettings.js'
+import couponService from './coupon.service.js'
 
 export const pricingService = {
   /**
@@ -184,6 +185,9 @@ export const pricingService = {
     playerCount,
     slots,
     selectedSlots,
+    couponCode = null,
+    sportId = null,
+    user = null,
   }) {
     if (!turfId) {
       const err = new Error('Turf ID is required.')
@@ -383,15 +387,40 @@ export const pricingService = {
       }
     }
 
-    const subtotal = turfSubtotal + addOnsSubtotal
+    const preDiscountSubtotal = turfSubtotal + addOnsSubtotal
+    let discountAmount = 0
+    let couponDetails = null
 
-    // Calculate Tax / GST
+    if (couponCode && typeof couponCode === 'string' && couponCode.trim()) {
+      const couponCalc = await couponService.validateAndCalculateDiscount({
+        couponCode: couponCode.trim(),
+        preDiscountSubtotal,
+        turfId,
+        sportId,
+        user,
+      })
+      discountAmount = couponCalc.discountAmount
+      couponDetails = {
+        couponId: couponCalc.coupon.id,
+        code: couponCalc.coupon.code,
+        description: couponCalc.coupon.description,
+        discountType: couponCalc.coupon.discountType,
+        discountValue: couponCalc.coupon.discountValue,
+        discountAmount: couponCalc.discountAmount,
+        preDiscountSubtotal,
+        postDiscountSubtotal: couponCalc.postDiscountSubtotal,
+      }
+    }
+
+    const taxableAmount = Math.max(0, preDiscountSubtotal - discountAmount)
+
+    // Calculate Tax / GST on post-discount taxable amount
     const settings = await BusinessSettings.getSettings()
     const taxEnabled = Boolean(settings.taxSettings?.taxEnabled)
     const taxName = settings.taxSettings?.taxName || 'GST'
     const taxPercentage = taxEnabled ? Number(settings.taxSettings?.taxRatePercentage) || 0 : 0
-    const taxAmount = taxEnabled ? Math.round((subtotal * taxPercentage) / 100) : 0
-    const finalTotal = subtotal + taxAmount
+    const taxAmount = taxEnabled ? Math.round((taxableAmount * taxPercentage) / 100) : 0
+    const finalTotal = taxableAmount + taxAmount
 
     return {
       turf: {
@@ -415,7 +444,11 @@ export const pricingService = {
       turfSubtotal,
       addOns: addOnsBreakdown,
       addOnsSubtotal,
-      subtotal,
+      subtotal: preDiscountSubtotal,
+      preDiscountSubtotal,
+      discountAmount,
+      coupon: couponDetails,
+      taxableAmount,
       tax: {
         taxEnabled,
         taxName,

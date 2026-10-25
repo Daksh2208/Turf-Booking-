@@ -10,6 +10,7 @@ import { BusinessSettings } from '../models/BusinessSettings.js'
 import { logAudit } from '../utils/auditLogger.js'
 import pricingService from './pricing.service.js'
 import availabilityService from './availability.service.js'
+import couponService from './coupon.service.js'
 
 let isTxSupported = null
 
@@ -80,6 +81,7 @@ export const bookingService = {
       contactDetails,
       paymentMethod = 'Pay at Venue',
       idempotencyKey,
+      couponCode,
     } = data
 
     if (!user || !user._id) {
@@ -238,6 +240,9 @@ export const bookingService = {
       slots: discreteSlots.length > 0 ? discreteSlots : undefined,
       addOns,
       playerCount,
+      couponCode: couponCode ? couponCode.trim() : null,
+      sportId,
+      user,
     })
 
     // 11. Resolve Sport
@@ -293,7 +298,19 @@ export const bookingService = {
       slotPrice: quote.turfSubtotal,
       addOns: addOnsSnapshot,
       addOnsTotal: quote.addOnsSubtotal,
-      subtotal: quote.subtotal,
+      subtotal: quote.preDiscountSubtotal || quote.subtotal,
+      discountAmount: quote.discountAmount || 0,
+      coupon: quote.coupon
+        ? {
+            couponId: quote.coupon.couponId,
+            code: quote.coupon.code,
+            discountType: quote.coupon.discountType,
+            discountValue: quote.coupon.discountValue,
+            discountAmount: quote.coupon.discountAmount,
+            preDiscountSubtotal: quote.preDiscountSubtotal,
+            postDiscountSubtotal: quote.taxableAmount,
+          }
+        : undefined,
       taxRatePercentage: quote.tax.taxPercentage,
       taxAmount: quote.tax.taxAmount,
       totalAmount: quote.finalTotal,
@@ -301,7 +318,11 @@ export const bookingService = {
         hourlySegments: quote.hourlySegments,
         turfSubtotal: quote.turfSubtotal,
         addOnsSubtotal: quote.addOnsSubtotal,
-        subtotal: quote.subtotal,
+        subtotal: quote.preDiscountSubtotal || quote.subtotal,
+        preDiscountSubtotal: quote.preDiscountSubtotal || quote.subtotal,
+        discountAmount: quote.discountAmount || 0,
+        couponCode: quote.coupon?.code || null,
+        taxableAmount: quote.taxableAmount,
         taxPercentage: quote.tax.taxPercentage,
         taxAmount: quote.tax.taxAmount,
         finalTotal: quote.finalTotal,
@@ -342,6 +363,18 @@ export const bookingService = {
           const [b] = await Booking.create([bookingPayload], { session })
           createdBooking = b
 
+          // Atomic coupon redemption if coupon was applied
+          if (quote.coupon?.couponId) {
+            await couponService.redeemCouponForBooking({
+              couponId: quote.coupon.couponId,
+              couponCode: quote.coupon.code,
+              user,
+              bookingId: b._id,
+              discountAmount: quote.discountAmount,
+              session,
+            })
+          }
+
           const reservations = slotTimesToReserve.map((st) => ({
             turf: turfId,
             date,
@@ -372,6 +405,17 @@ export const bookingService = {
       try {
         bookingDoc = await Booking.create(bookingPayload)
 
+        // Atomic coupon redemption
+        if (quote.coupon?.couponId) {
+          await couponService.redeemCouponForBooking({
+            couponId: quote.coupon.couponId,
+            couponCode: quote.coupon.code,
+            user,
+            bookingId: bookingDoc._id,
+            discountAmount: quote.discountAmount,
+          })
+        }
+
         const reservations = slotTimesToReserve.map((st) => ({
           turf: turfId,
           date,
@@ -384,6 +428,10 @@ export const bookingService = {
         insertedReservations = await SlotReservation.insertMany(reservations)
         createdBooking = bookingDoc
       } catch (err) {
+        // Rollback coupon redemption if created
+        if (quote.coupon?.couponId && bookingDoc?._id) {
+          await couponService.releaseCouponOnCancellation(bookingDoc._id).catch(() => {})
+        }
         // Rollback any partially created records
         if (bookingDoc?._id) {
           await Booking.deleteOne({ _id: bookingDoc._id }).catch(() => {})
@@ -481,6 +529,9 @@ export const bookingService = {
 
       // Immediately release active slot reservations so slot becomes available again
       await SlotReservation.updateMany({ booking: booking._id }, { status: 'released' })
+      if (booking.coupon?.couponId) {
+        await couponService.releaseCouponOnCancellation(booking._id).catch(() => {})
+      }
     }
 
     await booking.save()
@@ -624,6 +675,9 @@ export const bookingService = {
 
     // Release slot reservations immediately
     await SlotReservation.updateMany({ booking: booking._id }, { status: 'released' })
+    if (booking.coupon?.couponId) {
+      await couponService.releaseCouponOnCancellation(booking._id).catch(() => {})
+    }
     await booking.save()
 
     await logAudit({

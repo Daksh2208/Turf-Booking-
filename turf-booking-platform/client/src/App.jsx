@@ -26,6 +26,7 @@ import { BlockedSlotsPage } from './pages/admin/BlockedSlotsPage'
 import { SportsPage } from './pages/admin/SportsPage'
 import { TurfsPage } from './pages/admin/TurfsPage'
 import { AddOnsPage } from './pages/admin/AddOnsPage'
+import { CouponsPage } from './pages/admin/CouponsPage'
 import { BannersPage } from './pages/admin/BannersPage'
 import { SettingsPage } from './pages/admin/SettingsPage'
 
@@ -111,6 +112,7 @@ export function App() {
             <Route path="turfs" element={<TurfsPage />} />
             <Route path="sports" element={<SportsPage />} />
             <Route path="addons" element={<AddOnsPage />} />
+            <Route path="coupons" element={<CouponsPage />} />
             <Route path="banners" element={<BannersPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>

@@ -4,6 +4,7 @@ import { Sport } from '../models/Sport.js'
 import { Turf } from '../models/Turf.js'
 import { AddOn } from '../models/AddOn.js'
 import { Banner } from '../models/Banner.js'
+import { Coupon } from '../models/Coupon.js'
 import { BusinessSettings } from '../models/BusinessSettings.js'
 
 async function seedInitialData() {
@@ -242,7 +243,61 @@ async function seedInitialData() {
       console.log(`Created ${banners.length} banners.`)
     }
 
-    // 5. Ensure Business Settings
+    // 5. Seed Promotional Coupons
+    const initialCoupons = [
+        {
+          code: 'SUPER3000',
+          description: '20% OFF on bookings above ₹3,000! Save up to ₹1,000 on big game nights.',
+          discountType: 'percentage',
+          discountValue: 20,
+          minimumBookingAmount: 300000, // ₹3,000 in paise
+          maximumDiscountAmount: 100000, // ₹1,000 in paise
+          usageLimit: 200,
+          perUserLimit: 3,
+          isActive: true,
+        },
+        {
+          code: 'MATCHDAY15',
+          description: '15% OFF on booking subtotal above ₹1,500.',
+          discountType: 'percentage',
+          discountValue: 15,
+          minimumBookingAmount: 150000, // ₹1,500 in paise
+          maximumDiscountAmount: 50000, // ₹500 in paise
+          usageLimit: 500,
+          perUserLimit: 2,
+          isActive: true,
+        },
+        {
+          code: 'FLAT100',
+          description: 'Flat ₹100 OFF on any turf booking above ₹800.',
+          discountType: 'fixed',
+          discountValue: 10000, // ₹100 in paise
+          minimumBookingAmount: 80000, // ₹800 in paise
+          usageLimit: 1000,
+          perUserLimit: 1,
+          isActive: true,
+        },
+        {
+          code: 'WEEKEND500',
+          description: 'Flat ₹500 Mega Discount on group bookings above ₹4,000.',
+          discountType: 'fixed',
+          discountValue: 50000, // ₹500 in paise
+          minimumBookingAmount: 400000, // ₹4,000 in paise
+          usageLimit: 100,
+          perUserLimit: 2,
+          isActive: true,
+        },
+      ]
+
+      for (const couponData of initialCoupons) {
+        const exists = await Coupon.findOne({ code: couponData.code, isDeleted: false })
+        if (!exists) {
+          await Coupon.create(couponData)
+          console.log(`Seeded coupon: ${couponData.code}`)
+        }
+      }
+
+    // 6. Ensure Business Settings
     await BusinessSettings.findOneAndUpdate(
       {},
       {
@@ -267,7 +322,7 @@ async function seedInitialData() {
       { upsert: true }
     )
 
-    console.log('Database successfully seeded with sports, turfs, add-ons, banners, and settings!')
+    console.log('Database successfully seeded with sports, turfs, add-ons, banners, coupons, and settings!')
     process.exit(0)
   } catch (err) {
     console.error('Seed error:', err)

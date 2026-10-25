@@ -439,14 +439,32 @@ export const turfService = {
 
     // Filter by sport slug if provided
     if (sportSlug) {
-      const sport = await Sport.findOne({ slug: sportSlug.toLowerCase(), isActive: true })
+      const cleanSlug = String(sportSlug).toLowerCase().trim()
+      const sport = await Sport.findOne({ slug: cleanSlug, isActive: true })
       if (sport) {
-        query.sports = sport._id
+        const baseName = sport.name.replace(/\s*\d+$/, '').trim()
+        const related = await Sport.find({
+          isActive: true,
+          $or: [
+            { slug: cleanSlug },
+            { name: { $regex: new RegExp(`^${baseName}`, 'i') } },
+          ],
+        }).select('_id')
+        const relatedIds = related.map((r) => r._id)
+        query.sports = { $in: relatedIds }
       } else {
-        // Requested sport does not exist or is inactive; return empty result set
-        return {
-          turfs: [],
-          pagination: { page: Number(page), limit: Number(limit), total: 0, totalPages: 0 },
+        const byName = await Sport.find({
+          isActive: true,
+          name: { $regex: new RegExp(cleanSlug.replace(/-/g, ' '), 'i') },
+        }).select('_id')
+        if (byName.length > 0) {
+          query.sports = { $in: byName.map((s) => s._id) }
+        } else {
+          // Requested sport does not exist or is inactive; return empty result set
+          return {
+            turfs: [],
+            pagination: { page: Number(page), limit: Number(limit), total: 0, totalPages: 0 },
+          }
         }
       }
     }

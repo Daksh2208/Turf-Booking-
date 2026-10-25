@@ -146,10 +146,24 @@ export const sportService = {
   },
 
   /**
-   * Get public active sports
+   * Get public active sports, deduplicated by normalized category name
    */
   async getPublicSports() {
-    return Sport.find({ isActive: true }).select('name slug description image icon').sort({ name: 1 })
+    const rawSports = await Sport.find({ isActive: true })
+      .select('name slug description image icon')
+      .sort({ name: 1 })
+
+    // Deduplicate by normalized base category name (e.g. 'Box Cricket 179...' collapses into 'Box Cricket')
+    const seen = new Map()
+    for (const sport of rawSports) {
+      if (!sport.name) continue
+      const normalizedCategory = sport.name.replace(/\s*\d+$/, '').trim().toLowerCase()
+      if (!seen.has(normalizedCategory)) {
+        seen.set(normalizedCategory, sport)
+      }
+    }
+
+    return Array.from(seen.values())
   },
 
   /**

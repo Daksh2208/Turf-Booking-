@@ -124,6 +124,46 @@ const bookingSchema = new mongoose.Schema(
       required: true,
       min: 0,
     }, // in integer paise
+    // Coupon and discount snapshot
+    discountAmount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Discount amount cannot be negative'],
+    }, // in integer paise
+    coupon: {
+      couponId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Coupon',
+        default: null,
+      },
+      code: {
+        type: String,
+        uppercase: true,
+        trim: true,
+        default: null,
+      },
+      discountType: {
+        type: String,
+        enum: ['percentage', 'fixed'],
+        default: null,
+      },
+      discountValue: {
+        type: Number,
+        default: null,
+      },
+      discountAmount: {
+        type: Number,
+        default: 0,
+      }, // in integer paise
+      preDiscountSubtotal: {
+        type: Number,
+        default: null,
+      }, // in integer paise
+      postDiscountSubtotal: {
+        type: Number,
+        default: null,
+      }, // in integer paise
+    },
     // Authoritative pricing breakdown snapshot from pricingService
     pricingBreakdown: {
       hourlySegments: [
@@ -139,6 +179,10 @@ const bookingSchema = new mongoose.Schema(
       turfSubtotal: Number,
       addOnsSubtotal: Number,
       subtotal: Number,
+      preDiscountSubtotal: Number,
+      discountAmount: Number,
+      couponCode: String,
+      taxableAmount: Number,
       taxPercentage: Number,
       taxAmount: Number,
       finalTotal: Number,

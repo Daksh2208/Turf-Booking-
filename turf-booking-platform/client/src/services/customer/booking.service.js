@@ -59,6 +59,25 @@ export const customerBookingService = {
     const response = await apiClient.get(`/bookings/${id}`)
     return response.data?.data?.booking
   },
+
+  /**
+   * Validate coupon code against selected booking context
+   */
+  async validateCoupon(payload) {
+    const response = await apiClient.post('/coupons/validate', payload)
+    return response.data?.data
+  },
+
+  /**
+   * Fetch available coupons and smart unlock nudges for booking context
+   */
+  async getAvailableCoupons({ turfId, sportId, subtotal } = {}) {
+    const response = await apiClient.get('/coupons/available', {
+      params: { turfId, sportId, subtotal },
+    })
+    return response.data?.data?.coupons || []
+  },
 }
 
 export default customerBookingService
+

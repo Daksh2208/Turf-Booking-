@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '../../hooks/useApi'
 import {
@@ -57,6 +57,20 @@ export const TurfListingPage = () => {
     queryFn: () => customerInventoryService.getSports(),
     refetchInterval: 5000,
   })
+
+  // Deduplicate sports by base category name
+  const uniqueSports = useMemo(() => {
+    const seen = new Set()
+    return sports.filter((sport) => {
+      const normalized = (sport?.name || '')
+        .toLowerCase()
+        .replace(/\s*\d+$/, '')
+        .trim()
+      if (!normalized || seen.has(normalized)) return false
+      seen.add(normalized)
+      return true
+    })
+  }, [sports])
 
   // 2. Fetch Turfs with current query params
   const { data: turfsData, isLoading, isError, error, refetch } = useQuery({
@@ -200,7 +214,7 @@ export const TurfListingPage = () => {
               className="w-full bg-white text-xs text-[#17231B] px-3 py-2 rounded-xl border border-[#D7E0D9] focus:outline-none focus:border-[#267A45] cursor-pointer"
             >
               <option value="">All Sports</option>
-              {sports.map((s) => (
+              {uniqueSports.map((s) => (
                 <option key={s._id} value={s.slug}>
                   {s.name}
                 </option>

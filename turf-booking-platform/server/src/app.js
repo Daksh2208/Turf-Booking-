@@ -14,6 +14,8 @@ import customerInventoryRoutes from './routes/customer/inventory.routes.js'
 import customerBookingRoutes from './routes/customer/booking.routes.js'
 import customerPricingRoutes from './routes/customer/pricing.routes.js'
 import customerAvailabilityRoutes from './routes/customer/availability.routes.js'
+import adminCouponRoutes from './routes/admin/coupon.routes.js'
+import customerCouponRoutes from './routes/customer/coupon.routes.js'
 import { notFoundMiddleware } from './middleware/not-found.middleware.js'
 import { errorMiddleware } from './middleware/error.middleware.js'
 
@@ -71,6 +73,8 @@ app.use('/api/v1/auth', authRoutes)
 app.use('/api/v1/admin', adminInventoryRoutes)
 app.use('/api/v1/admin', adminBookingRoutes)
 app.use('/api/v1/admin', adminCustomerRoutes)
+app.use('/api/v1/admin/coupons', adminCouponRoutes)
+app.use('/api/v1/coupons', customerCouponRoutes)
 app.use('/api/v1/bookings', customerBookingRoutes)
 app.use('/api/v1/pricing', customerPricingRoutes)
 app.use('/api/v1/availability', customerAvailabilityRoutes)

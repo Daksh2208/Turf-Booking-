@@ -16,6 +16,11 @@ import {
   Info,
   Tag,
   Building2,
+  Sparkles,
+  Gift,
+  Lock,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuery } from '../../hooks/useApi'
@@ -59,6 +64,14 @@ export const CheckoutPage = () => {
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Coupon Code State
+  const [couponInput, setCouponInput] = useState('')
+  const [appliedCoupon, setAppliedCoupon] = useState(null)
+  const [couponError, setCouponError] = useState('')
+  const [couponSuccess, setCouponSuccess] = useState('')
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false)
+  const [showOffers, setShowOffers] = useState(true)
+
   const { data: turfData } = useQuery({
     queryKey: ['checkoutTurf', turfId],
     queryFn: () => customerInventoryService.getTurfById(turfId),
@@ -73,10 +86,70 @@ export const CheckoutPage = () => {
     isError: quoteError,
     error: quoteErrObj,
   } = useQuery({
-    queryKey: ['checkoutQuote', { turfId, date, startTime, endTime, selectedSlots, playerCount, selectedAddOns }],
+    queryKey: [
+      'checkoutQuote',
+      {
+        turfId,
+        date,
+        startTime,
+        endTime,
+        selectedSlots,
+        playerCount,
+        selectedAddOns,
+        couponCode: appliedCoupon?.code || undefined,
+      },
+    ],
     queryFn: () =>
       customerBookingService.getPricingQuote({
         turfId,
+        date,
+        startTime,
+        endTime,
+        selectedSlots: selectedSlots.length > 0 ? selectedSlots : (startTime ? [startTime] : []),
+        slots: slots.length > 0 ? slots : undefined,
+        playerCount,
+        couponCode: appliedCoupon?.code || undefined,
+        sportId: turf?.sports?.[0]?._id || turf?.sports?.[0],
+        addOns: selectedAddOns.map((item) => ({
+          addOnId: item.addOnId,
+          quantity: item.quantity,
+        })),
+      }),
+    enabled: !!turfId && !!date && (!!startTime || selectedSlots.length > 0),
+  })
+
+  // Dynamic Available Coupons & Smart Spend Nudges Query
+  const sportId = turf?.sports?.[0]?._id || turf?.sports?.[0]
+  const preDiscountSubtotal = quote?.preDiscountSubtotal || 0
+
+  const { data: availableCoupons = [] } = useQuery({
+    queryKey: ['availableCoupons', turfId, sportId, preDiscountSubtotal],
+    queryFn: () =>
+      customerBookingService.getAvailableCoupons({
+        turfId,
+        sportId,
+        subtotal: preDiscountSubtotal,
+      }),
+    enabled: !!turfId,
+  })
+
+  const handleApplyCoupon = async (e, codeOverride = null) => {
+    e?.preventDefault()
+    setCouponError('')
+    setCouponSuccess('')
+    const cleanCode = (codeOverride || couponInput).trim().toUpperCase()
+    if (!cleanCode) {
+      setCouponError('Please enter a coupon code.')
+      return
+    }
+    setCouponInput(cleanCode)
+
+    setIsValidatingCoupon(true)
+    try {
+      const result = await customerBookingService.validateCoupon({
+        couponCode: cleanCode,
+        turfId,
+        sportId: turf?.sports?.[0]?._id || turf?.sports?.[0],
         date,
         startTime,
         endTime,
@@ -87,9 +160,30 @@ export const CheckoutPage = () => {
           addOnId: item.addOnId,
           quantity: item.quantity,
         })),
-      }),
-    enabled: !!turfId && !!date && (!!startTime || selectedSlots.length > 0),
-  })
+      })
+
+      setAppliedCoupon(result.coupon)
+      setCouponSuccess(`Coupon "${result.coupon.code}" applied! You saved ₹${(result.discountAmount / 100).toFixed(2)}.`)
+      setCouponInput(cleanCode)
+    } catch (err) {
+      setAppliedCoupon(null)
+      setCouponError(
+        err.response?.data?.error?.message ||
+        err.response?.data?.message ||
+        err.message ||
+        'Invalid coupon code.'
+      )
+    } finally {
+      setIsValidatingCoupon(false)
+    }
+  }
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null)
+    setCouponInput('')
+    setCouponSuccess('')
+    setCouponError('')
+  }
 
   const formattedDate = date
     ? new Date(date + 'T00:00:00Z').toLocaleDateString('en-IN', {
@@ -150,6 +244,7 @@ export const CheckoutPage = () => {
           phone: contactDetails.phone.trim(),
         },
         paymentMethod: 'Pay at Venue',
+        couponCode: appliedCoupon?.code || undefined,
         idempotencyKey: idempotencyKeyRef.current,
       }
 
@@ -475,14 +570,277 @@ export const CheckoutPage = () => {
                   </div>
                 )}
 
+                {/* Coupon Code Section */}
+                <div className="pt-3 border-t border-[#E2E8E3] space-y-2.5">
+                  <span className="text-[11px] font-bold uppercase text-[#526258] tracking-wider flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-[#267A45]" />
+                    <span>Have a Coupon Code?</span>
+                  </span>
+
+                  {appliedCoupon ? (
+                    <div className="p-3 rounded-2xl bg-[#E7F3E9] border border-[#C9DFCE] flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-[#267A45] shrink-0" />
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-xs text-[#1D6537] uppercase">
+                              {appliedCoupon.code}
+                            </span>
+                            <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-white text-[#1D6537] border border-[#C9DFCE]">
+                              {appliedCoupon.discountType === 'percentage'
+                                ? `${appliedCoupon.discountValue}% OFF`
+                                : `₹${(appliedCoupon.discountValue / 100).toFixed(0)} OFF`}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-[#526258]">Coupon discount applied to total</p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="text-xs font-bold text-[#922B27] hover:underline cursor-pointer px-2 py-1 rounded-lg hover:bg-white/60 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="e.g. TURF20"
+                          value={couponInput}
+                          onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              handleApplyCoupon(e)
+                            }
+                          }}
+                          className="flex-1 bg-white text-xs uppercase font-mono tracking-wider text-[#17231B] placeholder-[#647168] px-3.5 py-2.5 rounded-xl border border-[#D7E0D9] focus:outline-none focus:border-[#267A45]"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleApplyCoupon}
+                          disabled={isValidatingCoupon || !couponInput.trim()}
+                          className="px-4 py-2.5 rounded-xl bg-[#267A45] hover:bg-[#1E6338] disabled:bg-[#D7E0D9] disabled:text-[#647168] text-white font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-2xs"
+                        >
+                          {isValidatingCoupon ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <span>Validating</span>
+                            </>
+                          ) : (
+                            <span>Apply</span>
+                          )}
+                        </button>
+                      </div>
+
+                      {couponError && (
+                        <p className="text-[11px] text-[#922B27] flex items-center gap-1 pt-0.5">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{couponError}</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {couponSuccess && !appliedCoupon && (
+                    <p className="text-[11px] text-[#1D6537] flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>{couponSuccess}</span>
+                    </p>
+                  )}
+
+                  {/* Smart Coupon Discovery & Unlock Nudges */}
+                  {availableCoupons && availableCoupons.length > 0 && (
+                    <div className="pt-2 border-t border-dashed border-[#E2E8E3] space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-[#17231B] flex items-center gap-1.5">
+                          <Gift className="w-3.5 h-3.5 text-[#267A45]" />
+                          <span>Available Offers ({availableCoupons.length})</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowOffers((prev) => !prev)}
+                          className="text-[11px] font-semibold text-[#267A45] hover:underline flex items-center gap-0.5 cursor-pointer"
+                        >
+                          {showOffers ? (
+                            <>
+                              <span>Hide</span>
+                              <ChevronUp className="w-3 h-3" />
+                            </>
+                          ) : (
+                            <>
+                              <span>View All</span>
+                              <ChevronDown className="w-3 h-3" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {showOffers && (
+                        <div className="space-y-2 max-h-60 overflow-y-auto pr-0.5">
+                          {(() => {
+                            const currentSubtotal = quote?.preDiscountSubtotal || quote?.subtotal || 0
+                            const sorted = [...availableCoupons].sort((a, b) => {
+                              const aEligible = currentSubtotal >= (a.minimumBookingAmount || 0)
+                              const bEligible = currentSubtotal >= (b.minimumBookingAmount || 0)
+                              if (aEligible && !bEligible) return -1
+                              if (!aEligible && bEligible) return 1
+                              return (a.minimumBookingAmount || 0) - (b.minimumBookingAmount || 0)
+                            })
+
+                            return sorted.map((c) => {
+                              const isCurrentApplied = appliedCoupon?.code === c.code
+                              const minRequired = c.minimumBookingAmount || 0
+                              const isEligible = currentSubtotal >= minRequired
+                              const amountNeeded = isEligible ? 0 : Math.max(0, minRequired - currentSubtotal)
+
+                              let potentialDiscount = 0
+                              if (c.discountType === 'percentage') {
+                                const base = isEligible ? currentSubtotal : minRequired
+                                potentialDiscount = Math.round((base * c.discountValue) / 100)
+                                if (c.maximumDiscountAmount) {
+                                  potentialDiscount = Math.min(potentialDiscount, c.maximumDiscountAmount)
+                                }
+                              } else {
+                                potentialDiscount = isEligible
+                                  ? Math.min(c.discountValue, currentSubtotal)
+                                  : c.discountValue
+                              }
+
+                              const dynamicNudge = !isEligible && minRequired > 0
+                                ? `Add ₹${Math.ceil(amountNeeded / 100).toLocaleString('en-IN')} more to unlock ${
+                                    c.discountType === 'percentage'
+                                      ? `${c.discountValue}% OFF`
+                                      : `₹${Math.round(c.discountValue / 100).toLocaleString('en-IN')} FLAT OFF`
+                                  }!`
+                                : null
+
+                              if (isEligible) {
+                                return (
+                                  <div
+                                    key={c._id}
+                                    className={`p-2.5 rounded-xl border transition-all ${
+                                      isCurrentApplied
+                                        ? 'bg-[#E7F3E9] border-[#267A45]'
+                                        : 'bg-white border-[#D7E0D9] hover:border-[#267A45]/60 hover:shadow-2xs'
+                                    }`}
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="space-y-0.5">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="font-mono font-bold text-xs bg-[#F4F7F4] text-[#1D6537] px-2 py-0.5 rounded border border-[#C9DFCE]">
+                                            {c.code}
+                                          </span>
+                                          <span className="text-[10px] font-bold text-[#267A45]">
+                                            {c.discountType === 'percentage'
+                                              ? `${c.discountValue}% OFF`
+                                              : `₹${(c.discountValue / 100).toFixed(0)} FLAT OFF`}
+                                          </span>
+                                          <span className="text-[9px] font-semibold text-[#1D6537] bg-[#E7F3E9] px-1.5 py-0.2 rounded border border-[#C9DFCE]">
+                                            Unlocked
+                                          </span>
+                                        </div>
+                                        {c.description && (
+                                          <p className="text-[10px] text-[#526258] line-clamp-1">
+                                            {c.description}
+                                          </p>
+                                        )}
+                                        <p className="text-[10px] font-medium text-[#267A45]">
+                                          Save ₹{(potentialDiscount / 100).toFixed(2)} on this booking!
+                                        </p>
+                                      </div>
+
+                                      {isCurrentApplied ? (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#1D6537] bg-white px-2 py-1 rounded-lg border border-[#C9DFCE]">
+                                          <CheckCircle2 className="w-3 h-3" />
+                                          Applied
+                                        </span>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleApplyCoupon(null, c.code)}
+                                          disabled={isValidatingCoupon}
+                                          className="text-xs font-bold text-white bg-[#267A45] hover:bg-[#1E6338] px-2.5 py-1 rounded-lg cursor-pointer transition-colors shadow-2xs shrink-0"
+                                        >
+                                          Apply
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              }
+
+                              // Coupon not yet eligible: Show smart spend nudge
+                              return (
+                                <div
+                                  key={c._id}
+                                  className="p-2.5 rounded-xl border border-dashed border-amber-300 bg-amber-50/70"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="font-mono font-bold text-xs bg-white text-gray-700 px-2 py-0.5 rounded border border-gray-200">
+                                          {c.code}
+                                        </span>
+                                        <span className="text-[10px] font-bold text-amber-800">
+                                          {c.discountType === 'percentage'
+                                            ? `${c.discountValue}% OFF`
+                                            : `₹${(c.discountValue / 100).toFixed(0)} FLAT OFF`}
+                                        </span>
+                                      </div>
+                                      <p className="text-[10px] font-semibold text-amber-900 flex items-center gap-1">
+                                        <Lock className="w-3 h-3 text-amber-700 shrink-0" />
+                                        <span>{dynamicNudge || c.highlightNudge}</span>
+                                      </p>
+                                      <p className="text-[9px] text-amber-700">
+                                        Valid on bookings of ₹{((c.minimumBookingAmount || 0) / 100).toLocaleString('en-IN')} or more
+                                      </p>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => setCouponInput(c.code)}
+                                      className="text-[10px] font-bold text-amber-800 bg-white hover:bg-amber-100 border border-amber-300 px-2 py-1 rounded-lg cursor-pointer transition-colors shrink-0"
+                                      title="Click to copy code to input"
+                                    >
+                                      Use Code
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            })
+                          })()}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Subtotal & Taxes */}
                 <div className="space-y-2 pt-3 border-t border-[#E2E8E3] text-[#526258]">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
                     <span className="font-mono text-[#17231B] font-bold">
-                      ₹{(quote.subtotal / 100).toFixed(2)}
+                      ₹{((quote.preDiscountSubtotal || quote.subtotal) / 100).toFixed(2)}
                     </span>
                   </div>
+
+                  {/* Coupon Discount Row if applied */}
+                  {quote.discountAmount > 0 && (
+                    <div className="flex justify-between items-center text-[#267A45]">
+                      <span className="flex items-center gap-1 font-semibold">
+                        <Tag className="w-3 h-3" />
+                        <span>Coupon Discount ({quote.coupon?.code || appliedCoupon?.code})</span>
+                      </span>
+                      <span className="font-mono font-bold">
+                        -₹{(quote.discountAmount / 100).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="flex justify-between">
                     <span>

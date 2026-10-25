@@ -16,6 +16,7 @@ import {
   Calendar,
   Clock,
   Users,
+  Tag,
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { name: 'Turf Arenas', path: '/admin/turfs', icon: MapPin },
   { name: 'Sports', path: '/admin/sports', icon: Activity },
   { name: 'Add-Ons', path: '/admin/addons', icon: Sparkles },
+  { name: 'Coupons', path: '/admin/coupons', icon: Tag },
   { name: 'Homepage Banners', path: '/admin/banners', icon: Image },
   { name: 'Business Settings', path: '/admin/settings', icon: Sliders },
 ]

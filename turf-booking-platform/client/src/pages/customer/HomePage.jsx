@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { useQuery } from '../../hooks/useApi'
 import {
@@ -18,6 +18,8 @@ import {
   UserPlus,
   LogIn,
   Radio,
+  Filter,
+  X,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import customerInventoryService from '../../services/customer/inventory.service'
@@ -28,6 +30,7 @@ export const HomePage = () => {
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCity, setSelectedCity] = useState('')
+  const [selectedSportSlug, setSelectedSportSlug] = useState('')
 
   // 1. Fetch Active Sports Categories
   const { data: sports = [], isLoading: sportsLoading } = useQuery({
@@ -36,6 +39,22 @@ export const HomePage = () => {
     refetchInterval: 5000,
   })
 
+  // Deduplicate sports so only unique categories appear (no duplicate "Box Cricket" variants)
+  const uniqueSports = useMemo(() => {
+    const seen = new Map()
+    for (const sport of sports) {
+      if (!sport?.name) continue
+      const baseName = sport.name.replace(/\s*\d+$/, '').trim().toLowerCase()
+      if (!seen.has(baseName)) {
+        seen.set(baseName, {
+          ...sport,
+          cleanName: sport.name.replace(/\s*\d+$/, '').trim(),
+        })
+      }
+    }
+    return Array.from(seen.values())
+  }, [sports])
+
   // 2. Fetch Active Promotional Banners
   const { data: banners = [] } = useQuery({
     queryKey: ['publicBanners'],
@@ -43,14 +62,20 @@ export const HomePage = () => {
     refetchInterval: 5000,
   })
 
-  // 3. Fetch Featured / Recent Turfs
+  // 3. Fetch Featured / Recent Turfs (dynamically filters when a sport is selected)
   const { data: turfsData, isLoading: turfsLoading, isError: turfsError, error } = useQuery({
-    queryKey: ['homeFeaturedTurfs'],
-    queryFn: () => customerInventoryService.getTurfs({ limit: 6, sort: 'newest' }),
+    queryKey: ['homeFeaturedTurfs', selectedSportSlug],
+    queryFn: () =>
+      customerInventoryService.getTurfs({
+        limit: 12,
+        sort: 'newest',
+        sportSlug: selectedSportSlug || undefined,
+      }),
     refetchInterval: 5000,
   })
 
   const turfs = turfsData?.turfs || []
+  const activeSportObj = uniqueSports.find((s) => s.slug === selectedSportSlug)
 
   // Extract unique cities from actual turfs data
   const availableCities = Array.from(
@@ -339,34 +364,71 @@ export const HomePage = () => {
               <div key={n} className="h-28 rounded-2xl bg-white border border-[#D7E0D9] animate-pulse" />
             ))}
           </div>
-        ) : sports.length === 0 ? (
+        ) : uniqueSports.length === 0 ? (
           <div className="p-8 text-center bg-white rounded-3xl border border-[#D7E0D9] text-[#526258] text-xs">
             No sports categories currently registered.
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {sports.map((sport) => {
+            {uniqueSports.map((sport) => {
+              const isSelected = selectedSportSlug === sport.slug
               const targetRoute = `/turfs?sport=${sport.slug}`
+
               return (
-                <Link
+                <div
                   key={sport._id}
-                  to={isAuthenticated ? targetRoute : '/register'}
-                  state={{ from: targetRoute }}
-                  className="group p-5 rounded-2xl bg-white border border-[#D7E0D9] hover:border-[#267A45] hover:shadow-xs transition-all duration-300 flex flex-col justify-between space-y-4 shadow-2xs"
+                  onClick={() => {
+                    // Toggle selection to filter arenas right on the homepage
+                    setSelectedSportSlug((prev) => (prev === sport.slug ? '' : sport.slug))
+                    const arenasEl = document.getElementById('arenas')
+                    if (arenasEl) {
+                      arenasEl.scrollIntoView({ behavior: 'smooth' })
+                    }
+                  }}
+                  className={`group p-5 rounded-2xl cursor-pointer transition-all duration-300 flex flex-col justify-between space-y-4 shadow-2xs select-none ${
+                    isSelected
+                      ? 'bg-[#E7F3E9] border-2 border-[#267A45] shadow-xs'
+                      : 'bg-white border border-[#D7E0D9] hover:border-[#267A45] hover:shadow-xs'
+                  }`}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="w-12 h-12 rounded-xl bg-[#E7F3E9] border border-[#C9DFCE] flex items-center justify-center text-[#267A45] group-hover:scale-110 transition-transform">
+                    <div
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 ${
+                        isSelected
+                          ? 'bg-[#267A45] text-white border border-[#267A45]'
+                          : 'bg-[#E7F3E9] border border-[#C9DFCE] text-[#267A45]'
+                      }`}
+                    >
                       <Trophy className="w-6 h-6" />
                     </div>
-                    {!isAuthenticated && (
-                      <span className="p-1.5 rounded-lg bg-[#F6F8F6] text-[#647168] group-hover:text-[#267A45] border border-[#D7E0D9] transition-colors" title="Sign up required to book">
-                        <Lock className="w-3 h-3" />
-                      </span>
-                    )}
+
+                    <div className="flex items-center gap-1.5">
+                      {isSelected ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#267A45] text-white flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>Active</span>
+                        </span>
+                      ) : (
+                        <Link
+                          to={isAuthenticated ? targetRoute : '/register'}
+                          state={{ from: targetRoute }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[10px] font-semibold text-[#526258] hover:text-[#267A45] hover:underline"
+                          title="View on Turfs page"
+                        >
+                          Explore →
+                        </Link>
+                      )}
+                    </div>
                   </div>
+
                   <div>
-                    <h3 className="font-bold text-[#17231B] text-sm group-hover:text-[#267A45] transition-colors">
-                      {sport.name}
+                    <h3
+                      className={`font-bold text-sm transition-colors ${
+                        isSelected ? 'text-[#1D6537]' : 'text-[#17231B] group-hover:text-[#267A45]'
+                      }`}
+                    >
+                      {sport.cleanName || sport.name}
                     </h3>
                     {sport.description && (
                       <p className="text-[11px] text-[#526258] line-clamp-1 mt-0.5">
@@ -374,7 +436,7 @@ export const HomePage = () => {
                       </p>
                     )}
                   </div>
-                </Link>
+                </div>
               )
             })}
           </div>
@@ -382,25 +444,52 @@ export const HomePage = () => {
       </section>
 
       {/* 4. Featured Arenas Showcase */}
-      <section id="arenas" className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
+      <section id="arenas" className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8 scroll-mt-24">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-[#17231B] flex items-center gap-2">
-              <Compass className="w-6 h-6 text-[#267A45]" />
-              <span>Featured Sports Arenas</span>
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-[#17231B] flex items-center gap-2">
+                <Compass className="w-6 h-6 text-[#267A45]" />
+                <span>
+                  {activeSportObj ? `${activeSportObj.cleanName || activeSportObj.name} Arenas` : 'Featured Sports Arenas'}
+                </span>
+              </h2>
+              {selectedSportSlug && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedSportSlug('')}
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
+                  title="Clear sport filter"
+                >
+                  <span>Clear filter</span>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
             <p className="text-xs text-[#526258] mt-1">
-              Top-rated turf facilities equipped with floodlights, player amenities, and verified slots.
+              {activeSportObj
+                ? `Showing all verified turf arenas specialized for ${activeSportObj.cleanName || activeSportObj.name}.`
+                : 'Top-rated turf facilities equipped with floodlights, player amenities, and verified slots.'}
             </p>
           </div>
 
           <Link
-            to={isAuthenticated ? '/turfs' : '/register'}
-            state={{ from: '/turfs' }}
+            to={
+              selectedSportSlug
+                ? isAuthenticated
+                  ? `/turfs?sport=${selectedSportSlug}`
+                  : '/register'
+                : isAuthenticated
+                ? '/turfs'
+                : '/register'
+            }
+            state={{ from: selectedSportSlug ? `/turfs?sport=${selectedSportSlug}` : '/turfs' }}
             className="text-xs font-semibold text-[#267A45] hover:text-[#1E6338] flex items-center gap-1 transition-colors"
           >
             <span>
-              {isAuthenticated
+              {selectedSportSlug
+                ? `Explore all ${activeSportObj?.cleanName || ''} arenas`
+                : isAuthenticated
                 ? `Explore all ${turfsData?.pagination?.total || ''} arenas`
                 : 'Sign up to explore all arenas'}
             </span>
