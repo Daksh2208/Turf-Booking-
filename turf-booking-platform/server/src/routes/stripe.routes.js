@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { requireAuth, requireCustomer } from '../middleware/auth.middleware.js'
+import { requireAuth, requireCustomer, optionalAuth } from '../middleware/auth.middleware.js'
 import {
   getPublicConfig,
   createCheckoutSession,
@@ -16,11 +16,11 @@ router.get('/config', getPublicConfig)
 // Customer authenticated: Create Checkout Session
 router.post('/checkout-session', requireAuth, requireCustomer, createCheckoutSession)
 
-// Authenticated (customer or admin): Verify and retrieve authoritative payment status
-router.get('/status/:bookingId', requireAuth, getPaymentStatus)
+// Authenticated (customer or admin) or checkout session-id verified: Retrieve authoritative status
+router.get('/status/:bookingId', optionalAuth, getPaymentStatus)
 
-// Customer authenticated: Cancel pending booking from checkout return
-router.post('/cancel/:bookingId', requireAuth, requireCustomer, cancelPendingBooking)
+// Cancel pending booking from checkout return (handles both authenticated user and session validation)
+router.post('/cancel/:bookingId', optionalAuth, cancelPendingBooking)
 
 // Webhook endpoint (can also be invoked directly when mounted with raw body)
 router.post('/webhook', handleWebhook)

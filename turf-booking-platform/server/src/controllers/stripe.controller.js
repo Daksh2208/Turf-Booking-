@@ -14,7 +14,13 @@ export const getPublicConfig = async (req, res, next) => {
 
 export const createCheckoutSession = async (req, res, next) => {
   try {
-    const session = await stripeService.createCheckoutSession(req.body, req.user, req.ip)
+    const rawOrigin = req.get('origin') || (req.get('referer') ? new URL(req.get('referer')).origin : null)
+    const session = await stripeService.createCheckoutSession(
+      req.body,
+      req.user,
+      req.ip,
+      rawOrigin
+    )
     res.status(200).json({
       success: true,
       message: 'Stripe checkout session created successfully.',
@@ -28,7 +34,8 @@ export const createCheckoutSession = async (req, res, next) => {
 export const getPaymentStatus = async (req, res, next) => {
   try {
     const { bookingId } = req.params
-    const result = await stripeService.verifyAndGetPaymentStatus(bookingId, req.user)
+    const sessionId = req.query.session_id
+    const result = await stripeService.verifyAndGetPaymentStatus(bookingId, req.user, sessionId)
     res.status(200).json({
       success: true,
       data: result,
@@ -52,7 +59,8 @@ export const handleWebhook = async (req, res, next) => {
 export const cancelPendingBooking = async (req, res, next) => {
   try {
     const { bookingId } = req.params
-    const result = await stripeService.cancelPendingBooking(bookingId, req.user)
+    const sessionId = req.query.session_id || req.body?.sessionId
+    const result = await stripeService.cancelPendingBooking(bookingId, req.user, sessionId)
     res.status(200).json({
       success: true,
       message: 'Pending booking cancelled successfully.',

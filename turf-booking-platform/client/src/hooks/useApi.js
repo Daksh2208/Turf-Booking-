@@ -113,17 +113,23 @@ export function useQuery(options) {
     }
   }, [enabled, keySerialized, fetchData])
 
-  // Periodic polling if refetchInterval > 0
+  // Determine effective polling interval (supports static number or function receiving data)
+  const activeInterval =
+    typeof refetchInterval === 'function' ? refetchInterval(data) : refetchInterval
+  const numericInterval =
+    typeof activeInterval === 'number' && activeInterval > 0 ? activeInterval : null
+
+  // Periodic polling if numericInterval > 0
   useEffect(() => {
-    if (!enabled || !refetchInterval || refetchInterval <= 0) return
+    if (!enabled || !numericInterval) return
     const timer = setInterval(() => {
       if (isMountedRef.current) {
         fetchData(true)
       }
-    }, refetchInterval)
+    }, numericInterval)
 
     return () => clearInterval(timer)
-  }, [enabled, refetchInterval, fetchData])
+  }, [enabled, numericInterval, fetchData])
 
   // Listen for global invalidation events
   useEffect(() => {

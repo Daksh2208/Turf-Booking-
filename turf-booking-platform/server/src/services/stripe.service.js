@@ -1,4 +1,5 @@
 import Stripe from 'stripe'
+import mongoose from 'mongoose'
 import { env } from '../config/env.js'
 import { Booking } from '../models/Booking.js'
 import { SlotReservation } from '../models/SlotReservation.js'
@@ -64,7 +65,7 @@ export const stripeService = {
    * Create a Stripe Checkout Session for a turf booking
    * Enforces server authoritative pricing, slot reservation and user authentication
    */
-  async createCheckoutSession({ bookingId, bookingData } = {}, user, ip = '') {
+  async createCheckoutSession({ bookingId, bookingData } = {}, user, ip = '', clientOrigin = null) {
     if (!user || !user._id) {
       const error = new Error('Authentication required to initialize online payment.')
       error.statusCode = 401
@@ -145,9 +146,24 @@ export const stripeService = {
       throw error
     }
 
+    // Determine authoritative client base URL for redirects (detect actual client origin)
+    let baseUrl = env.CLIENT_URL || 'http://localhost:5173'
+    if (clientOrigin && typeof clientOrigin === 'string') {
+      const trimmed = clientOrigin.trim().replace(/\/$/, '')
+      const isAllowed =
+        trimmed === env.CLIENT_URL?.replace(/\/$/, '') ||
+        trimmed.includes('localhost') ||
+        trimmed.includes('127.0.0.1') ||
+        trimmed.endsWith('.onrender.com')
+
+      if (isAllowed) {
+        baseUrl = trimmed
+      }
+    }
+
     const customerEmail = booking.contactDetails?.email || user.email || 'customer@example.com'
-    const successUrl = `${env.CLIENT_URL}/bookings/payment-success?session_id={CHECKOUT_SESSION_ID}&booking_id=${booking._id}`
-    const cancelUrl = `${env.CLIENT_URL}/bookings/payment-cancelled?booking_id=${booking._id}`
+    const successUrl = `${baseUrl}/bookings/payment-success?session_id={CHECKOUT_SESSION_ID}&booking_id=${booking._id}`
+    const cancelUrl = `${baseUrl}/bookings/payment-cancelled?booking_id=${booking._id}`
 
     // Minimum checkout session expiry supported by Stripe is 30 minutes (1800 seconds)
     const expiresAt = Math.floor(Date.now() / 1000) + 1800
@@ -203,16 +219,30 @@ export const stripeService = {
   /**
    * Retrieve and verify the real-time Stripe payment status of a booking.
    * Client-supplied redirects are NEVER trusted; actual status is verified with Stripe.
+   * Supports authentication via user session OR cryptographic Stripe session_id proof.
    */
-  async verifyAndGetPaymentStatus(bookingId, user) {
-    if (!user || !user._id) {
-      const error = new Error('Authentication required.')
-      error.statusCode = 401
-      error.code = 'UNAUTHENTICATED'
-      throw error
+  async verifyAndGetPaymentStatus(bookingId, user, sessionId = null) {
+    let booking = null
+    const populateFields = [
+      { path: 'turf', select: 'name slug address images contactPhone contactEmail' },
+      { path: 'sport', select: 'name slug icon' },
+      { path: 'user', select: 'name email phone' },
+    ]
+
+    if (bookingId && mongoose.Types.ObjectId.isValid(bookingId)) {
+      booking = await Booking.findById(bookingId).populate(populateFields)
     }
 
-    const booking = await Booking.findById(bookingId).populate('turf', 'name slug address images')
+    if (!booking && bookingId && bookingId !== 'session') {
+      booking = await Booking.findOne({
+        $or: [{ bookingId: bookingId }, { stripeCheckoutSessionId: bookingId }],
+      }).populate(populateFields)
+    }
+
+    if (!booking && sessionId) {
+      booking = await Booking.findOne({ stripeCheckoutSessionId: sessionId }).populate(populateFields)
+    }
+
     if (!booking) {
       const error = new Error('Booking not found.')
       error.statusCode = 404
@@ -220,11 +250,24 @@ export const stripeService = {
       throw error
     }
 
-    if (user.role !== 'admin' && booking.user.toString() !== user._id.toString()) {
-      const error = new Error('You are not authorized to view this booking.')
-      error.statusCode = 403
-      error.code = 'FORBIDDEN'
-      throw error
+    const bookingUserId = booking.user?._id ? booking.user._id.toString() : booking.user?.toString()
+    const isOwner = user && user._id && bookingUserId === user._id.toString()
+    const isAdmin = user && user.role === 'admin'
+    const hasValidSessionProof =
+      sessionId && booking.stripeCheckoutSessionId && sessionId === booking.stripeCheckoutSessionId
+
+    if (!isOwner && !isAdmin && !hasValidSessionProof) {
+      if (!user) {
+        const error = new Error('Authentication required.')
+        error.statusCode = 401
+        error.code = 'UNAUTHENTICATED'
+        throw error
+      } else {
+        const error = new Error('You are not authorized to view this booking.')
+        error.statusCode = 403
+        error.code = 'FORBIDDEN'
+        throw error
+      }
     }
 
     // If already marked paid, return authoritative record
@@ -438,15 +481,20 @@ export const stripeService = {
   /**
    * Safe cancellation of a pending Stripe booking when the user cancels from checkout
    */
-  async cancelPendingBooking(bookingId, user) {
-    if (!user || !user._id) {
-      const error = new Error('Authentication required.')
-      error.statusCode = 401
-      error.code = 'UNAUTHENTICATED'
-      throw error
+  async cancelPendingBooking(bookingId, user, sessionId = null) {
+    let booking = null
+    if (bookingId && mongoose.Types.ObjectId.isValid(bookingId)) {
+      booking = await Booking.findById(bookingId)
+    }
+    if (!booking && bookingId && bookingId !== 'session') {
+      booking = await Booking.findOne({
+        $or: [{ bookingId }, { stripeCheckoutSessionId: bookingId }],
+      })
+    }
+    if (!booking && sessionId) {
+      booking = await Booking.findOne({ stripeCheckoutSessionId: sessionId })
     }
 
-    const booking = await Booking.findById(bookingId)
     if (!booking) {
       const error = new Error('Booking not found.')
       error.statusCode = 404
@@ -454,11 +502,23 @@ export const stripeService = {
       throw error
     }
 
-    if (booking.user.toString() !== user._id.toString()) {
-      const error = new Error('You are not authorized to cancel this booking.')
-      error.statusCode = 403
-      error.code = 'FORBIDDEN'
-      throw error
+    const bookingUserId = booking.user?._id ? booking.user._id.toString() : booking.user?.toString()
+    const isOwner = user && user._id && bookingUserId === user._id.toString()
+    const hasValidSessionProof =
+      sessionId && booking.stripeCheckoutSessionId && sessionId === booking.stripeCheckoutSessionId
+
+    if (!isOwner && !hasValidSessionProof) {
+      if (!user) {
+        const error = new Error('Authentication required.')
+        error.statusCode = 401
+        error.code = 'UNAUTHENTICATED'
+        throw error
+      } else {
+        const error = new Error('You are not authorized to cancel this booking.')
+        error.statusCode = 403
+        error.code = 'FORBIDDEN'
+        throw error
+      }
     }
 
     // Only cancel if not already paid

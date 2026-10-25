@@ -8,6 +8,11 @@ export default defineConfig({
     tailwindcss(),
     react(),
   ],
+  server: {
+    host: true,
+    port: 5173,
+    strictPort: false,
+  },
   optimizeDeps: {
     include: ['driver.js'],
   },

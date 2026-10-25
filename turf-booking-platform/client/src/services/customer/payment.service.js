@@ -29,8 +29,13 @@ export const customerPaymentService = {
   /**
    * Fetch authoritative payment verification status from backend
    */
-  async getPaymentStatus(bookingId) {
-    const response = await apiClient.get(`/payments/stripe/status/${bookingId}`)
+  async getPaymentStatus(bookingId, sessionId) {
+    const params = {}
+    if (sessionId) {
+      params.session_id = sessionId
+    }
+    const id = bookingId || 'session'
+    const response = await apiClient.get(`/payments/stripe/status/${id}`, { params })
     return response.data?.data
   },
 

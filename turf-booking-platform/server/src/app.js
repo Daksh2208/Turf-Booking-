@@ -48,7 +48,8 @@ app.use(
       if (
         allowedOrigins.includes(origin) ||
         origin.endsWith('.onrender.com') ||
-        origin.includes('localhost')
+        origin.includes('localhost') ||
+        origin.includes('127.0.0.1')
       ) {
         return callback(null, true)
       }
