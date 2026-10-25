@@ -75,7 +75,7 @@ export const customerBookingService = {
     const response = await apiClient.get('/coupons/available', {
       params: { turfId, sportId, subtotal },
     })
-    return response.data?.data
+    return response.data?.data?.coupons ?? response.data?.data ?? []
   },
 
   /**

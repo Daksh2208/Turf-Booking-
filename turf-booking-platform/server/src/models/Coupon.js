@@ -101,5 +101,13 @@ const couponSchema = new mongoose.Schema(
 // Compound index for active coupon lookup
 couponSchema.index({ code: 1, isDeleted: 1 })
 
+// Automatically deactivate coupon if validity (expiresAt) is expired
+couponSchema.pre('save', function (next) {
+  if (this.expiresAt && new Date() > this.expiresAt) {
+    this.isActive = false
+  }
+  next()
+})
+
 export const Coupon = mongoose.model('Coupon', couponSchema)
 export default Coupon

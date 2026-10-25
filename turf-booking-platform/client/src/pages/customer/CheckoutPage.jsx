@@ -139,19 +139,24 @@ export const CheckoutPage = () => {
   })
 
   // Dynamic Available Coupons & Smart Spend Nudges Query
+  const effectiveTurfId = turfId || turf?._id || turf?.id
   const sportId = turf?.sports?.[0]?._id || turf?.sports?.[0]
-  const preDiscountSubtotal = quote?.preDiscountSubtotal || 0
+  const preDiscountSubtotal = quote?.preDiscountSubtotal || quote?.subtotal || 0
 
-  const { data: availableCoupons = [] } = useQuery({
-    queryKey: ['availableCoupons', turfId, sportId, preDiscountSubtotal],
+  const { data: rawCouponsData } = useQuery({
+    queryKey: ['availableCoupons', effectiveTurfId, sportId, preDiscountSubtotal],
     queryFn: () =>
       customerBookingService.getAvailableCoupons({
-        turfId,
+        turfId: effectiveTurfId,
         sportId,
         subtotal: preDiscountSubtotal,
       }),
-    enabled: !!turfId,
+    enabled: !!effectiveTurfId,
   })
+
+  const availableCoupons = Array.isArray(rawCouponsData)
+    ? rawCouponsData
+    : (rawCouponsData?.coupons || [])
 
   const handleApplyCoupon = async (e, codeOverride = null) => {
     e?.preventDefault()

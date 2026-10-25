@@ -1,8 +1,29 @@
 import mongoose from 'mongoose'
 import { Coupon } from '../models/Coupon.js'
 import { CouponRedemption } from '../models/CouponRedemption.js'
+import '../models/Sport.js'
+import '../models/Turf.js'
+import '../models/User.js'
 
 export const couponService = {
+  /**
+   * Automatically deactivates all coupons whose expiry date has passed.
+   * Coupons remain deactivated until an admin re-edits their validity date to the future.
+   */
+  async autoDeactivateExpiredCoupons() {
+    const now = new Date()
+    const result = await Coupon.updateMany(
+      {
+        isDeleted: false,
+        isActive: true,
+        expiresAt: { $ne: null, $lte: now },
+      },
+      {
+        $set: { isActive: false },
+      }
+    )
+    return result
+  },
   /**
    * Normalizes coupon code to uppercase and trimmed.
    */
@@ -50,16 +71,19 @@ export const couponService = {
       throw err
     }
 
-    // 2. Active status check
-    if (!coupon.isActive) {
-      const err = new Error(`Coupon "${normalizedCode}" is currently inactive.`)
+    // 2. Time Validity Range
+    const now = new Date()
+    if (coupon.expiresAt && now > coupon.expiresAt) {
+      if (coupon.isActive) {
+        coupon.isActive = false
+        await coupon.save().catch(() => {})
+      }
+      const err = new Error(`Coupon "${normalizedCode}" has expired on ${coupon.expiresAt.toISOString().slice(0, 10)}.`)
       err.statusCode = 400
-      err.code = 'COUPON_INACTIVE'
+      err.code = 'COUPON_EXPIRED'
       throw err
     }
 
-    // 3. Time Validity Range
-    const now = new Date()
     if (coupon.startAt && now < coupon.startAt) {
       const err = new Error(`Coupon "${normalizedCode}" is not active yet. It begins on ${coupon.startAt.toISOString().slice(0, 10)}.`)
       err.statusCode = 400
@@ -67,10 +91,11 @@ export const couponService = {
       throw err
     }
 
-    if (coupon.expiresAt && now > coupon.expiresAt) {
-      const err = new Error(`Coupon "${normalizedCode}" has expired on ${coupon.expiresAt.toISOString().slice(0, 10)}.`)
+    // 3. Active status check
+    if (!coupon.isActive) {
+      const err = new Error(`Coupon "${normalizedCode}" is currently inactive.`)
       err.statusCode = 400
-      err.code = 'COUPON_EXPIRED'
+      err.code = 'COUPON_INACTIVE'
       throw err
     }
 
@@ -287,6 +312,9 @@ export const couponService = {
    * List coupons with pagination, search, and status filters.
    */
   async listCoupons({ page = 1, limit = 20, search = '', status = 'all' }) {
+    // Automatically deactivate expired coupons first
+    await this.autoDeactivateExpiredCoupons()
+
     const pageNum = Math.max(1, Number(page) || 1)
     const limitNum = Math.min(100, Math.max(1, Number(limit) || 20))
     const skip = (pageNum - 1) * limitNum
@@ -359,6 +387,12 @@ export const couponService = {
       err.statusCode = 404
       err.code = 'COUPON_NOT_FOUND'
       throw err
+    }
+
+    // Deactivate if validity expired
+    if (coupon.expiresAt && new Date() > coupon.expiresAt && coupon.isActive) {
+      coupon.isActive = false
+      await coupon.save().catch(() => {})
     }
 
     return coupon
@@ -528,8 +562,16 @@ export const couponService = {
         : []
     }
 
-    if (updates.isActive !== undefined) {
+    const isNowExpired = coupon.expiresAt && new Date() > coupon.expiresAt
+
+    if (isNowExpired) {
+      // Validity is still in the past -> force deactivated
+      coupon.isActive = false
+    } else if (updates.isActive !== undefined) {
       coupon.isActive = Boolean(updates.isActive)
+    } else if (!coupon.isActive && updates.expiresAt !== undefined) {
+      // Admin re-edited validity to a future date, reactivate automatically
+      coupon.isActive = true
     }
 
     await coupon.save()
@@ -541,6 +583,12 @@ export const couponService = {
    */
   async toggleCouponStatus(id, isActive) {
     const coupon = await this.getCouponById(id)
+    if (isActive && coupon.expiresAt && new Date() > coupon.expiresAt) {
+      const err = new Error('Cannot activate an expired coupon. Please re-edit its validity date first.')
+      err.statusCode = 400
+      err.code = 'COUPON_EXPIRED'
+      throw err
+    }
     coupon.isActive = Boolean(isActive)
     await coupon.save()
     return coupon
@@ -572,6 +620,9 @@ export const couponService = {
    * Annotates coupons with eligibility, amountNeeded to unlock, and potential savings.
    */
   async getApplicableCoupons({ turfId = null, sportId = null, subtotal = 0, user = null }) {
+    // Deactivate any expired coupons before discovery
+    await this.autoDeactivateExpiredCoupons()
+
     const now = new Date()
     const filter = {
       isActive: true,

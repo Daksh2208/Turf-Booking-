@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { requireAuth, requireCustomer } from '../../middleware/auth.middleware.js'
+import { requireAuth, requireCustomer, optionalAuth } from '../../middleware/auth.middleware.js'
 import {
   validateCoupon,
   getAvailableCoupons,
@@ -7,8 +7,8 @@ import {
 
 const router = Router()
 
-// Customer Coupon Discovery & Validation (Authentication required, Admins blocked from customer checkout)
-router.get('/available', requireAuth, requireCustomer, getAvailableCoupons)
+// Customer Coupon Discovery & Validation
+router.get('/available', optionalAuth, getAvailableCoupons)
 router.post('/validate', requireAuth, requireCustomer, validateCoupon)
 
 export default router

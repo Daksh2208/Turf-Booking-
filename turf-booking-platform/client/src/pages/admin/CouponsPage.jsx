@@ -267,20 +267,20 @@ export const CouponsPage = () => {
     const startAt = coupon.startAt ? new Date(coupon.startAt) : null
     const expiresAt = coupon.expiresAt ? new Date(coupon.expiresAt) : null
 
+    if (expiresAt && now > expiresAt) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+          Expired (Deactivated)
+        </span>
+      )
+    }
+
     if (!coupon.isActive) {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200">
           <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
           Inactive
-        </span>
-      )
-    }
-
-    if (expiresAt && now > expiresAt) {
-      return (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-          Expired
         </span>
       )
     }
@@ -541,23 +541,40 @@ export const CouponsPage = () => {
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         {/* Toggle Active Button */}
-                        <button
-                          title={coupon.isActive ? 'Deactivate Coupon' : 'Activate Coupon'}
-                          onClick={() =>
-                            toggleStatusMutation.mutate({
-                              id: coupon._id,
-                              isActive: !coupon.isActive,
-                            })
-                          }
-                          disabled={toggleStatusMutation.isLoading}
-                          className={`p-1.5 rounded-lg border transition-colors ${
-                            coupon.isActive
-                              ? 'text-emerald-700 border-emerald-200 hover:bg-emerald-50'
-                              : 'text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-gray-600'
-                          }`}
-                        >
-                          <Power className="w-3.5 h-3.5" />
-                        </button>
+                        {(() => {
+                          const isExpired = coupon.expiresAt && new Date() > new Date(coupon.expiresAt)
+                          return (
+                            <button
+                              title={
+                                isExpired
+                                  ? 'Expired - Re-edit validity date to reactivate'
+                                  : coupon.isActive
+                                  ? 'Deactivate Coupon'
+                                  : 'Activate Coupon'
+                              }
+                              onClick={() => {
+                                if (isExpired && !coupon.isActive) {
+                                  showToast('Cannot activate an expired coupon. Please re-edit its validity date first.', 'error')
+                                  return
+                                }
+                                toggleStatusMutation.mutate({
+                                  id: coupon._id,
+                                  isActive: !coupon.isActive,
+                                })
+                              }}
+                              disabled={toggleStatusMutation.isLoading}
+                              className={`p-1.5 rounded-lg border transition-colors ${
+                                coupon.isActive
+                                  ? 'text-emerald-700 border-emerald-200 hover:bg-emerald-50'
+                                  : isExpired
+                                  ? 'text-gray-300 border-gray-200 cursor-not-allowed bg-gray-50'
+                                  : 'text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-gray-600'
+                              }`}
+                            >
+                              <Power className="w-3.5 h-3.5" />
+                            </button>
+                          )
+                        })()}
 
                         {/* Edit Button */}
                         <button
@@ -753,7 +770,15 @@ export const CouponsPage = () => {
               <Input
                 type="datetime-local"
                 value={formData.expiresAt}
-                onChange={(e) => setFormData({ ...formData, expiresAt: e.target.value })}
+                onChange={(e) => {
+                  const newExpiresAt = e.target.value
+                  const isFutureOrEmpty = !newExpiresAt || new Date(newExpiresAt) > new Date()
+                  setFormData((prev) => ({
+                    ...prev,
+                    expiresAt: newExpiresAt,
+                    ...(isFutureOrEmpty && !prev.isActive ? { isActive: true } : {}),
+                  }))
+                }}
               />
             </FormField>
           </div>

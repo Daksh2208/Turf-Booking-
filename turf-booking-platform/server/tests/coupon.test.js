@@ -856,4 +856,77 @@ describe('Part 12: Production Coupon Code System Tests', () => {
       expect(res.status).toBe(409)
     })
   })
+
+  // ==========================================
+  // Section E: Expired Coupon Auto-Deactivation & Admin Re-edit Lifecycle
+  // ==========================================
+  describe('Automatic Deactivation & Validity Re-edit Lifecycle', () => {
+    let expiredCoupon = null
+
+    beforeAll(async () => {
+      // Create a coupon with expiresAt in the past, initially marked isActive: true
+      const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      expiredCoupon = await Coupon.create({
+        code: 'TEST_AUTODIE',
+        description: 'Auto deactivate test',
+        discountType: 'percentage',
+        discountValue: 10,
+        expiresAt: pastDate,
+        isActive: true,
+      })
+    })
+
+    it('autoDeactivateExpiredCoupons automatically deactivates expired coupons', async () => {
+      await couponService.autoDeactivateExpiredCoupons()
+      const found = await Coupon.findById(expiredCoupon._id)
+      expect(found.isActive).toBe(false)
+    })
+
+    it('blocks admin from toggling active status on expired coupon without extending validity', async () => {
+      const res = await request(app)
+        .patch(`/api/v1/admin/coupons/${expiredCoupon._id}/status`)
+        .set('Cookie', adminCookie)
+        .send({ isActive: true })
+
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('COUPON_EXPIRED')
+      expect(res.body.error.message).toContain('validity date')
+    })
+
+    it('allows admin to re-edit validity to a future date which restores active status', async () => {
+      const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      const res = await request(app)
+        .put(`/api/v1/admin/coupons/${expiredCoupon._id}`)
+        .set('Cookie', adminCookie)
+        .send({
+          expiresAt: futureDate.toISOString(),
+          isActive: true,
+        })
+
+      expect(res.status).toBe(200)
+      expect(res.body.data.coupon.isActive).toBe(true)
+      expect(new Date(res.body.data.coupon.expiresAt).getTime()).toBeGreaterThan(Date.now())
+    })
+
+    it('GET /api/v1/coupons/available excludes expired coupons and displays valid active coupons', async () => {
+      // Re-expire it to verify exclusion
+      const pastDate = new Date(Date.now() - 3600000)
+      await Coupon.updateOne(
+        { _id: expiredCoupon._id },
+        { expiresAt: pastDate, isActive: true }
+      )
+
+      const res = await request(app)
+        .get(`/api/v1/coupons/available?turfId=${testTurf1._id}&sportId=${testSport1._id}&subtotal=100000`)
+        .set('Cookie', customer1Cookie)
+
+      expect(res.status).toBe(200)
+      const codes = res.body.data.coupons.map((c) => c.code)
+      expect(codes).not.toContain('TEST_AUTODIE')
+
+      // Also verify that auto-deactivation ran during the call
+      const updated = await Coupon.findById(expiredCoupon._id)
+      expect(updated.isActive).toBe(false)
+    })
+  })
 })

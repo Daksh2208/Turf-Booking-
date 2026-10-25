@@ -4,9 +4,11 @@ import { env } from './config/env.js'
 import { logger } from './config/logger.js'
 import { connectDB, disconnectDB } from './config/db.js'
 import { initSocket } from './socket.js'
+import couponService from './services/coupon.service.js'
 
 let server
 let httpServer
+let couponExpiryInterval = null
 
 // Initialize Database connection and start HTTP Server
 const startServer = async () => {
@@ -14,6 +16,21 @@ const startServer = async () => {
     // 1. Connect to MongoDB first
     logger.info('Connecting to MongoDB...')
     await connectDB()
+
+    // Run initial expired coupon deactivation
+    try {
+      await couponService.autoDeactivateExpiredCoupons()
+      logger.info('Expired coupons check complete on startup')
+    } catch (couponErr) {
+      logger.warn({ error: couponErr.message }, 'Initial coupon expiry check error')
+    }
+
+    // Periodic check every 60 seconds
+    couponExpiryInterval = setInterval(() => {
+      couponService.autoDeactivateExpiredCoupons().catch((err) => {
+        logger.error({ error: err.message }, 'Periodic expired coupons auto-deactivation failed')
+      })
+    }, 60 * 1000)
 
     // 2. Wrap express app in Node HTTP server and initialize Socket.IO
     httpServer = http.createServer(app)
@@ -35,6 +52,11 @@ const startServer = async () => {
 // Graceful Shutdown Handler
 const handleShutdown = async (signal) => {
   logger.info(`Received ${signal}. Initiating graceful shutdown...`)
+
+  if (couponExpiryInterval) {
+    clearInterval(couponExpiryInterval)
+    couponExpiryInterval = null
+  }
 
   if (server) {
     server.close(async () => {
