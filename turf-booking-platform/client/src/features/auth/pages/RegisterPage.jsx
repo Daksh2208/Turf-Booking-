@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { User, Mail, ArrowRight, Check, X, AlertCircle } from 'lucide-react'
+import { User, Mail, ArrowRight, Check, X, AlertCircle, ArrowLeft } from 'lucide-react'
 import { AuthLayout } from '../../../layouts/AuthLayout'
 import { FormField } from '../../../components/common/FormField'
 import { Input } from '../../../components/common/Input'
@@ -255,8 +255,8 @@ export const RegisterPage = () => {
           <ArrowRight className="w-4 h-4 ml-1" />
         </Button>
 
-        {/* Navigation to Login */}
-        <div className="text-center pt-4 border-t border-[#E2E8E3]">
+        {/* Navigation to Login & Back to Home */}
+        <div className="text-center pt-3 border-t border-[#E2E8E3] space-y-2">
           <p className="text-xs text-[#526258]">
             Already have an account?{' '}
             <Link
@@ -267,6 +267,16 @@ export const RegisterPage = () => {
               Sign In
             </Link>
           </p>
+
+          <div>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#526258] hover:text-[#267A45] transition-colors py-1 px-3 rounded-xl hover:bg-[#F0F6F1] group cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-[#267A45] group-hover:-translate-x-0.5 transition-transform" />
+              <span>Back to Home</span>
+            </Link>
+          </div>
         </div>
       </form>
     </AuthLayout>

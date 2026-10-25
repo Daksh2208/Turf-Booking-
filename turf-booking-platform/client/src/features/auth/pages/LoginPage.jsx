@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { Mail, ArrowRight, Info, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Mail, ArrowRight, Info, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react'
 import { AuthLayout } from '../../../layouts/AuthLayout'
 import { FormField } from '../../../components/common/FormField'
 import { Input } from '../../../components/common/Input'
@@ -83,7 +83,7 @@ export const LoginPage = () => {
       title="Welcome Back"
       subtitle="Sign in to your account to reserve slots, manage bookings, and access member rates."
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         {/* Registration Success Banner */}
         {registrationSuccess && !serverError && (
           <div
@@ -197,8 +197,8 @@ export const LoginPage = () => {
           <ArrowRight className="w-4 h-4 ml-1" />
         </Button>
 
-        {/* Navigation to Registration */}
-        <div className="text-center pt-4 border-t border-[#E2E8E3]">
+        {/* Navigation to Registration & Back to Home */}
+        <div className="text-center pt-3 border-t border-[#E2E8E3] space-y-2">
           <p className="text-xs text-[#526258]">
             Don&apos;t have an account yet?{' '}
             <Link
@@ -209,6 +209,16 @@ export const LoginPage = () => {
               Create Account
             </Link>
           </p>
+
+          <div>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#526258] hover:text-[#267A45] transition-colors py-1 px-3 rounded-xl hover:bg-[#F0F6F1] group cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-[#267A45] group-hover:-translate-x-0.5 transition-transform" />
+              <span>Back to Home</span>
+            </Link>
+          </div>
         </div>
       </form>
     </AuthLayout>

@@ -50,6 +50,9 @@ describe('RegisterPage Component', () => {
       screen.getByRole('button', { name: /Create Account/i })
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Sign In/i })).toBeInTheDocument()
+    expect(
+      screen.getAllByRole('link', { name: /Back to Home/i }).length
+    ).toBeGreaterThanOrEqual(1)
   })
 
   it('validates password matching before submitting', async () => {

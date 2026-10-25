@@ -41,6 +41,7 @@ describe('LoginPage Component', () => {
     expect(screen.getByLabelText(/^Password/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Sign In to Account/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Create Account/i })).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: /Back to Home/i }).length).toBeGreaterThanOrEqual(1)
   })
 
   it('displays validation errors on invalid submission', async () => {

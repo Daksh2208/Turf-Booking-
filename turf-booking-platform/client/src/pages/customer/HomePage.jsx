@@ -20,6 +20,7 @@ import {
   Radio,
   Filter,
   X,
+  Clock,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import customerInventoryService from '../../services/customer/inventory.service'
@@ -115,10 +116,10 @@ export const HomePage = () => {
   }
 
   return (
-    <div className="space-y-16 sm:space-y-24 pb-20">
+    <div className="space-y-10 sm:space-y-14 pb-16">
       {/* 1. Hero Section */}
-      <section className="relative overflow-hidden pt-10 sm:pt-16 pb-12 sm:pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="text-center max-w-3xl mx-auto space-y-6">
+      <section className="relative overflow-hidden pt-6 sm:pt-10 pb-4 sm:pb-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="text-center max-w-3xl mx-auto space-y-5 sm:space-y-6">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#E7F3E9] border border-[#C9DFCE] text-[#1D6537] text-xs font-semibold shadow-xs">
             <Sparkles className="w-3.5 h-3.5 text-[#267A45]" />
             <span>Real-Time Turf Availability & Dynamic Rates</span>
@@ -184,42 +185,76 @@ export const HomePage = () => {
               </button>
             </form>
           ) : (
-            <div className="p-6 sm:p-8 rounded-3xl bg-white border border-[#D7E0D9] shadow-sm max-w-xl mx-auto text-center space-y-4">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E7F3E9] text-[#1D6537] text-xs font-semibold border border-[#C9DFCE]">
-                <Lock className="w-3.5 h-3.5 text-[#267A45]" />
-                <span>Protected Booking Features</span>
+            <div className="p-5 sm:p-7 rounded-3xl bg-white border border-[#D7E0D9] shadow-sm max-w-2xl mx-auto text-center space-y-5">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#E7F3E9] text-[#1D6537] text-xs font-semibold border border-[#C9DFCE]">
+                <Sparkles className="w-3.5 h-3.5 text-[#267A45]" />
+                <span>Smart Turf Reservation System</span>
               </div>
-              <div className="space-y-1.5">
-                <h3 className="text-xl sm:text-2xl font-bold text-[#17231B]">
-                  Sign Up to Search & Book Slots
+
+              {/* Title & Short Description */}
+              <div className="space-y-2 max-w-xl mx-auto">
+                <h3 className="text-xl sm:text-2xl font-black text-[#17231B] tracking-tight">
+                  Seamless Booking for Every Game
                 </h3>
-                <p className="text-xs sm:text-sm text-[#526258] max-w-md mx-auto">
-                  To protect slot availability and manage reservations, live slot schedules and turf bookings are accessible to registered members.
+                <p className="text-xs sm:text-sm text-[#526258] leading-relaxed">
+                  Discover premier sports arenas with real-time slot tracking, transparent dynamic pricing, and conflict-free instant reservations.
                 </p>
               </div>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-                <Link
-                  to="/register"
-                  state={{ from: '/turfs' }}
-                  className="w-full sm:w-auto py-3 px-6 rounded-2xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>Create Account</span>
-                </Link>
+
+              {/* Project Highlights / Small Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-left">
+                <div className="p-3.5 rounded-2xl bg-[#F6F8F6] border border-[#E2E8E3] flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-[#E7F3E9] text-[#267A45] flex items-center justify-center shrink-0 border border-[#C9DFCE]">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-[#17231B]">Live Slot Schedules</div>
+                    <div className="text-[11px] text-[#526258] mt-0.5">Real-time availability with zero double-booking</div>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-[#F6F8F6] border border-[#E2E8E3] flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-[#E7F3E9] text-[#267A45] flex items-center justify-center shrink-0 border border-[#C9DFCE]">
+                    <Zap className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-[#17231B]">Dynamic Rates</div>
+                    <div className="text-[11px] text-[#526258] mt-0.5">Transparent weekday, peak-hour & weekend pricing</div>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-[#F6F8F6] border border-[#E2E8E3] flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-[#E7F3E9] text-[#267A45] flex items-center justify-center shrink-0 border border-[#C9DFCE]">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-[#17231B]">Multi-Sport Arenas</div>
+                    <div className="text-[11px] text-[#526258] mt-0.5">Cricket, Football, Pickleball & Badminton</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Single Explore Button redirecting to sign in page */}
+              <div className="pt-2 flex flex-col items-center gap-2">
                 <Link
                   to="/login"
                   state={{ from: '/turfs' }}
-                  className="w-full sm:w-auto py-3 px-5 rounded-2xl bg-white hover:bg-[#F0F6F1] text-[#17231B] font-semibold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 border border-[#D7E0D9] cursor-pointer"
+                  className="py-3 px-8 rounded-2xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-xs sm:text-sm transition-all duration-200 inline-flex items-center justify-center gap-2 shadow-xs cursor-pointer group hover:scale-[1.01]"
                 >
-                  <LogIn className="w-4 h-4 text-[#267A45]" />
-                  <span>Sign In</span>
+                  <Compass className="w-4 h-4 text-[#E7F3E9] group-hover:rotate-45 transition-transform duration-300" />
+                  <span>Explore</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
                 </Link>
+                <p className="text-[11px] text-[#647168]">
+                  Sign in to inspect live schedules, compare dynamic rates & book your slot
+                </p>
               </div>
             </div>
           )}
 
           {/* Quick Stats Badges */}
-          <div className="flex flex-wrap items-center justify-center gap-6 pt-4 text-xs text-[#526258]">
+          <div className="flex flex-wrap items-center justify-center gap-5 sm:gap-6 pt-2 text-xs text-[#526258]">
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-[#267A45]" />
               <span className="text-[#46564A] font-medium">Verified Sports Arenas</span>

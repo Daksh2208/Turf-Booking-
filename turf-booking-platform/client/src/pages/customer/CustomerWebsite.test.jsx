@@ -207,9 +207,10 @@ describe('Part 9: Customer-Facing Website & Discovery Suite', () => {
     // Ongoing happenings section header
     expect(screen.getByText('Ongoing Tournaments & Happenings')).toBeInTheDocument()
 
-    // Without login, interactive search form is hidden and guest sign-up callout is shown
+    // Without login, interactive search form is hidden and guest project detail card with Explore CTA is shown
     expect(screen.queryByPlaceholderText(/Search turf name, area/i)).not.toBeInTheDocument()
-    expect(screen.getByText('Sign Up to Search & Book Slots')).toBeInTheDocument()
+    expect(screen.getByText('Seamless Booking for Every Game')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /^Explore$/i })).toBeInTheDocument()
     expect(screen.getAllByRole('link', { name: /Create Account/i }).length).toBeGreaterThanOrEqual(1)
 
     // Sports categories from API
@@ -252,8 +253,8 @@ describe('Part 9: Customer-Facing Website & Discovery Suite', () => {
     expect(screen.getByPlaceholderText(/Search turf name, area/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Find Turfs/i })).toBeInTheDocument()
 
-    // Protected callout is not present
-    expect(screen.queryByText('Sign Up to Search & Book Slots')).not.toBeInTheDocument()
+    // Guest card is not present
+    expect(screen.queryByText('Seamless Booking for Every Game')).not.toBeInTheDocument()
 
     // Turf card has View Details & Slots CTA
     await waitFor(() => {
