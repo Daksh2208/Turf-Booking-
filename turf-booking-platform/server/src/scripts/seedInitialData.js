@@ -6,6 +6,7 @@ import { AddOn } from '../models/AddOn.js'
 import { Banner } from '../models/Banner.js'
 import { Coupon } from '../models/Coupon.js'
 import { BusinessSettings } from '../models/BusinessSettings.js'
+import { User } from '../models/User.js'
 
 async function seedInitialData() {
   try {
@@ -322,7 +323,22 @@ async function seedInitialData() {
       { upsert: true }
     )
 
-    console.log('Database successfully seeded with sports, turfs, add-ons, banners, coupons, and settings!')
+    // 7. Seed Demo Customer Account
+    const customerEmail = 'customer@turfbooking.com'
+    const existingCustomer = await User.findOne({ email: customerEmail })
+    if (!existingCustomer) {
+      const passwordHash = await User.hashPassword('Customer@123')
+      await User.create({
+        name: 'Rohan Sharma',
+        email: customerEmail,
+        passwordHash,
+        role: 'customer',
+        isActive: true,
+      })
+      console.log(`Seeded demo customer: ${customerEmail}`)
+    }
+
+    console.log('Database successfully seeded with sports, turfs, add-ons, banners, coupons, settings, and demo customer!')
     process.exit(0)
   } catch (err) {
     console.error('Seed error:', err)

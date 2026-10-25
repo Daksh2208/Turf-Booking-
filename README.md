@@ -9,6 +9,9 @@ Built for multi-sport arenas catering to **Box Cricket**, **Football**, **Pickle
 ## 📑 Table of Contents
 
 - [Key Highlights](#-key-highlights)
+- [Platform Showcase & UI Screenshots](#-platform-showcase--ui-screenshots)
+  - [Customer Portal](#1-customer-portal)
+  - [Admin Management Panel](#2-admin-management-panel)
 - [System Architecture](#-system-architecture)
 - [Core Features](#-core-features)
   - [Customer Portal](#-customer-portal)
@@ -34,6 +37,56 @@ Built for multi-sport arenas catering to **Box Cricket**, **Football**, **Pickle
 - **Dual Payment Options**: Supports instant online checkout via **Stripe** (with automated webhook processing) and offline **Pay at Venue**.
 - **Interactive Admin Onboarding Tour**: Built-in step-by-step guided walkthrough to onboard new turf managers across the dashboard, calendar, pricing, and bookings.
 - **Strict Role-Based Access Control (RBAC)**: Secure separation between customer endpoints and administrative routes with JWT access/refresh tokens and signed cookies.
+
+---
+
+## 📸 Platform Showcase & UI Screenshots
+
+### 1. Customer Portal
+
+#### 🏠 Landing Page & Hero Section
+> Engaging hero banner, quick category sports navigation, and instant registration call to action.
+![Landing Page](screenshots/01_landing_page.png)
+
+#### 📝 Real-Time Interactive Registration
+> Seamless customer onboarding with instant visual password strength verification, live criteria checks, and terms consent.
+![Customer Registration](screenshots/02_customer_registration.png)
+
+#### 🔍 Turf Discovery, Sports Filtering & Amenities
+> Search by arena name or area, filter by sport pill (Box Cricket, Football, Pickleball, Badminton), hourly price ranges, and venue amenities (floodlights, parking, locker rooms).
+![Turf Discovery](screenshots/03_turf_discovery.png)
+
+#### 📅 Interactive Slot Availability Calendar & Dynamic Pricing Engine
+> Live hourly availability calendar synchronized with MongoDB. Displays hourly dynamic rates (weekday, peak-hour, and weekend) along with a real-time transparent price calculation sidebar.
+![Slot Booking & Pricing](screenshots/04_slot_booking_pricing.png)
+
+---
+
+### 2. Admin Management Panel
+
+#### 🧭 Interactive Admin Onboarding Tour
+> Step-by-step interactive onboarding guide welcoming facility managers and highlighting key operational sections.
+![Admin Onboarding Tour](screenshots/05_admin_onboarding_tour.png)
+
+#### 📊 Live Operations Tracker & Executive KPI Dashboard
+> Real-time monitoring of today's collected revenue, active reservations, player counts, available slot tally, and live arena schedules.
+![Admin Dashboard](screenshots/06_admin_dashboard.png)
+
+#### 🏟️ Turf Arenas Management (Full CRUD)
+> Complete facility inventory control — add new arenas, assign sports, manage dimensions, surface types, opening/closing hours, and upload photos.
+![Admin Turf Management](screenshots/07_admin_turf_management.png)
+
+#### 📋 Bookings & Reservations Central
+> Comprehensive booking log with multi-parameter search, status management (`Confirmed`, `Pending`, `Completed`, `Cancelled`), and desk payment reconciliation.
+![Admin Bookings](screenshots/08_admin_bookings_calendar.png)
+
+#### 🚫 Slot Blocker (Maintenance & Tournaments)
+> Lock specific date and time slots across any arena for routine groundskeeping or external tournament fixtures; updates customer calendars immediately.
+![Admin Blocked Slots](screenshots/09_admin_blocked_slots.png)
+
+#### ⚙️ Business Profile, Tax & Policy Settings
+> Zero-code configuration of business details, customer support lines, cancellation cut-off windows, and GST percentage.
+![Admin Settings](screenshots/10_admin_settings.png)
 
 ---
 
@@ -115,6 +168,18 @@ Built for multi-sport arenas catering to **Box Cricket**, **Football**, **Pickle
 
 ```
 Turf-Booking-/
+├── screenshots/                         # Platform UI showcase screenshots
+│   ├── 01_landing_page.png
+│   ├── 02_customer_registration.png
+│   ├── 03_turf_discovery.png
+│   ├── 04_slot_booking_pricing.png
+│   ├── 05_admin_onboarding_tour.png
+│   ├── 06_admin_dashboard.png
+│   ├── 07_admin_turf_management.png
+│   ├── 08_admin_bookings_calendar.png
+│   ├── 09_admin_blocked_slots.png
+│   └── 10_admin_settings.png
+│
 ├── turf-booking-platform/
 │   ├── client/                          # Frontend Application (React + Vite)
 │   │   ├── src/
@@ -196,7 +261,7 @@ COOKIE_SECRET=your_cookie_signing_secret_random
 # Administrator Provisioning
 ADMIN_NAME=Platform Administrator
 ADMIN_EMAIL=admin@turfbooking.com
-ADMIN_PASSWORD=AdminPassword@123
+ADMIN_PASSWORD=Admin@2026
 
 # Stripe Payment Gateway (Optional / Test Mode)
 STRIPE_SECRET_KEY=
@@ -238,11 +303,11 @@ npm install
 ---
 
 ### Step 2: Seed the Database
-Before launching the platform, populate MongoDB with initial sports, turfs, rental equipment, promotional banners, coupons, business settings, and the administrator account:
+Before launching the platform, populate MongoDB with initial sports, turfs, rental equipment, promotional banners, coupons, business settings, and demo user accounts:
 
 In `turf-booking-platform/server/`:
 ```bash
-# 1. Seed Sports, Turfs, Add-Ons, Coupons, and Banners
+# 1. Seed Sports, Turfs, Add-Ons, Coupons, Banners, and Demo Customer
 npm run seed:initial
 
 # 2. Seed Administrator Account (using ADMIN_EMAIL and ADMIN_PASSWORD from .env)
@@ -276,13 +341,13 @@ After running the seed scripts, the following default accounts and data are avai
 ### 🔑 Test Accounts
 | Role | Email | Password | Access Area |
 | :--- | :--- | :--- | :--- |
-| **Administrator** | `admin@turfbooking.com` | `AdminPassword@123` | `/admin` (Full Admin Panel) |
-| **Customer** | Register via `/register` or login | User-defined | `/` (Booking & Profile) |
+| **Administrator** | `admin@turfbooking.com` | `Admin@2026` | `/admin` (Full Admin Panel) |
+| **Customer** | `customer@turfbooking.com` | `Customer@123` | `/` (Booking, Discovery & Profile) |
 
 ### 🏟️ Pre-Seeded Venues & Sports
 - **Sports**: Box Cricket, Football, Pickleball, Badminton
 - **Turfs**:
-  - *Apex Thunder Arena* (Andheri West, Mumbai) — High-density floodlit astro-turf
+  - *Aplha Box Cricket* (Ahmedabad, Gujarat) — All-weather floodlit box cricket arena
   - *Champions Turf Ground* (Malad West, Mumbai) — FIFA-standard multi-sport arena
   - *Smash Point Sports Hub* (Powai, Mumbai) — Acrylic cushion courts for Pickleball & Badminton
 - **Promotional Coupons**:
