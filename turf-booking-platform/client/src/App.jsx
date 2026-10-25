@@ -1,10 +1,42 @@
-import React from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import React, { useEffect } from 'react'
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useSearchParams,
+  useNavigate,
+  useLocation,
+} from 'react-router-dom'
 import { AuthProvider } from './features/auth/context/AuthContext'
 import { ProtectedRoute } from './components/common/ProtectedRoute'
 import { ScrollToTop } from './components/common/ScrollToTop'
 import { AdminLayout } from './layouts/AdminLayout'
 import { CustomerLayout } from './layouts/CustomerLayout'
+
+// Handles external redirects from Stripe to root URL and routes cleanly to SPA page
+function StripeReturnRedirector() {
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  useEffect(() => {
+    if (
+      location.pathname === '/' &&
+      (searchParams.get('payment_success') === 'true' ||
+        (searchParams.get('session_id') && searchParams.get('booking_id')))
+    ) {
+      navigate(`/bookings/payment-success${location.search}`, { replace: true })
+    } else if (
+      location.pathname === '/' &&
+      searchParams.get('payment_cancelled') === 'true'
+    ) {
+      navigate(`/bookings/payment-cancelled${location.search}`, { replace: true })
+    }
+  }, [location, searchParams, navigate])
+
+  return null
+}
 
 // Public & Customer Pages
 import { HomePage } from './pages/customer/HomePage'
@@ -40,6 +72,7 @@ export function App() {
       <AuthProvider>
         <BookingReservationProvider>
           <ScrollToTop />
+          <StripeReturnRedirector />
           <Routes>
           {/* Customer Website Routes wrapped in CustomerLayout */}
           <Route element={<CustomerLayout />}>

@@ -179,8 +179,8 @@ export const stripeService = {
     }
 
     const customerEmail = booking.contactDetails?.email || user.email || 'customer@example.com'
-    const successUrl = `${baseUrl}/bookings/payment-success?session_id={CHECKOUT_SESSION_ID}&booking_id=${booking._id}`
-    const cancelUrl = `${baseUrl}/bookings/payment-cancelled?booking_id=${booking._id}`
+    const successUrl = `${baseUrl}/?payment_success=true&session_id={CHECKOUT_SESSION_ID}&booking_id=${booking._id}`
+    const cancelUrl = `${baseUrl}/?payment_cancelled=true&booking_id=${booking._id}`
 
     // Minimum checkout session expiry supported by Stripe is 30 minutes (1800 seconds)
     const expiresAt = Math.floor(Date.now() / 1000) + 1800
