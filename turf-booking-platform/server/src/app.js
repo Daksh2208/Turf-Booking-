@@ -32,12 +32,17 @@ app.set('trust proxy', 1)
 app.use(helmet())
 
 // 2. Cross-Origin Resource Sharing (CORS) with credentials enabled
+const rawClientUrls = (env.CLIENT_URL || '')
+  .split(',')
+  .map((u) => u.trim().replace(/\/$/, ''))
+  .filter(Boolean)
+
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'https://turf-booking-fronend.onrender.com',
   'https://turf-booking-frontend.onrender.com',
-  env.CLIENT_URL,
+  ...rawClientUrls,
 ].filter(Boolean)
 
 app.use(
@@ -45,11 +50,15 @@ app.use(
     origin: (origin, callback) => {
       // Allow requests with no origin (like curl, server-to-server)
       if (!origin) return callback(null, true)
+      const cleanOrigin = origin.trim().replace(/\/$/, '')
       if (
-        allowedOrigins.includes(origin) ||
-        origin.endsWith('.onrender.com') ||
-        origin.includes('localhost') ||
-        origin.includes('127.0.0.1')
+        allowedOrigins.includes(cleanOrigin) ||
+        cleanOrigin.endsWith('.onrender.com') ||
+        cleanOrigin.endsWith('.vercel.app') ||
+        cleanOrigin.endsWith('.netlify.app') ||
+        cleanOrigin.endsWith('.pages.dev') ||
+        cleanOrigin.includes('localhost') ||
+        cleanOrigin.includes('127.0.0.1')
       ) {
         return callback(null, true)
       }

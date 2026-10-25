@@ -5,22 +5,32 @@ import { env } from './config/env.js'
 let io = null
 
 export const initSocket = (httpServer) => {
+  const rawClientUrls = (env.CLIENT_URL || '')
+    .split(',')
+    .map((u) => u.trim().replace(/\/$/, ''))
+    .filter(Boolean)
+
   const allowedOrigins = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'https://turf-booking-fronend.onrender.com',
     'https://turf-booking-frontend.onrender.com',
-    env.CLIENT_URL,
+    ...rawClientUrls,
   ].filter(Boolean)
 
   io = new Server(httpServer, {
     cors: {
       origin: (origin, callback) => {
         if (!origin) return callback(null, true)
+        const cleanOrigin = origin.trim().replace(/\/$/, '')
         if (
-          allowedOrigins.includes(origin) ||
-          origin.endsWith('.onrender.com') ||
-          origin.includes('localhost')
+          allowedOrigins.includes(cleanOrigin) ||
+          cleanOrigin.endsWith('.onrender.com') ||
+          cleanOrigin.endsWith('.vercel.app') ||
+          cleanOrigin.endsWith('.netlify.app') ||
+          cleanOrigin.endsWith('.pages.dev') ||
+          cleanOrigin.includes('localhost') ||
+          cleanOrigin.includes('127.0.0.1')
         ) {
           return callback(null, true)
         }

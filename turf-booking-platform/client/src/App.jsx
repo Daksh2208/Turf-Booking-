@@ -78,35 +78,19 @@ export function App() {
             />
             <Route
               path="/bookings/payment-success"
-              element={
-                <ProtectedRoute requireCustomer={true} redirectTo="/login">
-                  <PaymentSuccessPage />
-                </ProtectedRoute>
-              }
+              element={<PaymentSuccessPage />}
             />
             <Route
               path="/bookings/payment-cancelled"
-              element={
-                <ProtectedRoute requireCustomer={true} redirectTo="/login">
-                  <PaymentCancelledPage />
-                </ProtectedRoute>
-              }
+              element={<PaymentCancelledPage />}
             />
             <Route
               path="/payment-success"
-              element={
-                <ProtectedRoute requireCustomer={true} redirectTo="/login">
-                  <PaymentSuccessPage />
-                </ProtectedRoute>
-              }
+              element={<PaymentSuccessPage />}
             />
             <Route
               path="/payment-cancelled"
-              element={
-                <ProtectedRoute requireCustomer={true} redirectTo="/login">
-                  <PaymentCancelledPage />
-                </ProtectedRoute>
-              }
+              element={<PaymentCancelledPage />}
             />
             <Route
               path="/my-bookings"

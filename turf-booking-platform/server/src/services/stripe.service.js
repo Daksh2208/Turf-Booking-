@@ -147,18 +147,35 @@ export const stripeService = {
     }
 
     // Determine authoritative client base URL for redirects (detect actual client origin)
-    let baseUrl = env.CLIENT_URL || 'http://localhost:5173'
-    if (clientOrigin && typeof clientOrigin === 'string') {
-      const trimmed = clientOrigin.trim().replace(/\/$/, '')
-      const isAllowed =
-        trimmed === env.CLIENT_URL?.replace(/\/$/, '') ||
-        trimmed.includes('localhost') ||
-        trimmed.includes('127.0.0.1') ||
-        trimmed.endsWith('.onrender.com')
+    const candidateOrigin = (bookingData?.clientUrl || clientOrigin || '').trim().replace(/\/$/, '')
+    let baseUrl = null
 
-      if (isAllowed) {
-        baseUrl = trimmed
+    if (candidateOrigin) {
+      try {
+        const parsed = new URL(candidateOrigin)
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+          const originOnly = parsed.origin
+          const isLocal = originOnly.includes('localhost') || originOnly.includes('127.0.0.1')
+          const isAllowedDomain =
+            originOnly === env.CLIENT_URL?.replace(/\/$/, '') ||
+            originOnly.endsWith('.onrender.com') ||
+            originOnly.endsWith('.vercel.app') ||
+            originOnly.endsWith('.netlify.app') ||
+            originOnly.endsWith('.pages.dev') ||
+            originOnly.endsWith('.web.app') ||
+            (parsed.protocol === 'https:' && !isLocal)
+
+          if (isAllowedDomain || isLocal) {
+            baseUrl = originOnly
+          }
+        }
+      } catch {
+        // Fallback to configured CLIENT_URL
       }
+    }
+
+    if (!baseUrl) {
+      baseUrl = (env.CLIENT_URL || 'http://localhost:5173').trim().replace(/\/$/, '')
     }
 
     const customerEmail = booking.contactDetails?.email || user.email || 'customer@example.com'

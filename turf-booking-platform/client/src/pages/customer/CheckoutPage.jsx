@@ -284,6 +284,7 @@ export const CheckoutPage = () => {
         const sessionData = await customerPaymentService.createCheckoutSession(
           {
             bookingData: bookingPayload,
+            clientUrl: typeof window !== 'undefined' ? window.location.origin : undefined,
           },
           idempotencyKeyRef.current
         )

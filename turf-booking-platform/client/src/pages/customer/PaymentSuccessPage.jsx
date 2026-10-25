@@ -15,6 +15,8 @@ import {
   AlertCircle,
   CreditCard,
   Building2,
+  ArrowLeft,
+  Home,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuery } from '../../hooks/useApi'
@@ -37,9 +39,9 @@ export const PaymentSuccessPage = () => {
     isError,
     error,
   } = useQuery({
-    queryKey: ['paymentStatus', bookingId],
-    queryFn: () => customerPaymentService.getPaymentStatus(bookingId),
-    enabled: !!bookingId,
+    queryKey: ['paymentStatus', bookingId, sessionId],
+    queryFn: () => customerPaymentService.getPaymentStatus(bookingId, sessionId),
+    enabled: !!bookingId || !!sessionId,
     refetchInterval: (data) => (data?.paymentStatus === 'pending' ? 3000 : false),
   })
 
@@ -72,12 +74,21 @@ export const PaymentSuccessPage = () => {
         <p className="text-sm text-[#526258] max-w-md mx-auto mb-8">
           No booking ID was provided in the return URL. Please check your bookings history.
         </p>
-        <Link
-          to="/my-bookings"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-sm shadow-xs transition-all"
-        >
-          <span>View My Bookings</span>
-        </Link>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white border border-[#D7E0D9] hover:bg-[#F6F8F6] text-[#17231B] font-bold text-sm shadow-xs transition-all cursor-pointer"
+          >
+            <Home className="w-4 h-4 text-[#267A45]" />
+            <span>Back to Home</span>
+          </Link>
+          <Link
+            to="/my-bookings"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-sm shadow-xs transition-all"
+          >
+            <span>View My Bookings</span>
+          </Link>
+        </div>
       </div>
     )
   }
@@ -104,18 +115,44 @@ export const PaymentSuccessPage = () => {
         <p className="text-sm text-[#526258] max-w-md mx-auto mb-8">
           {error?.response?.data?.message || 'We could not verify the status of this booking at this time.'}
         </p>
-        <Link
-          to="/my-bookings"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-sm shadow-xs transition-all"
-        >
-          <span>Check My Bookings</span>
-        </Link>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white border border-[#D7E0D9] hover:bg-[#F6F8F6] text-[#17231B] font-bold text-sm shadow-xs transition-all cursor-pointer"
+          >
+            <Home className="w-4 h-4 text-[#267A45]" />
+            <span>Back to Home</span>
+          </Link>
+          <Link
+            to="/my-bookings"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-sm shadow-xs transition-all"
+          >
+            <span>Check My Bookings</span>
+          </Link>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8 print:py-0 print:px-0">
+      {/* Top Navigation */}
+      <div className="flex items-center justify-between print:hidden">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#F0F6F1] text-xs font-semibold text-[#526258] hover:text-[#267A45] border border-[#D7E0D9] shadow-2xs transition-all w-fit group cursor-pointer"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 text-[#267A45] group-hover:-translate-x-1 transition-transform" />
+          <span>Back to Home</span>
+        </Link>
+        <Link
+          to="/my-bookings"
+          className="text-xs font-semibold text-[#526258] hover:text-[#267A45] transition-colors"
+        >
+          My Bookings
+        </Link>
+      </div>
+
       {/* Verification Status Header */}
       <div className="text-center space-y-3">
         {isPaid ? (
@@ -306,7 +343,14 @@ export const PaymentSuccessPage = () => {
       </div>
 
       {/* Action Navigation */}
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2">
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2 print:hidden">
+        <Link
+          to="/"
+          className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-white border border-[#D7E0D9] hover:bg-[#F6F8F6] text-[#17231B] font-bold text-sm shadow-xs transition-all text-center inline-flex items-center justify-center gap-2 cursor-pointer"
+        >
+          <Home className="w-4 h-4 text-[#267A45]" />
+          <span>Back to Home</span>
+        </Link>
         <Link
           to="/my-bookings"
           className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-sm shadow-xs transition-all text-center"

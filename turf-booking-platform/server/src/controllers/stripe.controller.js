@@ -14,7 +14,10 @@ export const getPublicConfig = async (req, res, next) => {
 
 export const createCheckoutSession = async (req, res, next) => {
   try {
-    const rawOrigin = req.get('origin') || (req.get('referer') ? new URL(req.get('referer')).origin : null)
+    const rawOrigin =
+      req.body?.clientUrl ||
+      req.get('origin') ||
+      (req.get('referer') ? new URL(req.get('referer')).origin : null)
     const session = await stripeService.createCheckoutSession(
       req.body,
       req.user,
