@@ -21,11 +21,13 @@ import customerInventoryService from '../../services/customer/inventory.service'
 import customerBookingService from '../../services/customer/booking.service'
 import { AvailabilityCalendar } from '../../components/customer/AvailabilityCalendar'
 import { useAuth } from '../../hooks/useAuth'
+import { useBookingReservation } from '../../context/BookingReservationContext'
 
 export const TurfDetailPage = () => {
   const { slug } = useParams()
   const navigate = useNavigate()
   const { isAuthenticated, user } = useAuth()
+  const { currentReservation, countdownSeconds } = useBookingReservation()
 
   const todayStr = new Date().toISOString().split('T')[0]
   const [selectedDate, setSelectedDate] = useState(todayStr)
@@ -33,6 +35,22 @@ export const TurfDetailPage = () => {
   const [selectedAddOns, setSelectedAddOns] = useState([])
   const [playerCount, setPlayerCount] = useState(10)
   const [activeImageIdx, setActiveImageIdx] = useState(0)
+
+  const formatDateDisplay = (dateString) => {
+    if (!dateString) return ''
+    try {
+      const [y, m, d] = dateString.split('-').map(Number)
+      const dObj = new Date(y, m - 1, d)
+      return dObj.toLocaleDateString('en-GB', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    } catch {
+      return dateString
+    }
+  }
 
   // 1. Fetch Turf Details by Slug or ID
   const {
@@ -59,6 +77,41 @@ export const TurfDetailPage = () => {
       })
     }
   }, [turf])
+
+  // Restore active reservation on mount or return from checkout
+  useEffect(() => {
+    if (
+      turf?._id &&
+      currentReservation &&
+      String(currentReservation.turfId) === String(turf._id) &&
+      currentReservation.date === selectedDate &&
+      Array.isArray(currentReservation.slots) &&
+      currentReservation.slots.length > 0
+    ) {
+      setSelectedSlot((prev) => {
+        if (
+          prev &&
+          prev.reservationId === currentReservation.reservationId &&
+          prev.date === currentReservation.date &&
+          prev.selectedSlots?.length === currentReservation.slots.length
+        ) {
+          return prev
+        }
+        return {
+          reservationId: currentReservation.reservationId,
+          date: currentReservation.date,
+          startTime: currentReservation.startTime,
+          endTime: currentReservation.endTime,
+          durationHours: currentReservation.slots.length,
+          selectedSlots: currentReservation.slots,
+          expiresAt: currentReservation.expiresAt,
+        }
+      })
+    } else if (selectedSlot?.date && selectedSlot.date !== selectedDate) {
+      // Clear selection if viewing a different date
+      setSelectedSlot(null)
+    }
+  }, [turf?._id, currentReservation, selectedDate, selectedSlot?.date])
 
 
   // 2. Fetch Available Equipment / Add-Ons
@@ -588,6 +641,16 @@ export const TurfDetailPage = () => {
             ) : quote ? (
               <div className="space-y-3 text-xs">
                 <div className="p-3.5 bg-white rounded-2xl border border-[#D7E0D9] space-y-2.5">
+                  <div className="flex justify-between items-center text-[#526258] pb-2 border-b border-[#E2E8E3]">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Calendar className="w-3.5 h-3.5 text-[#267A45]" />
+                      <span>Match Date:</span>
+                    </span>
+                    <span className="font-bold text-[#17231B] bg-[#F6F8F6] px-2.5 py-0.5 rounded-lg border border-[#D7E0D9] text-[11px]">
+                      {formatDateDisplay(selectedSlot.date || selectedDate)}
+                    </span>
+                  </div>
+
                   {Array.isArray(selectedSlot.selectedSlots) && selectedSlot.selectedSlots.length > 1 ? (
                     <div className="space-y-1.5 pb-1">
                       <div className="flex justify-between text-[#526258]">
@@ -710,7 +773,7 @@ export const TurfDetailPage = () => {
                         state: {
                           turfId: turf._id,
                           turf,
-                          date: selectedDate,
+                          date: selectedSlot.date || selectedDate,
                           startTime: selectedSlot.startTime,
                           endTime: selectedSlot.endTime,
                           selectedSlots: selectedSlot.selectedSlots || (selectedSlot.startTime ? [selectedSlot.startTime] : []),
@@ -719,6 +782,8 @@ export const TurfDetailPage = () => {
                           playerCount,
                           selectedAddOns,
                           quote,
+                          reservationId: selectedSlot.reservationId || currentReservation?.reservationId,
+                          expiresAt: selectedSlot.expiresAt || currentReservation?.expiresAt,
                         },
                       })
                     }}
@@ -739,6 +804,8 @@ export const TurfDetailPage = () => {
         <div className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[#D7E0D9] p-3.5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[11px] text-[#526258] truncate">
+              <span className="font-semibold text-[#17231B]">{formatDateDisplay(selectedSlot.date || selectedDate)}</span>
+              {' • '}
               {Array.isArray(selectedSlot.selectedSlots) && selectedSlot.selectedSlots.length > 1
                 ? `${selectedSlot.selectedSlots.length} Slots Selected`
                 : `${selectedSlot.startTime} - ${selectedSlot.endTime}`} • {playerCount} Players
@@ -763,7 +830,7 @@ export const TurfDetailPage = () => {
                   state: {
                     turfId: turf._id,
                     turf,
-                    date: selectedDate,
+                    date: selectedSlot.date || selectedDate,
                     startTime: selectedSlot.startTime,
                     endTime: selectedSlot.endTime,
                     selectedSlots: selectedSlot.selectedSlots || (selectedSlot.startTime ? [selectedSlot.startTime] : []),
@@ -772,6 +839,8 @@ export const TurfDetailPage = () => {
                     playerCount,
                     selectedAddOns,
                     quote,
+                    reservationId: selectedSlot.reservationId || currentReservation?.reservationId,
+                    expiresAt: selectedSlot.expiresAt || currentReservation?.expiresAt,
                   },
                 })
               }}

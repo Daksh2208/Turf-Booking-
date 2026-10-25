@@ -2,6 +2,7 @@ import { BlockedSlot } from '../models/BlockedSlot.js'
 import { Turf } from '../models/Turf.js'
 import { Booking } from '../models/Booking.js'
 import { logAudit } from '../utils/auditLogger.js'
+import { broadcastAvailabilityUpdate } from '../socket.js'
 
 export const blockedSlotService = {
   /**
@@ -96,6 +97,8 @@ export const blockedSlotService = {
       ip,
     })
 
+    broadcastAvailabilityUpdate({ turfId: blocked.turf, date: blocked.date, reason: 'block_created' })
+
     return blocked.populate('turf', 'name slug')
   },
 
@@ -143,6 +146,8 @@ export const blockedSlotService = {
       ip,
     })
 
+    broadcastAvailabilityUpdate({ turfId: blocked.turf, date: blocked.date, reason: 'block_updated' })
+
     return blocked.populate('turf', 'name slug')
   },
 
@@ -158,6 +163,9 @@ export const blockedSlotService = {
       throw error
     }
 
+    const turfId = blocked.turf
+    const blockDate = blocked.date
+
     await BlockedSlot.findByIdAndDelete(id)
 
     await logAudit({
@@ -168,6 +176,8 @@ export const blockedSlotService = {
       details: { date: blocked.date, time: `${blocked.startTime}-${blocked.endTime}` },
       ip,
     })
+
+    broadcastAvailabilityUpdate({ turfId, date: blockDate, reason: 'block_deleted' })
 
     return { success: true, message: 'Blocked slot removed successfully.' }
   },

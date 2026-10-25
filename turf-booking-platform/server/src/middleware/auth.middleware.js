@@ -142,3 +142,30 @@ export const requireCustomer = (req, res, next) => {
 
   next()
 }
+
+/**
+ * Optional authentication middleware: attaches req.user if valid token present,
+ * but allows unauthenticated requests to proceed.
+ */
+export const optionalAuth = async (req, res, next) => {
+  try {
+    let token = req.cookies?.accessToken
+    if (!token && req.headers.authorization?.startsWith('Bearer ')) {
+      token = req.headers.authorization.split(' ')[1]
+    }
+    if (token) {
+      try {
+        const decoded = verifyAccessToken(token)
+        const user = await User.findById(decoded.userId)
+        if (user && user.isActive) {
+          req.user = user
+        }
+      } catch {
+        // Ignore invalid token for optional auth
+      }
+    }
+    next()
+  } catch {
+    next()
+  }
+}

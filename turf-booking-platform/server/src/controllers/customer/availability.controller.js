@@ -13,7 +13,11 @@ export const getAvailability = async (req, res, next) => {
       })
     }
 
-    const data = await availabilityService.getTurfAvailability({ turfId, date })
+    const data = await availabilityService.getTurfAvailability({
+      turfId,
+      date,
+      currentUserId: req.user?._id,
+    })
     res.status(200).json({
       success: true,
       data,

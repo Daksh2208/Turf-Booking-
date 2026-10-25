@@ -27,6 +27,7 @@ import { useQuery } from '../../hooks/useApi'
 import customerBookingService from '../../services/customer/booking.service'
 import customerInventoryService from '../../services/customer/inventory.service'
 import customerPaymentService from '../../services/customer/payment.service'
+import { useBookingReservation } from '../../context/BookingReservationContext'
 
 export const CheckoutPage = () => {
   const location = useLocation()
@@ -51,6 +52,16 @@ export const CheckoutPage = () => {
     playerCount = 10,
     selectedAddOns = [],
   } = checkoutState
+
+  const { currentReservation, countdownSeconds, clearReservation } = useBookingReservation()
+  const reservationId = checkoutState.reservationId || currentReservation?.reservationId
+  const isExpired = Boolean(reservationId && countdownSeconds === 0)
+
+  const formatCountdown = (secs) => {
+    const mins = Math.floor(secs / 60)
+    const rem = secs % 60
+    return `${String(mins).padStart(2, '0')}:${String(rem).padStart(2, '0')}`
+  }
 
   const idempotencyKeyRef = useRef(
     `IDEM-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
@@ -232,6 +243,11 @@ export const CheckoutPage = () => {
       return
     }
 
+    if (isExpired) {
+      setSubmitError('Your temporary reservation has expired. Please return to the slot selection page and choose an available slot.')
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const bookingPayload = {
@@ -254,6 +270,7 @@ export const CheckoutPage = () => {
         },
         paymentMethod: selectedPaymentMethod === 'stripe' ? 'stripe' : 'Pay at Venue',
         couponCode: appliedCoupon?.code || undefined,
+        reservationId: reservationId || undefined,
         idempotencyKey: idempotencyKeyRef.current,
       }
 
@@ -272,6 +289,7 @@ export const CheckoutPage = () => {
         )
 
         if (sessionData?.url) {
+          clearReservation()
           // Redirect directly to the real Stripe-hosted checkout page
           window.location.href = sessionData.url
           return
@@ -283,6 +301,8 @@ export const CheckoutPage = () => {
           bookingPayload,
           idempotencyKeyRef.current
         )
+
+        clearReservation()
 
         navigate(`/bookings/success/${booking._id}`, {
           state: { booking },
@@ -350,6 +370,48 @@ export const CheckoutPage = () => {
           Complete your contact details and reserve your slot. No upfront card payment required.
         </p>
       </div>
+
+      {/* Real-time Hold Countdown Banner */}
+      {reservationId && !isExpired && countdownSeconds > 0 && (
+        <div className="p-4 rounded-2xl bg-[#E7F3E9] border border-[#267A45]/40 flex items-center justify-between gap-3 text-xs text-[#1D6537] animate-in fade-in duration-200">
+          <div className="flex items-center gap-2.5">
+            <Clock className="w-5 h-5 text-[#267A45] animate-pulse shrink-0" />
+            <div>
+              <p className="font-bold text-sm">Slots reserved exclusively for you</p>
+              <p className="text-[#526258] mt-0.5">
+                Time remaining to confirm booking:{' '}
+                <strong className="font-mono text-[#1D6537] text-sm font-black">
+                  {formatCountdown(countdownSeconds)}
+                </strong>
+              </p>
+            </div>
+          </div>
+          <span className="px-3 py-1.5 rounded-xl bg-white border border-[#C9DFCE] text-xs font-mono font-bold text-[#1D6537] shrink-0">
+            {reservationId}
+          </span>
+        </div>
+      )}
+
+      {/* Reservation Expired Warning Banner */}
+      {isExpired && (
+        <div className="p-4 rounded-2xl bg-[#FDF0EF] border border-[#F8D2CE] text-[#922B27] text-xs flex items-center justify-between gap-3 animate-in fade-in duration-200">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-[#922B27] shrink-0" />
+            <div>
+              <p className="font-bold text-sm">Reservation Expired</p>
+              <p className="text-[#922B27]/80 mt-0.5">
+                Your temporary reservation has expired. Please return to the turf page to re-select available slots.
+              </p>
+            </div>
+          </div>
+          <Link
+            to={turf?.slug ? `/turfs/${turf.slug}` : '/turfs'}
+            className="px-3 py-1.5 rounded-xl bg-white border border-[#F8D2CE] text-xs font-bold text-[#922B27] hover:bg-[#FDF0EF] shrink-0 transition-colors"
+          >
+            Back to Slots
+          </Link>
+        </div>
+      )}
 
       {submitError && (
         <div className="p-4 rounded-2xl bg-[#FDF0EF] border border-[#F8D2CE] text-[#922B27] text-xs flex items-start gap-3">
@@ -1016,8 +1078,8 @@ export const CheckoutPage = () => {
                 {/* Confirm Booking Action Button */}
                 <button
                   type="submit"
-                  disabled={isSubmitting || quoteLoading}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-[#267A45] hover:bg-[#1E6338] disabled:bg-[#EDF1EE] disabled:text-[#69756D] text-white font-black text-sm tracking-wide shadow-xs hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  disabled={isSubmitting || quoteLoading || isExpired}
+                  className="w-full py-3.5 px-6 rounded-2xl bg-[#267A45] hover:bg-[#1E6338] disabled:bg-[#EDF1EE] disabled:text-[#69756D] disabled:cursor-not-allowed text-white font-black text-sm tracking-wide shadow-xs hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {isSubmitting ? (
                     <>
@@ -1028,6 +1090,8 @@ export const CheckoutPage = () => {
                           : 'Confirming Slot Reservation...'}
                       </span>
                     </>
+                  ) : isExpired ? (
+                    <span>Reservation Expired (Return to Slots)</span>
                   ) : (
                     <>
                       {selectedPaymentMethod === 'stripe' ? (

@@ -5,12 +5,16 @@ import { Sport } from '../models/Sport.js'
 import { AddOn } from '../models/AddOn.js'
 import { BlockedSlot } from '../models/BlockedSlot.js'
 import { SlotReservation } from '../models/SlotReservation.js'
+import { HeldSlot } from '../models/HeldSlot.js'
+import { Reservation } from '../models/Reservation.js'
 import { User } from '../models/User.js'
 import { BusinessSettings } from '../models/BusinessSettings.js'
 import { logAudit } from '../utils/auditLogger.js'
 import pricingService from './pricing.service.js'
 import availabilityService from './availability.service.js'
 import couponService from './coupon.service.js'
+import reservationService from './reservation.service.js'
+import { broadcastAvailabilityUpdate } from '../socket.js'
 
 let isTxSupported = null
 
@@ -82,6 +86,7 @@ export const bookingService = {
       paymentMethod = 'Pay at Venue',
       idempotencyKey,
       couponCode,
+      reservationId,
     } = data
 
     if (!user || !user._id) {
@@ -217,6 +222,29 @@ export const bookingService = {
       }
     }
 
+    // If reservationId is specified, verify ownership and validity FIRST
+    if (reservationId) {
+      const existingRes = await Reservation.findOne({ reservationId })
+      if (!existingRes) {
+        const error = new Error('Reservation not found.')
+        error.statusCode = 404
+        error.code = 'RESERVATION_NOT_FOUND'
+        throw error
+      }
+      if (existingRes.user.toString() !== user._id.toString()) {
+        const error = new Error('You do not own this slot reservation.')
+        error.statusCode = 403
+        error.code = 'FORBIDDEN_RESERVATION'
+        throw error
+      }
+      if (existingRes.status !== 'active' || existingRes.expiresAt <= new Date()) {
+        const error = new Error('Your temporary reservation has expired. Please select your slot again.')
+        error.statusCode = 410
+        error.code = 'RESERVATION_EXPIRED'
+        throw error
+      }
+    }
+
     // 8. Check for existing active bookings conflict for each discrete slot
     const existingActiveBooking = await SlotReservation.findOne({
       turf: turfId,
@@ -225,9 +253,36 @@ export const bookingService = {
       status: 'active',
     })
     if (existingActiveBooking) {
+      if (idempotencyKey) {
+        const existingKeyBooking = await Booking.findOne({
+          user: user._id,
+          idempotencyKey: idempotencyKey.trim(),
+        }).populate([
+          { path: 'turf', select: 'name slug address images openingHours' },
+          { path: 'sport', select: 'name slug' },
+          { path: 'user', select: 'name email phone' },
+        ])
+        if (existingKeyBooking) return existingKeyBooking
+      }
       const error = new Error(`Slot ${existingActiveBooking.slotTime} is already booked by another customer.`)
       error.statusCode = 409
       error.code = 'SLOT_ALREADY_BOOKED'
+      throw error
+    }
+
+    // 9. Check for active temporary holds by OTHER customers
+    const otherHeldSlot = await HeldSlot.findOne({
+      turf: turfId,
+      date,
+      slotTime: { $in: slotTimesToReserve },
+      status: 'active',
+      user: { $ne: user._id },
+      expiresAt: { $gt: new Date() },
+    })
+    if (otherHeldSlot) {
+      const error = new Error(`Slot ${otherHeldSlot.slotTime} is temporarily held by another customer.`)
+      error.statusCode = 409
+      error.code = 'SLOT_ALREADY_HELD'
       throw error
     }
 
@@ -389,6 +444,17 @@ export const bookingService = {
           await SlotReservation.insertMany(reservations, { session })
         })
       } catch (err) {
+        if (idempotencyKey) {
+          const existingKeyBooking = await Booking.findOne({
+            user: user._id,
+            idempotencyKey: idempotencyKey.trim(),
+          }).populate([
+            { path: 'turf', select: 'name slug address images openingHours' },
+            { path: 'sport', select: 'name slug' },
+            { path: 'user', select: 'name email phone' },
+          ])
+          if (existingKeyBooking) return existingKeyBooking
+        }
         if (err.code === 11000) {
           const conflictErr = new Error('One or more selected slots are already booked by another customer.')
           conflictErr.statusCode = 409
@@ -443,6 +509,20 @@ export const bookingService = {
           await SlotReservation.deleteMany({ booking: bookingDoc._id }).catch(() => {})
         }
 
+        if (idempotencyKey) {
+          const existingKeyBooking = await Booking.findOne({
+            user: user._id,
+            idempotencyKey: idempotencyKey.trim(),
+          }).populate([
+            { path: 'turf', select: 'name slug address images openingHours' },
+            { path: 'sport', select: 'name slug' },
+            { path: 'user', select: 'name email phone' },
+          ])
+          if (existingKeyBooking) {
+            return existingKeyBooking
+          }
+        }
+
         if (err.code === 11000) {
           const conflictErr = new Error('One or more selected slots are already booked by another customer.')
           conflictErr.statusCode = 409
@@ -470,6 +550,33 @@ export const bookingService = {
       },
       ip,
     })
+
+    // Convert active reservation to booking if applicable
+    let resToConvert = reservationId
+    if (!resToConvert) {
+      const matchingRes = await Reservation.findOne({
+        turf: turfId,
+        date,
+        user: user._id,
+        status: 'active',
+        slots: { $in: slotTimesToReserve },
+        expiresAt: { $gt: new Date() },
+      })
+      if (matchingRes) {
+        resToConvert = matchingRes.reservationId
+      }
+    }
+
+    if (resToConvert) {
+      await reservationService.convertReservationToBooking({
+        reservationId: resToConvert,
+        bookingId: createdBooking._id,
+        user,
+      }).catch(() => {})
+    }
+
+    // Broadcast live availability update
+    broadcastAvailabilityUpdate({ turfId, date, reason: 'booking_confirmed' })
 
     return Booking.findById(createdBooking._id).populate([
       { path: 'turf', select: 'name slug address images openingHours' },
@@ -535,6 +642,7 @@ export const bookingService = {
       if (booking.coupon?.couponId) {
         await couponService.releaseCouponOnCancellation(booking._id).catch(() => {})
       }
+      broadcastAvailabilityUpdate({ turfId: booking.turf, date: booking.date, reason: 'booking_cancelled' })
     }
 
     await booking.save()
@@ -690,6 +798,7 @@ export const bookingService = {
     if (booking.coupon?.couponId) {
       await couponService.releaseCouponOnCancellation(booking._id).catch(() => {})
     }
+    broadcastAvailabilityUpdate({ turfId: booking.turf, date: booking.date, reason: 'booking_cancelled' })
     await booking.save()
 
     await logAudit({

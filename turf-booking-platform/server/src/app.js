@@ -16,6 +16,7 @@ import customerPricingRoutes from './routes/customer/pricing.routes.js'
 import customerAvailabilityRoutes from './routes/customer/availability.routes.js'
 import adminCouponRoutes from './routes/admin/coupon.routes.js'
 import customerCouponRoutes from './routes/customer/coupon.routes.js'
+import customerReservationRoutes from './routes/customer/reservation.routes.js'
 import stripeRoutes from './routes/stripe.routes.js'
 import { handleWebhook } from './controllers/stripe.controller.js'
 import { notFoundMiddleware } from './middleware/not-found.middleware.js'
@@ -87,6 +88,8 @@ app.use('/api/v1/coupons', customerCouponRoutes)
 app.use('/api/v1/bookings', customerBookingRoutes)
 app.use('/api/v1/pricing', customerPricingRoutes)
 app.use('/api/v1/availability', customerAvailabilityRoutes)
+app.use('/api/v1/reservations', customerReservationRoutes)
+app.use('/api/reservations', customerReservationRoutes)
 app.use('/api/v1/payments/stripe', stripeRoutes)
 app.use('/api/payments/stripe', stripeRoutes)
 app.use('/api/v1', customerInventoryRoutes)

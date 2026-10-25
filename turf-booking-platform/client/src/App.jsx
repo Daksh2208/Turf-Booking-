@@ -31,13 +31,15 @@ import { AddOnsPage } from './pages/admin/AddOnsPage'
 import { CouponsPage } from './pages/admin/CouponsPage'
 import { BannersPage } from './pages/admin/BannersPage'
 import { SettingsPage } from './pages/admin/SettingsPage'
+import { BookingReservationProvider } from './context/BookingReservationContext'
 
 export function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <ScrollToTop />
-        <Routes>
+        <BookingReservationProvider>
+          <ScrollToTop />
+          <Routes>
           {/* Customer Website Routes wrapped in CustomerLayout */}
           <Route element={<CustomerLayout />}>
             <Route path="/" element={<HomePage />} />
@@ -154,6 +156,7 @@ export function App() {
           {/* Catch-all Not Found Route */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
+        </BookingReservationProvider>
       </AuthProvider>
     </BrowserRouter>
   )

@@ -75,7 +75,41 @@ export const customerBookingService = {
     const response = await apiClient.get('/coupons/available', {
       params: { turfId, sportId, subtotal },
     })
-    return response.data?.data?.coupons || []
+    return response.data?.data
+  },
+
+  /**
+   * Temporary hold slots for authenticated customer
+   */
+  async holdSlots(payload) {
+    const response = await apiClient.post('/reservations/hold', payload)
+    return response.data?.data
+  },
+
+  /**
+   * Fetch customer's current active reservation for a turf/date
+   */
+  async getCurrentReservation(turfId, date) {
+    const response = await apiClient.get('/reservations/current', {
+      params: { turfId, date },
+    })
+    return response.data?.data?.reservation
+  },
+
+  /**
+   * Release temporary slot reservation
+   */
+  async releaseReservation(payload) {
+    const response = await apiClient.post('/reservations/release', payload)
+    return response.data?.data
+  },
+
+  /**
+   * Renew active temporary slot reservation
+   */
+  async renewReservation(reservationId) {
+    const response = await apiClient.post('/reservations/renew', { reservationId })
+    return response.data?.data
   },
 }
 

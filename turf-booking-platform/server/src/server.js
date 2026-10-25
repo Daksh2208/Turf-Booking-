@@ -1,9 +1,12 @@
+import http from 'http'
 import app from './app.js'
 import { env } from './config/env.js'
 import { logger } from './config/logger.js'
 import { connectDB, disconnectDB } from './config/db.js'
+import { initSocket } from './socket.js'
 
 let server
+let httpServer
 
 // Initialize Database connection and start HTTP Server
 const startServer = async () => {
@@ -12,8 +15,11 @@ const startServer = async () => {
     logger.info('Connecting to MongoDB...')
     await connectDB()
 
-    // 2. Start HTTP server only after database connection succeeds
-    server = app.listen(env.PORT, () => {
+    // 2. Wrap express app in Node HTTP server and initialize Socket.IO
+    httpServer = http.createServer(app)
+    initSocket(httpServer)
+
+    server = httpServer.listen(env.PORT, () => {
       logger.info(`🚀 Server running on port ${env.PORT} in [${env.NODE_ENV}] mode`)
       logger.info(`🩺 Health check URL: http://localhost:${env.PORT}/api/v1/health`)
     })
