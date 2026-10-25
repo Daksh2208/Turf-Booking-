@@ -25,7 +25,7 @@ import { useAuth } from '../../hooks/useAuth'
 export const TurfDetailPage = () => {
   const { slug } = useParams()
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
 
   const todayStr = new Date().toISOString().split('T')[0]
   const [selectedDate, setSelectedDate] = useState(todayStr)
@@ -686,30 +686,48 @@ export const TurfDetailPage = () => {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigate('/checkout', {
-                      state: {
-                        turfId: turf._id,
-                        turf,
-                        date: selectedDate,
-                        startTime: selectedSlot.startTime,
-                        endTime: selectedSlot.endTime,
-                        selectedSlots: selectedSlot.selectedSlots || (selectedSlot.startTime ? [selectedSlot.startTime] : []),
-                        slots: selectedSlot.slots,
-                        durationHours: selectedSlot.durationHours || selectedSlot.selectedSlots?.length || 1,
-                        playerCount,
-                        selectedAddOns,
-                        quote,
-                      },
-                    })
-                  }}
-                  className="w-full py-3.5 px-4 rounded-xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-xs uppercase tracking-wider shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Zap className="w-4 h-4 fill-white text-white" />
-                  <span>Proceed to Checkout</span>
-                </button>
+                {user?.role === 'admin' ? (
+                  <div className="p-4 rounded-2xl bg-[#E7F3E9] border border-[#C9DFCE] text-center space-y-2.5">
+                    <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1D6537]">
+                      <ShieldCheck className="w-4 h-4 text-[#267A45]" />
+                      <span>Administrator Account</span>
+                    </div>
+                    <p className="text-[11px] text-[#526258] leading-relaxed">
+                      Customer booking and checkout are disabled for administrator accounts. To schedule or inspect bookings for this arena, use the Admin Console.
+                    </p>
+                    <Link
+                      to="/admin/bookings"
+                      className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-xs transition-colors shadow-2xs"
+                    >
+                      <span>Open Admin Booking Console</span>
+                    </Link>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigate('/checkout', {
+                        state: {
+                          turfId: turf._id,
+                          turf,
+                          date: selectedDate,
+                          startTime: selectedSlot.startTime,
+                          endTime: selectedSlot.endTime,
+                          selectedSlots: selectedSlot.selectedSlots || (selectedSlot.startTime ? [selectedSlot.startTime] : []),
+                          slots: selectedSlot.slots,
+                          durationHours: selectedSlot.durationHours || selectedSlot.selectedSlots?.length || 1,
+                          playerCount,
+                          selectedAddOns,
+                          quote,
+                        },
+                      })
+                    }}
+                    className="w-full py-3.5 px-4 rounded-xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-xs uppercase tracking-wider shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Zap className="w-4 h-4 fill-white text-white" />
+                    <span>Proceed to Checkout</span>
+                  </button>
+                )}
               </div>
             ) : null}
           </div>
@@ -729,30 +747,40 @@ export const TurfDetailPage = () => {
               Total: ₹{((quote.finalTotal ?? quote.totalAmount ?? 0) / 100).toFixed(2)}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              navigate('/checkout', {
-                state: {
-                  turfId: turf._id,
-                  turf,
-                  date: selectedDate,
-                  startTime: selectedSlot.startTime,
-                  endTime: selectedSlot.endTime,
-                  selectedSlots: selectedSlot.selectedSlots || (selectedSlot.startTime ? [selectedSlot.startTime] : []),
-                  slots: selectedSlot.slots,
-                  durationHours: selectedSlot.durationHours || selectedSlot.selectedSlots?.length || 1,
-                  playerCount,
-                  selectedAddOns,
-                  quote,
-                },
-              })
-            }}
-            className="py-3 px-5 rounded-xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-xs uppercase tracking-wider shadow-sm flex items-center gap-1.5 shrink-0 cursor-pointer"
-          >
-            <Zap className="w-4 h-4 fill-white text-white" />
-            <span>Book Now</span>
-          </button>
+          {user?.role === 'admin' ? (
+            <Link
+              to="/admin/bookings"
+              className="py-3 px-4 rounded-xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-xs uppercase tracking-wider shadow-sm flex items-center gap-1.5 shrink-0"
+            >
+              <ShieldCheck className="w-4 h-4 text-white" />
+              <span>Admin Bookings</span>
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                navigate('/checkout', {
+                  state: {
+                    turfId: turf._id,
+                    turf,
+                    date: selectedDate,
+                    startTime: selectedSlot.startTime,
+                    endTime: selectedSlot.endTime,
+                    selectedSlots: selectedSlot.selectedSlots || (selectedSlot.startTime ? [selectedSlot.startTime] : []),
+                    slots: selectedSlot.slots,
+                    durationHours: selectedSlot.durationHours || selectedSlot.selectedSlots?.length || 1,
+                    playerCount,
+                    selectedAddOns,
+                    quote,
+                  },
+                })
+              }}
+              className="py-3 px-5 rounded-xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-xs uppercase tracking-wider shadow-sm flex items-center gap-1.5 shrink-0 cursor-pointer"
+            >
+              <Zap className="w-4 h-4 fill-white text-white" />
+              <span>Book Now</span>
+            </button>
+          )}
         </div>
       )}
     </div>

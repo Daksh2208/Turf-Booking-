@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { requireAuth } from '../../middleware/auth.middleware.js'
+import { requireAuth, requireCustomer } from '../../middleware/auth.middleware.js'
 import {
   getTurfSlots,
   getPricingQuote,
@@ -17,10 +17,10 @@ router.get('/slots', getTurfSlots)
 // Public: Generate detailed price quote and segment breakdown
 router.post('/quote', getPricingQuote)
 
-// Authenticated Customer Endpoints
-router.post('/', requireAuth, createBooking)
-router.get('/my', requireAuth, getMyBookings)
+// Authenticated Customer Endpoints (Admin creation & listing blocked)
+router.post('/', requireAuth, requireCustomer, createBooking)
+router.get('/my', requireAuth, requireCustomer, getMyBookings)
 router.get('/:id', requireAuth, getBookingDetail)
-router.post('/:id/cancel', requireAuth, cancelMyBooking)
+router.post('/:id/cancel', requireAuth, requireCustomer, cancelMyBooking)
 
 export default router

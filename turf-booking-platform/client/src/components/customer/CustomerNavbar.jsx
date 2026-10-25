@@ -38,6 +38,20 @@ export const CustomerNavbar = () => {
     }
   }
 
+  const handleSectionNav = (sectionId, e) => {
+    e?.preventDefault()
+    setMobileMenuOpen(false)
+    if (location.pathname === '/') {
+      const el = document.getElementById(sectionId)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' })
+        window.history.replaceState(null, '', `#${sectionId}`)
+      }
+    } else {
+      navigate(`/#${sectionId}`)
+    }
+  }
+
   const handleLogout = async () => {
     await logout()
     navigate('/')
@@ -52,7 +66,7 @@ export const CustomerNavbar = () => {
         <div className="flex items-center justify-between h-16 sm:h-20 gap-4">
           {/* Brand Logo & Name */}
           <Link
-            to="/"
+            to={user?.role === 'admin' ? '/admin/dashboard' : '/'}
             className="flex items-center gap-3 group shrink-0"
             onClick={() => setMobileMenuOpen(false)}
           >
@@ -69,36 +83,53 @@ export const CustomerNavbar = () => {
             </div>
           </Link>
 
-          {/* Center Quick Search (Desktop) */}
-          <form
-            onSubmit={handleSearchSubmit}
-            className="hidden md:flex items-center flex-1 max-w-md mx-4 relative"
-          >
-            <Search className="w-4 h-4 text-[#647168] absolute left-3.5 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search by arena name, city, or area..."
-              value={navSearch}
-              onChange={(e) => setNavSearch(e.target.value)}
-              className="w-full bg-[#F6F8F6] text-xs text-[#17231B] placeholder-[#647168] pl-10 pr-4 py-2.5 rounded-full border border-[#D7E0D9] focus:outline-none focus:border-[#267A45] focus:bg-white focus:ring-1 focus:ring-[#267A45] transition-all"
-            />
-          </form>
+          {/* Center Quick Search (Desktop) - Only rendered outside Home Page to prevent duplicate search bars on main screen */}
+          {!isCurrent('/') && (
+            <form
+              onSubmit={handleSearchSubmit}
+              className="hidden md:flex items-center flex-1 max-w-md mx-4 relative"
+            >
+              <Search className="w-4 h-4 text-[#647168] absolute left-3.5 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search by arena name, city, or area..."
+                value={navSearch}
+                onChange={(e) => setNavSearch(e.target.value)}
+                className="w-full bg-[#F6F8F6] text-xs text-[#17231B] placeholder-[#647168] pl-10 pr-4 py-2.5 rounded-full border border-[#D7E0D9] focus:outline-none focus:border-[#267A45] focus:bg-white focus:ring-1 focus:ring-[#267A45] transition-all"
+              />
+            </form>
+          )}
 
           {/* Desktop Navigation Links */}
           <nav className="hidden lg:flex items-center gap-6 text-xs font-semibold">
-            <Link
-              to={isAuthenticated ? '/turfs' : '/register'}
-              state={{ from: '/turfs' }}
-              className={`flex items-center gap-1.5 transition-colors ${
-                isCurrent('/turfs')
-                  ? 'text-[#267A45] font-bold'
-                  : 'text-[#46564A] hover:text-[#17231B]'
-              }`}
+            <button
+              type="button"
+              onClick={(e) => handleSectionNav('arenas', e)}
+              className="flex items-center gap-1.5 text-[#46564A] hover:text-[#267A45] transition-colors cursor-pointer bg-transparent border-none p-0 font-semibold"
             >
               <Compass className="w-4 h-4 text-[#267A45]" />
-              <span>Explore Turfs</span>
-            </Link>
-            {isAuthenticated && (
+              <span>Arena Turfs</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => handleSectionNav('sports', e)}
+              className="flex items-center gap-1.5 text-[#46564A] hover:text-[#267A45] transition-colors cursor-pointer bg-transparent border-none p-0 font-semibold"
+            >
+              <Layers className="w-4 h-4 text-[#526258]" />
+              <span>Sports</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => handleSectionNav('how-it-works', e)}
+              className="flex items-center gap-1.5 text-[#46564A] hover:text-[#267A45] transition-colors cursor-pointer bg-transparent border-none p-0 font-semibold"
+            >
+              <HelpCircle className="w-4 h-4 text-[#526258]" />
+              <span>How It Works</span>
+            </button>
+
+            {isAuthenticated && user?.role === 'customer' && (
               <Link
                 to="/my-bookings"
                 className={`flex items-center gap-1.5 transition-colors ${
@@ -111,20 +142,20 @@ export const CustomerNavbar = () => {
                 <span>My Bookings</span>
               </Link>
             )}
-            <a
-              href="/#sports"
-              className="flex items-center gap-1.5 text-[#46564A] hover:text-[#17231B] transition-colors"
-            >
-              <Layers className="w-4 h-4 text-[#526258]" />
-              <span>Sports</span>
-            </a>
-            <a
-              href="/#how-it-works"
-              className="flex items-center gap-1.5 text-[#46564A] hover:text-[#17231B] transition-colors"
-            >
-              <HelpCircle className="w-4 h-4 text-[#526258]" />
-              <span>How It Works</span>
-            </a>
+
+            {isAuthenticated && user?.role === 'admin' && (
+              <Link
+                to="/admin/dashboard"
+                className={`flex items-center gap-1.5 transition-colors ${
+                  location.pathname.startsWith('/admin')
+                    ? 'text-[#267A45] font-bold'
+                    : 'text-[#46564A] hover:text-[#17231B]'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4 text-[#267A45]" />
+                <span>Admin Console</span>
+              </Link>
+            )}
           </nav>
 
           {/* Desktop Auth State / Actions */}
@@ -208,28 +239,49 @@ export const CustomerNavbar = () => {
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="sm:hidden border-t border-[#E2E8E3] bg-white px-4 pt-3 pb-6 space-y-4 shadow-lg">
-          <form onSubmit={handleSearchSubmit} className="relative">
-            <Search className="w-4 h-4 text-[#647168] absolute left-3 top-3 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search turfs or areas..."
-              value={navSearch}
-              onChange={(e) => setNavSearch(e.target.value)}
-              className="w-full bg-[#F6F8F6] text-xs text-[#17231B] placeholder-[#647168] pl-9 pr-3 py-2.5 rounded-xl border border-[#D7E0D9] focus:outline-none focus:border-[#267A45]"
-            />
-          </form>
+          {/* Mobile Search - Only rendered outside Home Page to avoid duplicate search on main screen */}
+          {!isCurrent('/') && (
+            <form onSubmit={handleSearchSubmit} className="relative">
+              <Search className="w-4 h-4 text-[#647168] absolute left-3 top-3 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search turfs or areas..."
+                value={navSearch}
+                onChange={(e) => setNavSearch(e.target.value)}
+                className="w-full bg-[#F6F8F6] text-xs text-[#17231B] placeholder-[#647168] pl-9 pr-3 py-2.5 rounded-xl border border-[#D7E0D9] focus:outline-none focus:border-[#267A45]"
+              />
+            </form>
+          )}
 
           <nav className="flex flex-col gap-1.5 pt-1 text-sm font-semibold">
-            <Link
-              to={isAuthenticated ? '/turfs' : '/register'}
-              state={{ from: '/turfs' }}
-              onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-xl hover:bg-[#F0F6F1] text-[#17231B] flex items-center gap-2.5"
+            <button
+              type="button"
+              onClick={(e) => handleSectionNav('arenas', e)}
+              className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#F0F6F1] text-[#17231B] flex items-center gap-2.5 bg-transparent border-none cursor-pointer font-semibold"
             >
               <Compass className="w-4 h-4 text-[#267A45]" />
-              <span>Explore Turfs</span>
-            </Link>
-            {isAuthenticated && (
+              <span>Arena Turfs</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => handleSectionNav('sports', e)}
+              className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#F0F6F1] text-[#17231B] flex items-center gap-2.5 bg-transparent border-none cursor-pointer font-semibold"
+            >
+              <Layers className="w-4 h-4 text-[#526258]" />
+              <span>Sports Categories</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => handleSectionNav('how-it-works', e)}
+              className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#F0F6F1] text-[#17231B] flex items-center gap-2.5 bg-transparent border-none cursor-pointer font-semibold"
+            >
+              <HelpCircle className="w-4 h-4 text-[#526258]" />
+              <span>How It Works</span>
+            </button>
+
+            {isAuthenticated && user?.role === 'customer' && (
               <Link
                 to="/my-bookings"
                 onClick={() => setMobileMenuOpen(false)}
@@ -239,22 +291,6 @@ export const CustomerNavbar = () => {
                 <span>My Bookings</span>
               </Link>
             )}
-            <a
-              href="/#sports"
-              onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-xl hover:bg-[#F0F6F1] text-[#17231B] flex items-center gap-2.5"
-            >
-              <Layers className="w-4 h-4 text-[#526258]" />
-              <span>Sports Categories</span>
-            </a>
-            <a
-              href="/#how-it-works"
-              onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-xl hover:bg-[#F0F6F1] text-[#17231B] flex items-center gap-2.5"
-            >
-              <HelpCircle className="w-4 h-4 text-[#526258]" />
-              <span>How It Works</span>
-            </a>
           </nav>
 
           <div className="pt-3 border-t border-[#E2E8E3] space-y-2">

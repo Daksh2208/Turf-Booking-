@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import {
   Calendar,
   Clock,
@@ -13,12 +13,18 @@ import {
   XCircle,
   ExternalLink,
 } from 'lucide-react'
+import { useAuth } from '../../hooks/useAuth'
 import { useQuery } from '../../hooks/useApi'
 import customerBookingService from '../../services/customer/booking.service'
 
 export const MyBookingsPage = () => {
+  const { user } = useAuth()
   const [statusFilter, setStatusFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin" replace />
+  }
 
   const {
     data,

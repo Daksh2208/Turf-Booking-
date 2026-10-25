@@ -388,13 +388,24 @@ export const turfService = {
     const query = { isActive: true }
 
     if (search) {
+      const cleanSearch = search.trim()
+      // Resolve any sports matching search text (e.g. 'box cricket', 'football')
+      const matchingSports = await Sport.find({
+        $or: [
+          { name: { $regex: cleanSearch, $options: 'i' } },
+          { slug: { $regex: cleanSearch, $options: 'i' } },
+        ],
+      }).select('_id')
+      const matchedSportIds = matchingSports.map((s) => s._id)
+
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { 'address.city': { $regex: search, $options: 'i' } },
-        { 'address.street': { $regex: search, $options: 'i' } },
-        { 'address.landmark': { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { facilities: { $regex: search, $options: 'i' } },
+        { name: { $regex: cleanSearch, $options: 'i' } },
+        { 'address.city': { $regex: cleanSearch, $options: 'i' } },
+        { 'address.street': { $regex: cleanSearch, $options: 'i' } },
+        { 'address.landmark': { $regex: cleanSearch, $options: 'i' } },
+        { description: { $regex: cleanSearch, $options: 'i' } },
+        { facilities: { $regex: cleanSearch, $options: 'i' } },
+        ...(matchedSportIds.length > 0 ? [{ sports: { $in: matchedSportIds } }] : []),
       ]
     }
 

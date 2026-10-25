@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
   MapPin,
@@ -9,10 +9,11 @@ import {
   Users,
   Trophy,
   Lock,
+  Check,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 
-export const TurfCard = ({ turf }) => {
+export const TurfCard = ({ turf, activeSportSlug }) => {
   const { isAuthenticated } = useAuth()
 
   if (!turf) return null
@@ -32,6 +33,18 @@ export const TurfCard = ({ turf }) => {
   const locationText = [turf.address?.street, turf.address?.city]
     .filter(Boolean)
     .join(', ')
+
+  const sortedSports = useMemo(() => {
+    if (!turf?.sports || !Array.isArray(turf.sports)) return []
+    if (!activeSportSlug) return turf.sports
+    return [...turf.sports].sort((a, b) => {
+      const aSlug = typeof a === 'object' ? a.slug : ''
+      const bSlug = typeof b === 'object' ? b.slug : ''
+      if (aSlug === activeSportSlug) return -1
+      if (bSlug === activeSportSlug) return 1
+      return 0
+    })
+  }, [turf?.sports, activeSportSlug])
 
   return (
     <div className="group rounded-2xl bg-white border border-[#D7E0D9] hover:border-[#267A45]/60 flex flex-col justify-between overflow-hidden transition-all duration-300 hover:shadow-md">
@@ -77,12 +90,24 @@ export const TurfCard = ({ turf }) => {
       <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
         <div>
           {/* Sports Supported Badges */}
-          {turf.sports && turf.sports.length > 0 && (
+          {sortedSports.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
-              {turf.sports.slice(0, 3).map((sport) => {
+              {sortedSports.slice(0, 3).map((sport) => {
                 const sportName = typeof sport === 'object' ? sport.name : 'Sport'
                 const sportId = typeof sport === 'object' ? sport._id : sport
-                return (
+                const sportSlug = typeof sport === 'object' ? sport.slug : ''
+                const isMatched = activeSportSlug && sportSlug === activeSportSlug
+
+                return isMatched ? (
+                  <span
+                    key={sportId || sportName}
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-[#267A45] text-white shadow-2xs"
+                    title="Matched your active sport filter"
+                  >
+                    <Check className="w-2.5 h-2.5 shrink-0 stroke-[3]" />
+                    <span>{sportName}</span>
+                  </span>
+                ) : (
                   <span
                     key={sportId || sportName}
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]"
@@ -92,9 +117,9 @@ export const TurfCard = ({ turf }) => {
                   </span>
                 )
               })}
-              {turf.sports.length > 3 && (
+              {sortedSports.length > 3 && (
                 <span className="text-[10px] text-[#526258] font-semibold">
-                  +{turf.sports.length - 3} more
+                  +{sortedSports.length - 3} more
                 </span>
               )}
             </div>

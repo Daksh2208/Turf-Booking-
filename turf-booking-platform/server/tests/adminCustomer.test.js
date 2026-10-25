@@ -94,6 +94,12 @@ describe('Admin Customer Management & Analytics API Suite', () => {
       slug: 'cust-test-arena',
       sports: [testSport._id],
       hourlyRate: 1000,
+      address: {
+        street: '123 Arena Street',
+        city: 'Mumbai',
+        state: 'Maharashtra',
+        zipCode: '400001',
+      },
       pricingSlots: {
         weekday: [{ startTime: '06:00', endTime: '23:00', price: 1000, rateType: 'standard' }],
         weekend: [{ startTime: '06:00', endTime: '23:00', price: 1200, rateType: 'peak' }],
@@ -110,10 +116,12 @@ describe('Admin Customer Management & Analytics API Suite', () => {
       startTime: '10:00',
       endTime: '11:00',
       selectedSlots: ['10:00-11:00'],
-      totalAmount: 1200,
+      slotPrice: 120000,
+      subtotal: 120000,
+      totalAmount: 120000,
       status: 'confirmed',
       paymentStatus: 'paid',
-      customerDetails: {
+      contactDetails: {
         name: customerUser1.name,
         email: customerUser1.email,
         phone: customerUser1.phone,

@@ -118,9 +118,9 @@ export const CustomerFooter = () => {
             </h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <a href="/#how-it-works" className="text-[#46564A] hover:text-[#267A45] transition-colors">
+                <Link to="/#how-it-works" className="text-[#46564A] hover:text-[#267A45] transition-colors">
                   How Booking Works
-                </a>
+                </Link>
               </li>
               <li>
                 <span className="text-[#647168]">Live Slot Engine</span>

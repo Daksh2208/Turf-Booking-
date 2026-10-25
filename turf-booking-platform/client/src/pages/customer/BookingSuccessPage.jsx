@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useParams, Link, useLocation } from 'react-router-dom'
+import { useParams, Link, useLocation, Navigate } from 'react-router-dom'
 import {
   CheckCircle2,
   Calendar,
@@ -15,13 +15,19 @@ import {
   AlertCircle,
   Trophy,
 } from 'lucide-react'
+import { useAuth } from '../../hooks/useAuth'
 import { useQuery } from '../../hooks/useApi'
 import customerBookingService from '../../services/customer/booking.service'
 
 export const BookingSuccessPage = () => {
+  const { user } = useAuth()
   const { id } = useParams()
   const location = useLocation()
   const [copied, setCopied] = useState(false)
+
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin" replace />
+  }
 
   const {
     data: booking,

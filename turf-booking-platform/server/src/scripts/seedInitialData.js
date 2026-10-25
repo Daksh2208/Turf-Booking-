@@ -77,7 +77,7 @@ async function seedInitialData() {
           name: 'Apex Thunder Arena',
           slug: 'apex-thunder-arena',
           description: 'Premier floodlit astro-turf ground for box cricket and 5v5 football with pro-grade shock pads.',
-          sports: [cricketSport?._id, footballSport?._id].filter(Boolean),
+          sports: [cricketSport?._id].filter(Boolean),
           address: {
             street: '12 Sports Complex Road, Andheri West',
             city: 'Mumbai',
@@ -85,7 +85,7 @@ async function seedInitialData() {
             zipCode: '400053',
           },
           images: [
-            'https://images.unsplash.com/photo-1529900245534-47fbf82215dd?auto=format&fit=crop&w=1200&q=80',
+            'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=1200&q=80',
           ],
           facilities: ['High-Power Floodlights', 'Covered Dugouts', 'Ample Parking', 'Changing Rooms', 'Drinking Water'],
           size: '110x65 ft',
@@ -108,7 +108,7 @@ async function seedInitialData() {
           name: 'Champions Turf Ground',
           slug: 'champions-turf-ground',
           description: 'Spacious multi-sport turf arena with FIFA-certified artificial grass and international standard netting.',
-          sports: [footballSport?._id, cricketSport?._id].filter(Boolean),
+          sports: [footballSport?._id].filter(Boolean),
           address: {
             street: 'Plot 45 Link Road, Malad West',
             city: 'Mumbai',
@@ -139,7 +139,7 @@ async function seedInitialData() {
           name: 'Smash Point Sports Hub',
           slug: 'smash-point-sports-hub',
           description: 'State-of-the-art indoor sports complex dedicated to Pickleball, Badminton, and Box Cricket.',
-          sports: [pickleballSport?._id, badmintonSport?._id, cricketSport?._id].filter(Boolean),
+          sports: [pickleballSport?._id, badmintonSport?._id].filter(Boolean),
           address: {
             street: '88 Eastern Express Highway, Powai',
             city: 'Mumbai',

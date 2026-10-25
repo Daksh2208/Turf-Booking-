@@ -2,6 +2,7 @@ import React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './features/auth/context/AuthContext'
 import { ProtectedRoute } from './components/common/ProtectedRoute'
+import { ScrollToTop } from './components/common/ScrollToTop'
 import { AdminLayout } from './layouts/AdminLayout'
 import { CustomerLayout } from './layouts/CustomerLayout'
 
@@ -32,6 +33,7 @@ export function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <ScrollToTop />
         <Routes>
           {/* Customer Website Routes wrapped in CustomerLayout */}
           <Route element={<CustomerLayout />}>
@@ -55,7 +57,7 @@ export function App() {
             <Route
               path="/checkout"
               element={
-                <ProtectedRoute redirectTo="/register">
+                <ProtectedRoute requireCustomer={true} redirectTo="/register">
                   <CheckoutPage />
                 </ProtectedRoute>
               }
@@ -63,7 +65,7 @@ export function App() {
             <Route
               path="/bookings/success/:id"
               element={
-                <ProtectedRoute redirectTo="/register">
+                <ProtectedRoute requireCustomer={true} redirectTo="/register">
                   <BookingSuccessPage />
                 </ProtectedRoute>
               }
@@ -71,7 +73,7 @@ export function App() {
             <Route
               path="/my-bookings"
               element={
-                <ProtectedRoute redirectTo="/register">
+                <ProtectedRoute requireCustomer={true} redirectTo="/login">
                   <MyBookingsPage />
                 </ProtectedRoute>
               }

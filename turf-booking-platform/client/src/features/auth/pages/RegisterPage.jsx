@@ -12,7 +12,7 @@ import { useAuth } from '../../../hooks/useAuth'
 
 export const RegisterPage = () => {
   const [serverError, setServerError] = useState(null)
-  const { register: registerCustomer, isAuthenticated } = useAuth()
+  const { register: registerCustomer, isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -27,9 +27,14 @@ export const RegisterPage = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(fromPath, { replace: true })
+      if (user?.role === 'admin') {
+        navigate('/admin/dashboard', { replace: true })
+      } else {
+        const dest = fromPath && !fromPath.startsWith('/admin') ? fromPath : '/'
+        navigate(dest, { replace: true })
+      }
     }
-  }, [isAuthenticated, navigate, fromPath])
+  }, [isAuthenticated, user, navigate, fromPath])
 
   const {
     register,

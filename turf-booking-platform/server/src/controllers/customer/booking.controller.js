@@ -36,6 +36,16 @@ export const getPricingQuote = async (req, res, next) => {
 
 export const createBooking = async (req, res, next) => {
   try {
+    if (req.user?.role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'ADMIN_BOOKING_FORBIDDEN',
+          message: 'Forbidden: Admins cannot create customer bookings. Please use admin management endpoints.',
+        },
+      })
+    }
+
     const idempotencyKey =
       req.body.idempotencyKey || req.headers['x-idempotency-key'] || undefined
 
@@ -57,6 +67,15 @@ export const createBooking = async (req, res, next) => {
 
 export const getMyBookings = async (req, res, next) => {
   try {
+    if (req.user?.role === 'admin') {
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'ADMIN_BOOKING_FORBIDDEN',
+          message: 'Forbidden: Admins cannot access customer bookings via customer endpoints.',
+        },
+      })
+    }
     const { page, limit, status } = req.query
     const result = await bookingService.getUserBookings(req.user._id, {
       page,

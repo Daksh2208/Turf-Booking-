@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, Navigate } from 'react-router-dom'
 import { useQuery } from '../../hooks/useApi'
 import {
   Search,
@@ -24,7 +24,7 @@ import customerInventoryService from '../../services/customer/inventory.service'
 import { TurfCard } from '../../components/customer/TurfCard'
 
 export const HomePage = () => {
-  const { isAuthenticated } = useAuth()
+  const { user, isAuthenticated, isLoading } = useAuth()
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCity, setSelectedCity] = useState('')
@@ -62,13 +62,31 @@ export const HomePage = () => {
     const params = new URLSearchParams()
     if (searchTerm.trim()) params.set('search', searchTerm.trim())
     if (selectedCity) params.set('city', selectedCity)
-    const targetUrl = `/turfs?${params.toString()}`
+    const queryString = params.toString()
+    const targetUrl = queryString ? `/turfs?${queryString}` : '/turfs'
 
     if (!isAuthenticated) {
       navigate('/register', { state: { from: targetUrl } })
     } else {
       navigate(targetUrl)
     }
+  }
+
+  // Handle session restoration loading to prevent brief flash of wrong screen
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#F6F8F6] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-[#267A45] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-[#526258] font-medium">Verifying session...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Returning authenticated admin must land on /admin dashboard, not customer homepage
+  if (isAuthenticated && user?.role === 'admin') {
+    return <Navigate to="/admin" replace />
   }
 
   return (
@@ -364,7 +382,7 @@ export const HomePage = () => {
       </section>
 
       {/* 4. Featured Arenas Showcase */}
-      <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
+      <section id="arenas" className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold text-[#17231B] flex items-center gap-2">

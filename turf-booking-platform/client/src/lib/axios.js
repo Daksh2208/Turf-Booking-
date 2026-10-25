@@ -28,8 +28,14 @@ const processQueue = (error, token = null) => {
 apiClient.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('auth_token')
-    if (token && !config.headers.Authorization) {
-      config.headers.Authorization = `Bearer ${token}`
+    if (token && config.headers) {
+      if (typeof config.headers.get === 'function' && typeof config.headers.set === 'function') {
+        if (!config.headers.get('Authorization')) {
+          config.headers.set('Authorization', `Bearer ${token}`)
+        }
+      } else if (!config.headers.Authorization) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
     }
   }
   return config
@@ -79,7 +85,11 @@ apiClient.interceptors.response.use(
       const newToken = refreshRes.data?.data?.accessToken
       if (newToken && typeof window !== 'undefined') {
         localStorage.setItem('auth_token', newToken)
-        originalRequest.headers.Authorization = `Bearer ${newToken}`
+        if (originalRequest.headers && typeof originalRequest.headers.set === 'function') {
+          originalRequest.headers.set('Authorization', `Bearer ${newToken}`)
+        } else if (originalRequest.headers) {
+          originalRequest.headers.Authorization = `Bearer ${newToken}`
+        }
       }
       processQueue(null, newToken)
       return apiClient(originalRequest)

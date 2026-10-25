@@ -105,3 +105,40 @@ export const requireRole = (...roles) => {
  * Convenience middleware for admin-only routes
  */
 export const requireAdmin = requireRole('admin')
+
+/**
+ * Middleware that restricts endpoints to customers only (blocks admins from customer booking endpoints)
+ */
+export const requireCustomer = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({
+      success: false,
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Authentication required before checking permissions.',
+      },
+    })
+  }
+
+  if (req.user.role === 'admin') {
+    return res.status(403).json({
+      success: false,
+      error: {
+        code: 'ADMIN_BOOKING_FORBIDDEN',
+        message: 'Forbidden: Administrators are not permitted to create or manage customer bookings through customer endpoints. Please use admin management endpoints.',
+      },
+    })
+  }
+
+  if (req.user.role !== 'customer') {
+    return res.status(403).json({
+      success: false,
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Forbidden: Access requires customer privileges.',
+      },
+    })
+  }
+
+  next()
+}

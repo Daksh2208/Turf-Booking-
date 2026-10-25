@@ -89,6 +89,13 @@ export const bookingService = {
       throw error
     }
 
+    if (user.role === 'admin') {
+      const error = new Error('Admins are not permitted to create customer bookings.')
+      error.statusCode = 403
+      error.code = 'ADMIN_BOOKING_FORBIDDEN'
+      throw error
+    }
+
     // 1. Idempotency check: prevent duplicate bookings on network retries
     if (idempotencyKey && typeof idempotencyKey === 'string' && idempotencyKey.trim()) {
       const cleanKey = idempotencyKey.trim()

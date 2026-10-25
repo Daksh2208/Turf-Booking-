@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react'
-import { useLocation, useNavigate, Link } from 'react-router-dom'
+import { useLocation, useNavigate, Link, Navigate } from 'react-router-dom'
 import {
   Calendar,
   Clock,
@@ -26,6 +26,11 @@ export const CheckoutPage = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useAuth()
+
+  // Admins cannot create customer bookings
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin" replace />
+  }
 
   // Retrieve checkout state passed from TurfDetailPage
   const checkoutState = location.state || {}

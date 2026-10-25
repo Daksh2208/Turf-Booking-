@@ -2,7 +2,13 @@ import React from 'react'
 import { Navigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 
-export const ProtectedRoute = ({ requireAdmin = false, redirectTo = '/login', children }) => {
+export const ProtectedRoute = ({
+  requireAdmin = false,
+  requireCustomer = false,
+  forbidAdmin = false,
+  redirectTo = '/login',
+  children,
+}) => {
   const { user, isAuthenticated, isLoading } = useAuth()
   const location = useLocation()
 
@@ -21,8 +27,14 @@ export const ProtectedRoute = ({ requireAdmin = false, redirectTo = '/login', ch
     return <Navigate to={redirectTo} state={{ from: location }} replace />
   }
 
+  // Admin-only route guard
   if (requireAdmin && user?.role !== 'admin') {
     return <Navigate to="/" replace />
+  }
+
+  // Customer-only / Admin-blocked route guard
+  if ((requireCustomer || forbidAdmin) && user?.role === 'admin') {
+    return <Navigate to="/admin" replace />
   }
 
   return children ? children : <Outlet />
