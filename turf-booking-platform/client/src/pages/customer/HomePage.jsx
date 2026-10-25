@@ -29,8 +29,6 @@ import { TurfCard } from '../../components/customer/TurfCard'
 export const HomePage = () => {
   const { user, isAuthenticated, isLoading } = useAuth()
   const navigate = useNavigate()
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCity, setSelectedCity] = useState('')
   const [selectedSportSlug, setSelectedSportSlug] = useState('')
 
   // 1. Fetch Active Sports Categories
@@ -78,26 +76,6 @@ export const HomePage = () => {
   const turfs = turfsData?.turfs || []
   const activeSportObj = uniqueSports.find((s) => s.slug === selectedSportSlug)
 
-  // Extract unique cities from actual turfs data
-  const availableCities = Array.from(
-    new Set(turfs.map((t) => t.address?.city).filter(Boolean))
-  )
-
-  const handleSearchSubmit = (e) => {
-    e.preventDefault()
-    const params = new URLSearchParams()
-    if (searchTerm.trim()) params.set('search', searchTerm.trim())
-    if (selectedCity) params.set('city', selectedCity)
-    const queryString = params.toString()
-    const targetUrl = queryString ? `/turfs?${queryString}` : '/turfs'
-
-    if (!isAuthenticated) {
-      navigate('/register', { state: { from: targetUrl } })
-    } else {
-      navigate(targetUrl)
-    }
-  }
-
   // Handle session restoration loading to prevent brief flash of wrong screen
   if (isLoading) {
     return (
@@ -136,54 +114,25 @@ export const HomePage = () => {
             Find and book premier sports turfs for Cricket, Football, Pickleball, and Badminton. Inspect live available slots, transparent peak/weekend rates, and play without conflicts.
           </p>
 
-          {/* Conditional Hero Feature Area */}
+          {/* Conditional Hero Action Area */}
           {isAuthenticated ? (
-            <form
-              onSubmit={handleSearchSubmit}
-              className="p-2 sm:p-2.5 rounded-3xl bg-white border border-[#D7E0D9] shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 text-left max-w-2xl mx-auto"
-            >
-              {/* Search Input */}
-              <div className="flex-1 flex items-center gap-2.5 px-3 py-2">
-                <Search className="w-4 h-4 text-[#267A45] shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search turf name, area, or landmark..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-transparent text-xs sm:text-sm text-[#17231B] placeholder-[#647168] focus:outline-none"
-                />
-              </div>
-
-              {/* City Selector if available */}
-              {availableCities.length > 0 && (
-                <div className="flex items-center gap-1.5 px-3 py-2 border-t sm:border-t-0 sm:border-l border-[#E2E8E3] text-xs">
-                  <MapPin className="w-3.5 h-3.5 text-[#647168] shrink-0" />
-                  <select
-                    value={selectedCity}
-                    onChange={(e) => setSelectedCity(e.target.value)}
-                    className="bg-transparent text-[#17231B] focus:outline-none cursor-pointer text-xs"
-                  >
-                    <option value="" className="bg-white text-[#17231B]">
-                      All Areas
-                    </option>
-                    {availableCities.map((city) => (
-                      <option key={city} value={city} className="bg-white text-[#17231B]">
-                        {city}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                className="py-3 px-6 rounded-2xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-xs sm:text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+            <div className="flex flex-wrap items-center justify-center gap-3.5 pt-2">
+              <Link
+                to="/turfs"
+                className="py-3 px-7 rounded-2xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-xs sm:text-sm transition-all duration-200 inline-flex items-center gap-2 shadow-xs cursor-pointer group hover:scale-[1.01]"
               >
-                <span>Find Turfs</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </form>
+                <Compass className="w-4 h-4 text-[#E7F3E9] group-hover:rotate-45 transition-transform duration-300" />
+                <span>Browse All Arenas</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
+              </Link>
+              <Link
+                to="/my-bookings"
+                className="py-3 px-6 rounded-2xl bg-white hover:bg-[#F0F6F1] text-[#17231B] font-bold text-xs sm:text-sm border border-[#D7E0D9] hover:border-[#267A45] transition-all duration-200 inline-flex items-center gap-2 shadow-2xs cursor-pointer"
+              >
+                <Calendar className="w-4 h-4 text-[#267A45]" />
+                <span>View My Bookings</span>
+              </Link>
+            </div>
           ) : (
             <div className="p-5 sm:p-7 rounded-3xl bg-white border border-[#D7E0D9] shadow-sm max-w-2xl mx-auto text-center space-y-5">
               {/* Badge */}

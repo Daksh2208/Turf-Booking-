@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { useQuery } from '../../hooks/useApi'
 import {
   Search,
@@ -11,6 +11,7 @@ import {
   Loader2,
   AlertCircle,
   Trophy,
+  ArrowLeft,
 } from 'lucide-react'
 import customerInventoryService from '../../services/customer/inventory.service'
 import { TurfCard } from '../../components/customer/TurfCard'
@@ -42,14 +43,7 @@ export const TurfListingPage = () => {
 
   const selectedFacilities = facilitiesParam ? facilitiesParam.split(',').filter(Boolean) : []
 
-  // Local state for instant input feedback
-  const [localSearch, setLocalSearch] = useState(search)
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
-
-  // Keep local search in sync with URL
-  useEffect(() => {
-    setLocalSearch(search)
-  }, [search])
 
   // 1. Fetch Sports for filter dropdown
   const { data: sports = [] } = useQuery({
@@ -119,7 +113,6 @@ export const TurfListingPage = () => {
   }
 
   const handleClearFilters = () => {
-    setLocalSearch('')
     setSearchParams(new URLSearchParams())
   }
 
@@ -131,38 +124,28 @@ export const TurfListingPage = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-[#E2E8E3]">
-        <div>
+        <div className="space-y-2">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#F0F6F1] text-xs font-semibold text-[#526258] hover:text-[#267A45] border border-[#D7E0D9] shadow-2xs transition-all w-fit group cursor-pointer mb-1"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-[#267A45] group-hover:-translate-x-1 transition-transform" />
+            <span>Back to Home</span>
+          </Link>
           <h1 className="text-2xl sm:text-3xl font-black text-[#17231B] tracking-tight">
             Explore Sports Turfs
           </h1>
-          <p className="text-xs sm:text-sm text-[#526258] mt-1">
+          <p className="text-xs sm:text-sm text-[#526258]">
             Browse verified turf arenas, inspect dynamic hourly pricing, and view real-time availability.
           </p>
         </div>
 
-        {/* Quick Search bar & Mobile filter button */}
-        <div className="flex items-center gap-3">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              updateParam('search', localSearch)
-            }}
-            className="relative flex-1 sm:w-72"
-          >
-            <Search className="w-4 h-4 text-[#647168] absolute left-3 top-3 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search by arena or area..."
-              value={localSearch}
-              onChange={(e) => setLocalSearch(e.target.value)}
-              className="w-full bg-white text-xs text-[#17231B] placeholder-[#647168] pl-9 pr-3 py-2.5 rounded-xl border border-[#D7E0D9] focus:outline-none focus:border-[#267A45] transition-colors"
-            />
-          </form>
-
+        {/* Mobile filter toggle */}
+        <div className="md:hidden flex items-center">
           <button
             type="button"
             onClick={() => setMobileFilterOpen(!mobileFilterOpen)}
-            className="md:hidden p-2.5 rounded-xl bg-white border border-[#D7E0D9] text-[#17231B] hover:bg-[#F0F6F1] flex items-center gap-1.5 text-xs font-semibold"
+            className="p-2.5 rounded-xl bg-white border border-[#D7E0D9] text-[#17231B] hover:bg-[#F0F6F1] flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
           >
             <SlidersHorizontal className="w-4 h-4 text-[#267A45]" />
             <span>Filters</span>

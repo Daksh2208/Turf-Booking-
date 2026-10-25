@@ -12,6 +12,7 @@ import {
   Clock3,
   XCircle,
   ExternalLink,
+  ArrowLeft,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useQuery } from '../../hooks/useApi'
@@ -127,11 +128,18 @@ export const MyBookingsPage = () => {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+        <div className="space-y-2">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-[#F0F6F1] text-xs font-semibold text-[#526258] hover:text-[#267A45] border border-[#D7E0D9] shadow-2xs transition-all w-fit group cursor-pointer mb-1"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-[#267A45] group-hover:-translate-x-1 transition-transform" />
+            <span>Back to Home</span>
+          </Link>
           <h1 className="text-2xl sm:text-3xl font-black text-[#17231B] tracking-tight">
             My Bookings
           </h1>
-          <p className="text-xs sm:text-sm text-[#526258] mt-1">
+          <p className="text-xs sm:text-sm text-[#526258]">
             Track your reserved match slots, review passes, and view payment details.
           </p>
         </div>
@@ -289,13 +297,34 @@ export const MyBookingsPage = () => {
                       </div>
                     </div>
 
-                    <Link
-                      to={`/bookings/success/${booking._id}`}
-                      className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#F0F6F1] text-[#17231B] text-xs font-semibold border border-[#D7E0D9] transition-all inline-flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <span>View Pass</span>
-                      <ExternalLink className="w-3.5 h-3.5 text-[#267A45]" />
-                    </Link>
+                    {booking.status === 'cancelled' || booking.paymentStatus === 'failed' ? (
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={`/bookings/success/${booking._id}`}
+                          className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#FDF0EF] text-[#526258] hover:text-[#922B27] text-xs font-semibold border border-[#D7E0D9] hover:border-[#F8D2CE] transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>View Details</span>
+                          <ExternalLink className="w-3.5 h-3.5 text-[#526258]" />
+                        </Link>
+                        {booking.turf && (
+                          <Link
+                            to={`/turfs/${booking.turf.slug || booking.turf._id}`}
+                            className="px-3 py-1.5 rounded-xl bg-[#267A45] hover:bg-[#1E6338] text-white text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
+                            title="Rebook this arena"
+                          >
+                            <span>Rebook</span>
+                          </Link>
+                        )}
+                      </div>
+                    ) : (
+                      <Link
+                        to={`/bookings/success/${booking._id}`}
+                        className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#F0F6F1] text-[#17231B] text-xs font-semibold border border-[#D7E0D9] transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span>View Pass</span>
+                        <ExternalLink className="w-3.5 h-3.5 text-[#267A45]" />
+                      </Link>
+                    )}
                   </div>
                 </div>
               )

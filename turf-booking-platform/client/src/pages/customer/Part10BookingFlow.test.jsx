@@ -260,7 +260,32 @@ describe('Part 10 Frontend: Checkout, Booking Confirmation & My Bookings', () =>
     expect(screen.getAllByText(/2006\.00/).length).toBeGreaterThanOrEqual(1)
   })
 
-  it('5. MyBookingsPage renders customer bookings, status badges, and filter tabs', async () => {
+  it('5. BookingSuccessPage handles cancelled or failed bookings accurately with void notice', async () => {
+    const cancelledBooking = {
+      ...mockBooking,
+      status: 'cancelled',
+      paymentStatus: 'failed',
+      cancellationReason: 'Payment timed out or cancelled by customer',
+    }
+    customerBookingService.getBookingById.mockResolvedValueOnce(cancelledBooking)
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/bookings/success/:id" element={<BookingSuccessPage />} />
+      </Routes>,
+      {
+        route: `/bookings/success/${cancelledBooking._id}`,
+      }
+    )
+
+    expect(await screen.findByText('Booking Cancelled')).toBeInTheDocument()
+    expect(screen.queryByText('Booking Confirmed!')).not.toBeInTheDocument()
+    expect(screen.getByText(/Pass Status: Cancelled & Void/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Rebook Arena Slot/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Download Ticket Pass/i })).not.toBeInTheDocument()
+  })
+
+  it('6. MyBookingsPage renders customer bookings, status badges, and filter tabs', async () => {
     renderWithProviders(<MyBookingsPage />, {
       route: '/my-bookings',
     })
@@ -286,6 +311,29 @@ describe('Part 10 Frontend: Checkout, Booking Confirmation & My Bookings', () =>
           status: 'cancelled',
         })
       )
+    })
+  })
+
+  it('7. MyBookingsPage displays View Details and Rebook instead of View Pass for cancelled bookings', async () => {
+    const cancelledBooking = {
+      ...mockBooking,
+      status: 'cancelled',
+      paymentStatus: 'failed',
+    }
+    customerBookingService.getMyBookings.mockResolvedValueOnce({
+      bookings: [cancelledBooking],
+      pagination: { page: 1, totalPages: 1, total: 1 },
+    })
+
+    renderWithProviders(<MyBookingsPage />, {
+      route: '/my-bookings',
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('TB-261110-8842')).toBeInTheDocument()
+      expect(screen.getByText('View Details')).toBeInTheDocument()
+      expect(screen.getByText('Rebook')).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: /View Pass/i })).not.toBeInTheDocument()
     })
   })
 })

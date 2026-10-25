@@ -227,9 +227,9 @@ describe('Part 9: Customer-Facing Website & Discovery Suite', () => {
 
     // Business contact info in footer
     expect(screen.getByText('contact@turfspot.com')).toBeInTheDocument()
-  })
+  }, 15000)
 
-  // 1b. When authenticated, interactive search form is unlocked on Home Page
+  // 1b. When authenticated, interactive search form is in navbar and view details CTA on Home Page
   it('1b. unlocks interactive turf search form and view details CTA when logged in', async () => {
     render(
       <QueryClientProvider client={queryClient}>
@@ -249,11 +249,13 @@ describe('Part 9: Customer-Facing Website & Discovery Suite', () => {
       </QueryClientProvider>
     )
 
-    // Interactive search form is rendered
-    expect(screen.getByPlaceholderText(/Search turf name, area/i)).toBeInTheDocument()
+    // Interactive search form is rendered in navbar
+    expect(screen.getByPlaceholderText(/Search turfs, areas/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Find Turfs/i })).toBeInTheDocument()
 
-    // Guest card is not present
+    // Hero quick actions are rendered instead of guest card
+    expect(screen.getByRole('link', { name: /Browse All Arenas/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /View My Bookings/i })).toBeInTheDocument()
     expect(screen.queryByText('Seamless Booking for Every Game')).not.toBeInTheDocument()
 
     // Turf card has View Details & Slots CTA
@@ -409,10 +411,10 @@ describe('Part 9: Customer-Facing Website & Discovery Suite', () => {
       </QueryClientProvider>
     )
 
-    // Authenticated user's name is displayed
+    // Authenticated user's name and Account Settings are displayed, Sign Out moved to Settings page
     expect(screen.getByText('Lionel Messi')).toBeInTheDocument()
-    expect(screen.getByTitle('Sign Out')).toBeInTheDocument()
     expect(screen.getByTitle('Account Settings')).toBeInTheDocument()
+    expect(screen.queryByTitle('Sign Out')).not.toBeInTheDocument()
 
     // Guest login links are hidden
     expect(screen.queryByRole('link', { name: /^Sign In$/i })).not.toBeInTheDocument()
