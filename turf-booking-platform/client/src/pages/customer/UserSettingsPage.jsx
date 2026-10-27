@@ -71,6 +71,23 @@ export const UserSettingsPage = () => {
       return
     }
 
+    if (phone.trim()) {
+      const raw = phone.trim().replace(/(?!^\+)[^\d]/g, '')
+      const nat = raw.startsWith('+91') ? raw.slice(3) : raw.startsWith('+') ? raw.slice(1) : raw
+      if (nat.startsWith('0')) {
+        setProfileErr("Please remove leading '0'. Indian mobile numbers start with 6–9.")
+        return
+      }
+      if (!/^[6-9]/.test(nat)) {
+        setProfileErr('Indian mobile numbers must start with 6, 7, 8, or 9.')
+        return
+      }
+      if (nat.length !== 10) {
+        setProfileErr(`Mobile number must be exactly 10 digits (${nat.length} entered).`)
+        return
+      }
+    }
+
     try {
       setIsSavingProfile(true)
       await authService.updateProfile({ name: name.trim(), phone: phone.trim() })
@@ -279,12 +296,52 @@ export const UserSettingsPage = () => {
               </div>
 
               <div>
-                <label className="block text-[#17231B] font-semibold mb-1">Mobile Phone</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[#17231B] font-semibold text-xs">Mobile Phone</label>
+                  <span className="text-[10px] text-[#526258]">India (starts with 6–9, 10 digits)</span>
+                </div>
                 <input
                   type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={phone?.startsWith('+91') ? 13 : 10}
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-white border border-[#D7E0D9] rounded-xl px-3 py-2 text-[#17231B] focus:outline-none focus:border-[#267A45] font-mono"
+                  onKeyDown={(e) => {
+                    if (
+                      e.key === 'Backspace' ||
+                      e.key === 'Delete' ||
+                      e.key === 'Tab' ||
+                      e.key === 'ArrowLeft' ||
+                      e.key === 'ArrowRight' ||
+                      e.key === 'Enter' ||
+                      e.key === 'Home' ||
+                      e.key === 'End' ||
+                      (e.ctrlKey || e.metaKey)
+                    ) return
+                    if (e.key === '+' && e.target.selectionStart === 0 && !e.target.value.includes('+')) return
+                    if (!/^\d$/.test(e.key)) {
+                      e.preventDefault()
+                      return
+                    }
+                    const maxLen = e.target.value.startsWith('+91') ? 13 : 10
+                    const selected = (e.target.selectionEnd || 0) - (e.target.selectionStart || 0)
+                    if (e.target.value.length >= maxLen && selected === 0) {
+                      e.preventDefault()
+                    }
+                  }}
+                  onPaste={(e) => {
+                    e.preventDefault()
+                    const pasted = (e.clipboardData?.getData('text') || '').trim()
+                    const sanitized = pasted.replace(/(?!^\+)[^\d]/g, '')
+                    const maxLen = sanitized.startsWith('+91') ? 13 : 10
+                    setPhone(sanitized.slice(0, maxLen))
+                  }}
+                  onChange={(e) => {
+                    const sanitized = e.target.value.replace(/(?!^\+)[^\d]/g, '')
+                    const maxLen = sanitized.startsWith('+91') ? 13 : 10
+                    setPhone(sanitized.slice(0, maxLen))
+                  }}
+                  className="w-full bg-white border border-[#D7E0D9] rounded-xl px-3 py-2 text-xs text-[#17231B] focus:outline-none focus:border-[#267A45] font-mono"
                   placeholder="e.g. 9876543210"
                 />
               </div>

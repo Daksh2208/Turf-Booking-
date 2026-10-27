@@ -71,8 +71,9 @@ export const RegisterPage = () => {
 
   // Clear server error whenever user modifies inputs
   useEffect(() => {
+    if (!serverError) return
     const subscription = watch(() => {
-      if (serverError) setServerError(null)
+      setServerError(null)
     })
     return () => subscription.unsubscribe()
   }, [watch, serverError])

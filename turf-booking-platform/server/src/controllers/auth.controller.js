@@ -153,7 +153,27 @@ export const updateProfile = async (req, res, next) => {
     }
 
     if (phone !== undefined) {
-      user.phone = phone.trim()
+      const trimmedPhone = phone.trim()
+      if (trimmedPhone) {
+        const rawDigits = trimmedPhone.replace(/(?!^\+)[^\d]/g, '')
+        const national = rawDigits.startsWith('+91')
+          ? rawDigits.slice(3)
+          : rawDigits.startsWith('+')
+            ? rawDigits.slice(1)
+            : rawDigits
+        if (!/^[6-9]\d{9}$/.test(national)) {
+          return res.status(400).json({
+            success: false,
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Please provide a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.',
+            },
+          })
+        }
+        user.phone = national
+      } else {
+        user.phone = ''
+      }
     }
 
     await user.save()

@@ -10,8 +10,10 @@ export const loginValidationRules = {
       message: 'Please enter a valid email address',
     },
     validate: {
-      noWhitespace: (val) =>
-        !/\s/.test(val || '') || 'Email address cannot contain spaces',
+      noWhitespace: (val) => {
+        if (!val) return true
+        return !/\s/.test(val) || 'Email address cannot contain spaces'
+      },
     },
   },
   password: {
@@ -26,21 +28,29 @@ export const loginValidationRules = {
 export const registerValidationRules = {
   name: {
     required: 'Full name is required',
-    minLength: {
-      value: 2,
-      message: 'Name must be at least 2 characters',
-    },
     maxLength: {
       value: 60,
       message: 'Name cannot exceed 60 characters',
     },
     validate: {
-      notOnlyWhitespace: (val) =>
-        (val && val.trim().length >= 2) ||
-        'Name must contain at least 2 non-space characters',
-      validCharacters: (val) =>
-        /^[a-zA-Z\s.'-]+$/.test(val?.trim() || '') ||
-        'Name can only contain letters, spaces, hyphens, and apostrophes',
+      minLength: (val) => {
+        if (!val) return true
+        return val.length >= 2 || 'Name must be at least 2 characters'
+      },
+      notOnlyWhitespace: (val) => {
+        if (!val) return true
+        return (
+          val.trim().length >= 2 ||
+          'Name must contain at least 2 non-space characters'
+        )
+      },
+      validCharacters: (val) => {
+        if (!val) return true
+        return (
+          /^[a-zA-Z\s.'-]+$/.test(val.trim()) ||
+          'Name can only contain letters, spaces, hyphens, and apostrophes'
+        )
+      },
     },
   },
   email: {
@@ -50,14 +60,16 @@ export const registerValidationRules = {
       message: 'Please enter a valid email address',
     },
     validate: {
-      noWhitespace: (val) =>
-        !/\s/.test(val || '') || 'Email address cannot contain spaces',
+      noWhitespace: (val) => {
+        if (!val) return true
+        return !/\s/.test(val) || 'Email address cannot contain spaces'
+      },
     },
   },
   password: {
     required: 'Password is required',
     validate: (val) => {
-      if (!val || val.length === 0) return 'Password is required'
+      if (!val) return true
       if (val.length < 8) return 'Password must be at least 8 characters'
       if (!/[A-Za-z]/.test(val)) return 'Password must contain at least one letter'
       if (!/\d/.test(val)) return 'Password must contain at least one number'
@@ -69,8 +81,8 @@ export const registerValidationRules = {
   confirmPassword: (password) => ({
     required: 'Please confirm your password',
     validate: (val, formValues) => {
+      if (!val) return true
       const target = password !== undefined ? password : formValues?.password
-      if (!val) return 'Please confirm your password'
       return val === target || 'Passwords do not match'
     },
   }),

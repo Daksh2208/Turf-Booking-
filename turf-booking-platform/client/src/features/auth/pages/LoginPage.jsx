@@ -61,8 +61,9 @@ export const LoginPage = () => {
 
   // Clear server error whenever user changes inputs
   useEffect(() => {
+    if (!serverError) return
     const subscription = watch(() => {
-      if (serverError) setServerError(null)
+      setServerError(null)
     })
     return () => subscription.unsubscribe()
   }, [watch, serverError])

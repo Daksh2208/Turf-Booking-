@@ -336,4 +336,61 @@ describe('Part 10 Frontend: Checkout, Booking Confirmation & My Bookings', () =>
       expect(screen.queryByRole('link', { name: /View Pass/i })).not.toBeInTheDocument()
     })
   })
+
+  it('8. CheckoutPage restricts Contact Mobile Number to numeric keys and validates length', async () => {
+    renderWithProviders(<CheckoutPage />, {
+      route: '/checkout',
+      state: {
+        turfId: mockTurf._id,
+        turf: mockTurf,
+        date: '2026-11-10',
+        startTime: '18:00',
+        endTime: '19:00',
+        selectedAddOns: [],
+      },
+    })
+
+    const phoneInput = screen.getByDisplayValue('9876543210')
+
+    // Try pressing an alphabet key - default should be prevented and error displayed
+    const allowed = fireEvent.keyDown(phoneInput, { key: 'a' })
+    expect(allowed).toBe(false)
+    expect(
+      screen.getByText(/Only numbers are allowed for contact mobile number/i)
+    ).toBeInTheDocument()
+
+    // Enter number starting with 1, 2, 3... (< 6)
+    fireEvent.change(phoneInput, { target: { value: '12345' } })
+    expect(
+      screen.getByText(/Indian mobile numbers must start with 6, 7, 8, or 9/i)
+    ).toBeInTheDocument()
+
+    // Enter valid starting digit (6-9) but short (< 10 digits)
+    fireEvent.change(phoneInput, { target: { value: '98765' } })
+    expect(screen.getByText(/5 \/ 10 digits/i)).toBeInTheDocument()
+
+    // Enter 11-digit number - immediately shows warning and blocks/caps extra digits
+    fireEvent.change(phoneInput, { target: { value: '93133266489' } })
+    expect(screen.getByText(/Mobile number cannot exceed 10 digits/i)).toBeInTheDocument()
+
+    // Enter valid 10-digit number
+    fireEvent.change(phoneInput, { target: { value: '9876543210' } })
+    expect(screen.getByText(/Valid 10-digit Indian mobile number/i)).toBeInTheDocument()
+    expect(
+      screen.queryByText(/Mobile number cannot exceed 10 digits/i)
+    ).not.toBeInTheDocument()
+
+    // Try pressing an 11th digit when already at 10 digits
+    const extraKeyAllowed = fireEvent.keyDown(phoneInput, { key: '9' })
+    expect(extraKeyAllowed).toBe(false)
+    expect(screen.getByText(/Indian mobile number cannot exceed 10 digits/i)).toBeInTheDocument()
+
+    // Move to another field (blur) - should clear transient warning because input value has valid 10 digits
+    fireEvent.blur(phoneInput)
+    expect(
+      screen.queryByText(/Indian mobile number cannot exceed 10 digits/i)
+    ).not.toBeInTheDocument()
+    expect(screen.getByText(/Valid 10-digit Indian mobile number/i)).toBeInTheDocument()
+  })
 })
+

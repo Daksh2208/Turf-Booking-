@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useLocation, useNavigate, Link, Navigate } from 'react-router-dom'
 import {
   Calendar,
@@ -66,6 +66,13 @@ export const CheckoutPage = () => {
   const idempotencyKeyRef = useRef(
     `IDEM-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
   )
+  const phoneWarningTimeoutRef = useRef(null)
+
+  useEffect(() => {
+    return () => {
+      if (phoneWarningTimeoutRef.current) clearTimeout(phoneWarningTimeoutRef.current)
+    }
+  }, [])
 
   const [contactDetails, setContactDetails] = useState({
     name: user?.name || '',
@@ -76,6 +83,39 @@ export const CheckoutPage = () => {
   const [submitError, setSubmitError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('pay_at_venue') // 'pay_at_venue' | 'stripe'
+
+  // Pre-fill and automatically validate user profile details upon loading
+  useEffect(() => {
+    if (user) {
+      setContactDetails((prev) => ({
+        name: prev.name || user.name || '',
+        email: prev.email || user.email || '',
+        phone: prev.phone || user.phone || '',
+      }))
+
+      const existingPhone = user.phone?.trim()
+      if (existingPhone) {
+        const raw = existingPhone.replace(/(?!^\+)[^\d]/g, '')
+        const nat = raw.startsWith('+91') ? raw.slice(3) : raw.startsWith('+') ? raw.slice(1) : raw
+        if (nat.length > 10) {
+          setFieldErrors((prev) => ({
+            ...prev,
+            phone: `Mobile number cannot exceed 10 digits (${nat.length} digits entered)`,
+          }))
+        } else if (nat.startsWith('0')) {
+          setFieldErrors((prev) => ({
+            ...prev,
+            phone: "Please remove leading '0'. Enter 10 digits starting with 6–9",
+          }))
+        } else if (nat.length > 0 && !/^[6-9]/.test(nat)) {
+          setFieldErrors((prev) => ({
+            ...prev,
+            phone: 'Indian mobile numbers must start with 6, 7, 8, or 9',
+          }))
+        }
+      }
+    }
+  }, [user])
 
   // Fetch safe public Stripe configuration (enabled, publishableKey, currency)
   const { data: stripeConfig } = useQuery({
@@ -220,6 +260,219 @@ export const CheckoutPage = () => {
       })
     : ''
 
+  const handlePhoneKeyDown = (e) => {
+    // Allow control keys, backspace, tab, enter, delete, arrows, copy/paste
+    if (
+      e.key === 'Backspace' ||
+      e.key === 'Delete' ||
+      e.key === 'Tab' ||
+      e.key === 'ArrowLeft' ||
+      e.key === 'ArrowRight' ||
+      e.key === 'Enter' ||
+      e.key === 'Home' ||
+      e.key === 'End' ||
+      (e.ctrlKey || e.metaKey)
+    ) {
+      return
+    }
+
+    // Allow leading + only as the first character
+    if (e.key === '+' && e.target.selectionStart === 0 && !e.target.value.includes('+')) {
+      return
+    }
+
+    // Block any non-digit character (alphabets, symbols, spaces)
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault()
+      setFieldErrors((prev) => ({
+        ...prev,
+        phone: 'Only numbers are allowed for contact mobile number',
+      }))
+      if (phoneWarningTimeoutRef.current) clearTimeout(phoneWarningTimeoutRef.current)
+      phoneWarningTimeoutRef.current = setTimeout(() => {
+        setFieldErrors((prev) => {
+          const next = { ...prev }
+          delete next.phone
+          return next
+        })
+      }, 2000)
+      return
+    }
+
+    // If user already entered 10 digits (or 13 with +), prevent typing extra digits and warn
+    const currentVal = (e.target.value || '').replace(/(?!^\+)[^\d]/g, '')
+    const maxDigits = currentVal.startsWith('+') ? 13 : 10
+    const selectedTextLen = (e.target.selectionEnd || 0) - (e.target.selectionStart || 0)
+    if (currentVal.length >= maxDigits && selectedTextLen === 0) {
+      e.preventDefault()
+      setFieldErrors((prev) => ({
+        ...prev,
+        phone: 'Indian mobile number cannot exceed 10 digits',
+      }))
+      // Automatically clear transient keystroke warning after 2 seconds
+      if (phoneWarningTimeoutRef.current) clearTimeout(phoneWarningTimeoutRef.current)
+      phoneWarningTimeoutRef.current = setTimeout(() => {
+        setFieldErrors((prev) => {
+          const next = { ...prev }
+          delete next.phone
+          return next
+        })
+      }, 2000)
+    }
+  }
+
+  const handlePhoneBlur = () => {
+    if (phoneWarningTimeoutRef.current) {
+      clearTimeout(phoneWarningTimeoutRef.current)
+    }
+
+    const rawVal = (contactDetails.phone || '').replace(/(?!^\+)[^\d]/g, '')
+    const nat = rawVal.startsWith('+91') ? rawVal.slice(3) : rawVal.startsWith('+') ? rawVal.slice(1) : rawVal
+
+    // If user left it empty, don't show premature error while editing
+    if (!nat) {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next.phone
+        return next
+      })
+      return
+    }
+
+    // If phone has exactly 10 valid digits starting with 6-9, it's 100% valid: clear any lingering warnings
+    if (nat.length === 10 && /^[6-9]\d{9}$/.test(nat)) {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next.phone
+        return next
+      })
+      return
+    }
+
+    // If invalid upon blurring:
+    if (nat.startsWith('0')) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        phone: "Please remove leading '0'. Enter 10 digits starting with 6–9",
+      }))
+    } else if (!/^[6-9]/.test(nat)) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        phone: 'Indian mobile numbers must start with 6, 7, 8, or 9',
+      }))
+    } else if (nat.length < 10) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        phone: `Please enter a valid 10-digit mobile number (${nat.length}/10 digits)`,
+      }))
+    } else if (nat.length > 10) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        phone: `Mobile number cannot exceed 10 digits (${nat.length} digits entered)`,
+      }))
+    }
+  }
+
+  const handlePhonePaste = (e) => {
+    e.preventDefault()
+    const pastedText = (e.clipboardData?.getData('text') || '').trim()
+    const rawVal = pastedText.replace(/(?!^\+)[^\d]/g, '')
+    const startsWithIntl = rawVal.startsWith('+91')
+    const allowedLength = startsWithIntl ? 13 : 10
+    const nat = startsWithIntl ? rawVal.slice(3) : rawVal.startsWith('+') ? rawVal.slice(1) : rawVal
+
+    if (nat.length > 10) {
+      const capped = (startsWithIntl ? '+91' : '') + nat.slice(0, 10)
+      setContactDetails((prev) => ({ ...prev, phone: capped }))
+      setFieldErrors((prev) => ({
+        ...prev,
+        phone: `Mobile number cannot exceed 10 digits (${nat.length} digits pasted). Capped to 10 digits.`,
+      }))
+      return
+    }
+
+    setContactDetails((prev) => ({ ...prev, phone: rawVal }))
+    if (nat.startsWith('0')) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        phone: "Please remove leading '0'. Enter 10 digits starting with 6–9",
+      }))
+    } else if (nat.length > 0 && !/^[6-9]/.test(nat)) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        phone: 'Indian mobile numbers must start with 6, 7, 8, or 9',
+      }))
+    } else {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next.phone
+        return next
+      })
+    }
+  }
+
+  const handlePhoneChange = (e) => {
+    const rawVal = e.target.value
+    const startsWithIntl = rawVal.startsWith('+91')
+    const allowedLength = startsWithIntl ? 13 : 10
+
+    // Strip non-digit characters (preserving optional leading +)
+    let sanitized = rawVal.replace(/(?!^\+)[^\d]/g, '')
+
+    let lengthWarning = ''
+    if (sanitized.length > allowedLength) {
+      sanitized = sanitized.slice(0, allowedLength)
+      lengthWarning = 'Mobile number cannot exceed 10 digits'
+    }
+
+    setContactDetails((prev) => ({ ...prev, phone: sanitized }))
+
+    // If user cleared the input (empty): do not show error prematurely while editing
+    if (!sanitized) {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next.phone
+        return next
+      })
+      return
+    }
+
+    // Extract national digits (ignoring leading +91 or +)
+    const nationalDigits = sanitized.startsWith('+91')
+      ? sanitized.slice(3)
+      : sanitized.startsWith('+')
+        ? sanitized.slice(1)
+        : sanitized
+
+    if (lengthWarning) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        phone: lengthWarning,
+      }))
+    } else if (nationalDigits.startsWith('0')) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        phone: "Please remove leading '0'. Enter 10 digits starting with 6–9",
+      }))
+    } else if (nationalDigits.length > 0 && !/^[6-9]/.test(nationalDigits)) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        phone: 'Indian mobile numbers must start with 6, 7, 8, or 9',
+      }))
+    } else if (nationalDigits.length > 10) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        phone: `Mobile number cannot exceed 10 digits (${nationalDigits.length} digits entered)`,
+      }))
+    } else {
+      setFieldErrors((prev) => {
+        const next = { ...prev }
+        delete next.phone
+        return next
+      })
+    }
+  }
+
   const validateForm = () => {
     const errors = {}
     if (!contactDetails.name.trim()) {
@@ -230,10 +483,21 @@ export const CheckoutPage = () => {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactDetails.email)) {
       errors.email = 'Please enter a valid email address'
     }
+    const rawDigits = (contactDetails.phone || '').replace(/(?!^\+)[^\d]/g, '')
+    const nationalDigits = rawDigits.startsWith('+91')
+      ? rawDigits.slice(3)
+      : rawDigits.startsWith('+')
+        ? rawDigits.slice(1)
+        : rawDigits
+
     if (!contactDetails.phone.trim()) {
-      errors.phone = 'Mobile contact number is required'
-    } else if (!/^\+?[0-9]{10,14}$/.test(contactDetails.phone.replace(/[\s-]/g, ''))) {
-      errors.phone = 'Please enter a valid 10-digit mobile number'
+      errors.phone = 'Contact mobile number is required'
+    } else if (nationalDigits.startsWith('0')) {
+      errors.phone = "Please remove leading '0'. Enter 10 digits starting with 6–9"
+    } else if (!/^[6-9]/.test(nationalDigits)) {
+      errors.phone = 'Indian mobile numbers must start with 6, 7, 8, or 9'
+    } else if (nationalDigits.length !== 10) {
+      errors.phone = `Mobile number must be exactly 10 digits (${nationalDigits.length} entered)`
     }
 
     setFieldErrors(errors)
@@ -349,6 +613,24 @@ export const CheckoutPage = () => {
       </div>
     )
   }
+
+  const rawPhoneDigits = (contactDetails.phone || '').replace(/(?!^\+)[^\d]/g, '')
+  const nationalPhoneDigits = rawPhoneDigits.startsWith('+91')
+    ? rawPhoneDigits.slice(3)
+    : rawPhoneDigits.startsWith('+')
+      ? rawPhoneDigits.slice(1)
+      : rawPhoneDigits
+
+  const isPhoneValid =
+    !fieldErrors.phone &&
+    nationalPhoneDigits.length === 10 &&
+    /^[6-9]\d{9}$/.test(nationalPhoneDigits)
+
+  const isPhoneIncomplete =
+    !fieldErrors.phone &&
+    nationalPhoneDigits.length > 0 &&
+    nationalPhoneDigits.length < 10 &&
+    /^[6-9]/.test(nationalPhoneDigits)
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -554,28 +836,62 @@ export const CheckoutPage = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#17231B] mb-1.5">
-                  Contact Mobile Number <span className="text-[#922B27]">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-[#17231B]">
+                    Contact Mobile Number <span className="text-[#922B27]">*</span>
+                  </label>
+                  <span className="text-[10px] text-[#526258] font-normal">
+                    India (+91, starts with 6–9)
+                  </span>
+                </div>
                 <div className="relative">
                   <Phone className="w-4 h-4 text-[#647168] absolute left-3.5 top-3" />
                   <input
                     type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={contactDetails.phone?.startsWith('+91') ? 13 : 10}
                     value={contactDetails.phone}
-                    onChange={(e) =>
-                      setContactDetails({ ...contactDetails, phone: e.target.value })
-                    }
+                    onKeyDown={handlePhoneKeyDown}
+                    onPaste={handlePhonePaste}
+                    onChange={handlePhoneChange}
+                    onBlur={handlePhoneBlur}
                     placeholder="e.g. 9876543210"
-                    className={`w-full bg-white text-xs text-[#17231B] placeholder-[#647168] pl-10 pr-4 py-2.5 rounded-xl border focus:outline-none transition-all ${
+                    className={`w-full bg-white text-xs text-[#17231B] placeholder-[#647168] pl-10 pr-10 py-2.5 rounded-xl border focus:outline-none transition-all ${
                       fieldErrors.phone
-                        ? 'border-[#922B27] ring-1 ring-[#922B27]'
-                        : 'border-[#D7E0D9] focus:border-[#267A45]'
+                        ? 'border-[#922B27] ring-1 ring-[#922B27] focus:border-[#922B27]'
+                        : isPhoneValid
+                          ? 'border-[#267A45] ring-1 ring-[#267A45]/30 focus:border-[#267A45]'
+                          : 'border-[#D7E0D9] focus:border-[#526258] focus:ring-1 focus:ring-[#526258]/20'
                     }`}
                   />
+                  {isPhoneValid && (
+                    <div className="absolute right-3.5 top-2.5 text-[#267A45]">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                  )}
+                  {fieldErrors.phone && (
+                    <div className="absolute right-3.5 top-2.5 text-[#922B27]">
+                      <AlertCircle className="w-4 h-4" />
+                    </div>
+                  )}
                 </div>
-                {fieldErrors.phone && (
-                  <p className="text-[11px] text-[#922B27] mt-1">{fieldErrors.phone}</p>
-                )}
+                {fieldErrors.phone ? (
+                  <p className="text-[11px] text-[#922B27] mt-1 font-medium flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{fieldErrors.phone}</span>
+                  </p>
+                ) : isPhoneValid ? (
+                  <p className="text-[11px] text-[#1D6537] mt-1 font-medium flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[#267A45]" />
+                    <span>Valid 10-digit Indian mobile number</span>
+                  </p>
+                ) : isPhoneIncomplete ? (
+                  <div className="flex items-center justify-between text-[10px] text-[#526258] mt-1">
+                    <span>Enter 10 digits starting with 6–9</span>
+                    <span className="font-mono font-semibold">{nationalPhoneDigits.length} / 10 digits</span>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
