@@ -1,8 +1,8 @@
 import React from 'react'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle2 } from 'lucide-react'
 
 /**
- * Accessible FormField wrapper providing standardized label, hint, and error displays
+ * Accessible FormField wrapper providing standardized label, hint, and error/success displays
  */
 export const FormField = ({
   label,
@@ -10,6 +10,7 @@ export const FormField = ({
   required = false,
   error,
   hint,
+  success,
   children,
   className = '',
 }) => {
@@ -30,7 +31,7 @@ export const FormField = ({
 
       {children}
 
-      {error && (
+      {error ? (
         <p
           id={htmlFor ? `${htmlFor}-error` : undefined}
           className="flex items-center gap-1.5 text-xs text-[#922B27] font-medium transition-all duration-150"
@@ -39,7 +40,17 @@ export const FormField = ({
           <AlertCircle className="w-3.5 h-3.5 shrink-0" />
           <span>{error}</span>
         </p>
-      )}
+      ) : success ? (
+        <p
+          id={htmlFor ? `${htmlFor}-success` : undefined}
+          className="flex items-center gap-1.5 text-xs text-[#267A45] font-medium transition-all duration-150"
+          role="status"
+        >
+          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+          <span>{success}</span>
+        </p>
+      ) : null}
     </div>
   )
 }
+

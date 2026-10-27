@@ -11,6 +11,7 @@ export const PasswordInput = forwardRef(
       name,
       placeholder = '••••••••',
       error,
+      success,
       disabled = false,
       className = '',
       ...props
@@ -33,10 +34,14 @@ export const PasswordInput = forwardRef(
           disabled={disabled}
           placeholder={placeholder}
           aria-invalid={!!error}
-          aria-describedby={error && id ? `${id}-error` : undefined}
+          aria-describedby={
+            error && id ? `${id}-error` : success && id ? `${id}-success` : undefined
+          }
           className={`w-full bg-white border rounded-xl text-sm text-[#17231B] placeholder:text-[#647168] transition-all duration-150 outline-none disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-[#EDF1EE] disabled:text-[#69756D] pl-10 pr-11 py-2.5 ${
             error
               ? 'border-[#922B27] focus:border-[#922B27] focus:ring-2 focus:ring-[#922B27]/20'
+              : success
+              ? 'border-[#267A45] focus:border-[#267A45] focus:ring-2 focus:ring-[#267A45]/20'
               : 'border-[#D7E0D9] hover:border-[#C9DFCE] focus:border-[#267A45] focus:ring-2 focus:ring-[#267A45]/20'
           } ${className}`}
           {...props}

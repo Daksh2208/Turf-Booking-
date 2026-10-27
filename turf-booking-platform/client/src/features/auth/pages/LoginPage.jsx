@@ -48,6 +48,7 @@ export const LoginPage = () => {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm({
     defaultValues: {
@@ -55,8 +56,16 @@ export const LoginPage = () => {
       password: '',
       rememberMe: false,
     },
-    mode: 'onBlur',
+    mode: 'onChange',
   })
+
+  // Clear server error whenever user changes inputs
+  useEffect(() => {
+    const subscription = watch(() => {
+      if (serverError) setServerError(null)
+    })
+    return () => subscription.unsubscribe()
+  }, [watch, serverError])
 
   // Set prefilled email if navigating from registration
   useEffect(() => {
@@ -68,7 +77,7 @@ export const LoginPage = () => {
   const onSubmit = async (data) => {
     setServerError(null)
     try {
-      const loggedInUser = await login(data.email, data.password)
+      const loggedInUser = await login(data.email.trim(), data.password)
       navigate(getDestination(loggedInUser?.role, fromPath), { replace: true })
     } catch (err) {
       const message =

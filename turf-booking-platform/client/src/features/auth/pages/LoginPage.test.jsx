@@ -100,4 +100,65 @@ describe('LoginPage Component', () => {
 
     expect(screen.getByText(/Password Reset Info/i)).toBeInTheDocument()
   })
+
+  it('displays instant validation errors when typing invalid email and password', async () => {
+    renderLogin()
+
+    const emailInput = screen.getByLabelText(/Email Address/i)
+    const passwordInput = screen.getByLabelText(/^Password/i)
+
+    // Type invalid email format
+    fireEvent.change(emailInput, { target: { value: 'notanemail' } })
+
+    await waitFor(() => {
+      expect(screen.getByText(/Please enter a valid email address/i)).toBeInTheDocument()
+    })
+
+    // Type short password (< 6 chars)
+    fireEvent.change(passwordInput, { target: { value: '123' } })
+
+    await waitFor(() => {
+      expect(screen.getByText(/Password must be at least 6 characters/i)).toBeInTheDocument()
+    })
+
+    // Correct to valid credentials: errors should clear instantly
+    fireEvent.change(emailInput, { target: { value: 'correct@example.com' } })
+    fireEvent.change(passwordInput, { target: { value: 'ValidPass123' } })
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Please enter a valid email address/i)).not.toBeInTheDocument()
+      expect(screen.queryByText(/Password must be at least 6 characters/i)).not.toBeInTheDocument()
+    })
+  })
+
+  it('clears server error alert immediately when the user modifies input fields', async () => {
+    mockLogin.mockRejectedValueOnce({
+      response: { data: { message: 'Invalid credentials provided' } },
+    })
+
+    renderLogin()
+
+    fireEvent.change(screen.getByLabelText(/Email Address/i), {
+      target: { value: 'user@example.com' },
+    })
+    fireEvent.change(screen.getByLabelText(/^Password/i), {
+      target: { value: 'WrongPass123' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /Sign In to Account/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/Invalid credentials provided/i)).toBeInTheDocument()
+    })
+
+    // Typing in either field should clear the server error alert immediately
+    fireEvent.change(screen.getByLabelText(/^Password/i), {
+      target: { value: 'NewAttempt123' },
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Invalid credentials provided/i)).not.toBeInTheDocument()
+    })
+  })
 })
+

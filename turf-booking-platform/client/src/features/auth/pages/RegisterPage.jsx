@@ -40,6 +40,7 @@ export const RegisterPage = () => {
     register,
     handleSubmit,
     watch,
+    trigger,
     formState: { errors, isSubmitting },
   } = useForm({
     defaultValues: {
@@ -49,14 +50,39 @@ export const RegisterPage = () => {
       confirmPassword: '',
       acceptTerms: false,
     },
-    mode: 'onBlur',
+    mode: 'onChange',
   })
 
-  // Watch password value for dynamic requirements checklist and confirm password validation
+  // Watch password value for dynamic requirements checklist and instant confirm password validation
   const passwordValue = watch('password') || ''
-  const hasMinLength = passwordValue.length >= 8
-  const hasLetter = /[A-Za-z]/.test(passwordValue)
-  const hasNumber = /\d/.test(passwordValue)
+  const confirmPasswordValue = watch('confirmPassword') || ''
+  const isPasswordCriteriaMet =
+    passwordValue.length >= 8 &&
+    /[A-Za-z]/.test(passwordValue) &&
+    /\d/.test(passwordValue) &&
+    /[^A-Za-z0-9]/.test(passwordValue)
+
+  // Re-trigger confirmPassword validation immediately whenever password or confirmPassword changes
+  useEffect(() => {
+    if (confirmPasswordValue) {
+      trigger('confirmPassword')
+    }
+  }, [passwordValue, confirmPasswordValue, trigger])
+
+  // Clear server error whenever user modifies inputs
+  useEffect(() => {
+    const subscription = watch(() => {
+      if (serverError) setServerError(null)
+    })
+    return () => subscription.unsubscribe()
+  }, [watch, serverError])
+
+  const isPasswordMatched = Boolean(
+    confirmPasswordValue &&
+    passwordValue &&
+    confirmPasswordValue === passwordValue &&
+    !errors.confirmPassword
+  )
 
   const onSubmit = async (data) => {
     setServerError(null)
@@ -141,61 +167,16 @@ export const RegisterPage = () => {
           htmlFor="password"
           required
           error={errors.password?.message}
+          success={isPasswordCriteriaMet ? 'Strong password' : undefined}
         >
           <PasswordInput
             id="password"
             placeholder="Create a strong password"
             error={errors.password?.message}
+            success={isPasswordCriteriaMet}
             {...register('password', registerValidationRules.password)}
           />
         </FormField>
-
-        {/* Password Strength Checklist */}
-        <div className="p-3.5 rounded-xl bg-[#F0F4F1] border border-[#D7E0D9] space-y-1.5 text-xs text-[#526258]">
-          <p className="font-semibold text-[11px] uppercase tracking-wider text-[#17231B]">
-            Password Requirements
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 pt-0.5">
-            <span
-              className={`flex items-center gap-1.5 font-medium ${
-                hasMinLength ? 'text-[#267A45]' : 'text-[#69756D]'
-              }`}
-            >
-              {hasMinLength ? (
-                <Check className="w-3.5 h-3.5 text-[#267A45]" />
-              ) : (
-                <X className="w-3.5 h-3.5 text-[#69756D]" />
-              )}
-              <span>8+ characters</span>
-            </span>
-
-            <span
-              className={`flex items-center gap-1.5 font-medium ${
-                hasLetter ? 'text-[#267A45]' : 'text-[#69756D]'
-              }`}
-            >
-              {hasLetter ? (
-                <Check className="w-3.5 h-3.5 text-[#267A45]" />
-              ) : (
-                <X className="w-3.5 h-3.5 text-[#69756D]" />
-              )}
-              <span>At least 1 letter</span>
-            </span>
-
-            <span
-              className={`flex items-center gap-1.5 font-medium ${
-                hasNumber ? 'text-[#267A45]' : 'text-[#69756D]'
-              }`}
-            >
-              {hasNumber ? (
-                <Check className="w-3.5 h-3.5 text-[#267A45]" />
-              ) : (
-                <X className="w-3.5 h-3.5 text-[#69756D]" />
-              )}
-              <span>At least 1 number</span>
-            </span>
-          </div>
-        </div>
 
         {/* Confirm Password Field */}
         <FormField
@@ -203,11 +184,13 @@ export const RegisterPage = () => {
           htmlFor="confirmPassword"
           required
           error={errors.confirmPassword?.message}
+          success={isPasswordMatched ? 'Passwords match' : undefined}
         >
           <PasswordInput
             id="confirmPassword"
             placeholder="Re-enter your password"
             error={errors.confirmPassword?.message}
+            success={isPasswordMatched}
             {...register(
               'confirmPassword',
               registerValidationRules.confirmPassword(passwordValue)
