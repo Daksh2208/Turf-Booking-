@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Trophy,
@@ -11,19 +11,16 @@ import {
   Home,
   Phone,
   Lock,
-  Heart,
   Save,
   KeyRound,
   AlertCircle,
   Loader2,
-  ChevronRight,
-  MapPin,
   ExternalLink,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
-import { useQuery } from '../../hooks/useApi'
 import authService from '../../services/auth.service'
-import customerInventoryService from '../../services/customer/inventory.service'
+import { FormField } from '../../components/common/FormField'
+import { PasswordInput } from '../../components/common/PasswordInput'
 
 export const UserSettingsPage = () => {
   const { user, logout, isAdmin } = useAuth()
@@ -43,7 +40,89 @@ export const UserSettingsPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [passwordMsg, setPasswordMsg] = useState('')
   const [passwordErr, setPasswordErr] = useState('')
+  const [fieldPasswordErrors, setFieldPasswordErrors] = useState({})
   const [isChangingPassword, setIsChangingPassword] = useState(false)
+
+  // Auto-dismiss refs for success messages (dismisses after ~3s)
+  const profileMsgTimeoutRef = useRef(null)
+  const passwordMsgTimeoutRef = useRef(null)
+
+  useEffect(() => {
+    return () => {
+      if (profileMsgTimeoutRef.current) clearTimeout(profileMsgTimeoutRef.current)
+      if (passwordMsgTimeoutRef.current) clearTimeout(passwordMsgTimeoutRef.current)
+    }
+  }, [])
+
+  // Real-time progressive validation for new password
+  const getNewPasswordError = (pwd, currentPwd) => {
+    if (!pwd) return null
+    if (pwd.length < 8) return 'Password must be at least 8 characters'
+    if (!/[A-Za-z]/.test(pwd)) return 'Password must contain at least one letter'
+    if (!/\d/.test(pwd)) return 'Password must contain at least one number'
+    if (!/[^A-Za-z0-9]/.test(pwd))
+      return 'Password must contain at least one special character (e.g. !@#$)'
+    if (currentPwd && pwd === currentPwd)
+      return 'New password cannot be the same as current password'
+    return null
+  }
+
+  const newPasswordValidationError = getNewPasswordError(newPassword, currentPassword)
+  const isNewPasswordCriteriaMet = Boolean(newPassword) && !newPasswordValidationError
+
+  const isConfirmPasswordMatched =
+    Boolean(confirmPassword) &&
+    Boolean(newPassword) &&
+    confirmPassword === newPassword &&
+    isNewPasswordCriteriaMet
+
+  const confirmPasswordError =
+    confirmPassword && confirmPassword !== newPassword ? 'Passwords do not match' : null
+
+  // Clear server alerts and field errors when typing
+  const handleCurrentPasswordChange = (val) => {
+    setCurrentPassword(val)
+    setPasswordErr('')
+    setPasswordMsg('')
+    if (passwordMsgTimeoutRef.current) clearTimeout(passwordMsgTimeoutRef.current)
+    if (fieldPasswordErrors.currentPassword) {
+      setFieldPasswordErrors((prev) => ({ ...prev, currentPassword: '' }))
+    }
+  }
+
+  const handleNewPasswordChange = (val) => {
+    setNewPassword(val)
+    setPasswordErr('')
+    setPasswordMsg('')
+    if (passwordMsgTimeoutRef.current) clearTimeout(passwordMsgTimeoutRef.current)
+    if (fieldPasswordErrors.newPassword) {
+      setFieldPasswordErrors((prev) => ({ ...prev, newPassword: '' }))
+    }
+  }
+
+  const handleConfirmPasswordChange = (val) => {
+    setConfirmPassword(val)
+    setPasswordErr('')
+    setPasswordMsg('')
+    if (passwordMsgTimeoutRef.current) clearTimeout(passwordMsgTimeoutRef.current)
+    if (fieldPasswordErrors.confirmPassword) {
+      setFieldPasswordErrors((prev) => ({ ...prev, confirmPassword: '' }))
+    }
+  }
+
+  const handleNameChange = (val) => {
+    setName(val)
+    setProfileErr('')
+    setProfileMsg('')
+    if (profileMsgTimeoutRef.current) clearTimeout(profileMsgTimeoutRef.current)
+  }
+
+  const handlePhoneChange = (val) => {
+    setPhone(val)
+    setProfileErr('')
+    setProfileMsg('')
+    if (profileMsgTimeoutRef.current) clearTimeout(profileMsgTimeoutRef.current)
+  }
 
   useEffect(() => {
     if (user) {
@@ -52,19 +131,11 @@ export const UserSettingsPage = () => {
     }
   }, [user])
 
-  // Fetch User's Favorite Turfs
-  const {
-    data: favorites = [],
-    isLoading: favsLoading,
-  } = useQuery({
-    queryKey: ['myFavorites'],
-    queryFn: () => customerInventoryService.getFavorites(),
-  })
-
   const handleUpdateProfile = async (e) => {
     e.preventDefault()
     setProfileMsg('')
     setProfileErr('')
+    if (profileMsgTimeoutRef.current) clearTimeout(profileMsgTimeoutRef.current)
 
     if (name.trim().length < 2) {
       setProfileErr('Name must be at least 2 characters.')
@@ -92,6 +163,10 @@ export const UserSettingsPage = () => {
       setIsSavingProfile(true)
       await authService.updateProfile({ name: name.trim(), phone: phone.trim() })
       setProfileMsg('Profile updated successfully.')
+      if (profileMsgTimeoutRef.current) clearTimeout(profileMsgTimeoutRef.current)
+      profileMsgTimeoutRef.current = setTimeout(() => {
+        setProfileMsg('')
+      }, 3000)
     } catch (err) {
       setProfileErr(err.response?.data?.error?.message || 'Failed to update profile.')
     } finally {
@@ -103,27 +178,42 @@ export const UserSettingsPage = () => {
     e.preventDefault()
     setPasswordMsg('')
     setPasswordErr('')
+    if (passwordMsgTimeoutRef.current) clearTimeout(passwordMsgTimeoutRef.current)
 
+    const errors = {}
     if (!currentPassword) {
-      setPasswordErr('Current password is required.')
-      return
+      errors.currentPassword = 'Current password is required.'
     }
-    if (newPassword.length < 6) {
-      setPasswordErr('New password must be at least 6 characters.')
-      return
+
+    if (!newPassword) {
+      errors.newPassword = 'New password is required.'
+    } else if (newPasswordValidationError) {
+      errors.newPassword = newPasswordValidationError
     }
-    if (newPassword !== confirmPassword) {
-      setPasswordErr('New passwords do not match.')
+
+    if (!confirmPassword) {
+      errors.confirmPassword = 'Confirm password is required.'
+    } else if (confirmPassword !== newPassword) {
+      errors.confirmPassword = 'Passwords do not match.'
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldPasswordErrors(errors)
       return
     }
 
     try {
       setIsChangingPassword(true)
-      await authService.changePassword({ currentPassword, newPassword })
-      setPasswordMsg('Password changed successfully.')
+      const res = await authService.changePassword({ currentPassword, newPassword })
+      setPasswordMsg(res?.message || 'Password changed successfully.')
+      if (passwordMsgTimeoutRef.current) clearTimeout(passwordMsgTimeoutRef.current)
+      passwordMsgTimeoutRef.current = setTimeout(() => {
+        setPasswordMsg('')
+      }, 3000)
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
+      setFieldPasswordErrors({})
     } catch (err) {
       setPasswordErr(
         err.response?.data?.error?.message ||
@@ -195,7 +285,7 @@ export const UserSettingsPage = () => {
             Account Settings
           </h1>
           <p className="text-xs sm:text-sm text-[#526258]">
-            Manage your personal profile, credentials, saved favourites, and active session.
+            Manage your personal profile, credentials, and active session.
           </p>
         </div>
 
@@ -289,7 +379,7 @@ export const UserSettingsPage = () => {
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => handleNameChange(e.target.value)}
                   className="w-full bg-white border border-[#D7E0D9] rounded-xl px-3 py-2 text-[#17231B] focus:outline-none focus:border-[#267A45]"
                   placeholder="Your full name"
                 />
@@ -334,12 +424,12 @@ export const UserSettingsPage = () => {
                     const pasted = (e.clipboardData?.getData('text') || '').trim()
                     const sanitized = pasted.replace(/(?!^\+)[^\d]/g, '')
                     const maxLen = sanitized.startsWith('+91') ? 13 : 10
-                    setPhone(sanitized.slice(0, maxLen))
+                    handlePhoneChange(sanitized.slice(0, maxLen))
                   }}
                   onChange={(e) => {
                     const sanitized = e.target.value.replace(/(?!^\+)[^\d]/g, '')
                     const maxLen = sanitized.startsWith('+91') ? 13 : 10
-                    setPhone(sanitized.slice(0, maxLen))
+                    handlePhoneChange(sanitized.slice(0, maxLen))
                   }}
                   className="w-full bg-white border border-[#D7E0D9] rounded-xl px-3 py-2 text-xs text-[#17231B] focus:outline-none focus:border-[#267A45] font-mono"
                   placeholder="e.g. 9876543210"
@@ -377,100 +467,75 @@ export const UserSettingsPage = () => {
               </div>
             )}
 
-            <form onSubmit={handleChangePassword} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-[#17231B] font-semibold mb-1">Current Password</label>
-                <input
-                  type="password"
+            <form onSubmit={handleChangePassword} className="space-y-4 text-xs">
+              <FormField
+                label="Current Password"
+                htmlFor="currentPassword"
+                required
+                error={fieldPasswordErrors.currentPassword}
+              >
+                <PasswordInput
+                  id="currentPassword"
+                  name="currentPassword"
+                  placeholder="Enter your current password"
                   value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full bg-white border border-[#D7E0D9] rounded-xl px-3 py-2 text-[#17231B] focus:outline-none focus:border-[#267A45]"
-                  placeholder="••••••••"
+                  onChange={(e) => handleCurrentPasswordChange(e.target.value)}
+                  error={fieldPasswordErrors.currentPassword}
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label className="block text-[#17231B] font-semibold mb-1">New Password</label>
-                <input
-                  type="password"
+              <FormField
+                label="New Password"
+                htmlFor="newPassword"
+                required
+                error={fieldPasswordErrors.newPassword || newPasswordValidationError}
+                success={isNewPasswordCriteriaMet ? 'Strong password' : undefined}
+              >
+                <PasswordInput
+                  id="newPassword"
+                  name="newPassword"
+                  placeholder="Min 8 chars, letter, number, special char"
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full bg-white border border-[#D7E0D9] rounded-xl px-3 py-2 text-[#17231B] focus:outline-none focus:border-[#267A45]"
-                  placeholder="Min 6 characters"
+                  onChange={(e) => handleNewPasswordChange(e.target.value)}
+                  error={fieldPasswordErrors.newPassword || newPasswordValidationError}
+                  success={isNewPasswordCriteriaMet}
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label className="block text-[#17231B] font-semibold mb-1">Confirm New Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full bg-white border border-[#D7E0D9] rounded-xl px-3 py-2 text-[#17231B] focus:outline-none focus:border-[#267A45]"
+              <FormField
+                label="Confirm New Password"
+                htmlFor="confirmPassword"
+                required
+                error={fieldPasswordErrors.confirmPassword || confirmPasswordError}
+                success={isConfirmPasswordMatched ? 'Passwords match' : undefined}
+              >
+                <PasswordInput
+                  id="confirmPassword"
+                  name="confirmPassword"
                   placeholder="Re-enter new password"
+                  value={confirmPassword}
+                  onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+                  error={fieldPasswordErrors.confirmPassword || confirmPasswordError}
+                  success={isConfirmPasswordMatched}
                 />
-              </div>
+              </FormField>
 
               <button
                 type="submit"
                 disabled={isChangingPassword}
-                className="w-full py-2.5 rounded-xl bg-white hover:bg-[#F0F6F1] text-[#17231B] font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border border-[#D7E0D9] disabled:opacity-50"
+                className="w-full py-2.5 rounded-xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
               >
-                {isChangingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Lock className="w-3.5 h-3.5 text-[#267A45]" />}
+                {isChangingPassword ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Lock className="w-3.5 h-3.5" />
+                )}
                 <span>Update Password</span>
               </button>
             </form>
           </div>
         </div>
 
-        {/* Saved Favourites Section */}
-        <div className="p-6 rounded-2xl bg-white border border-[#D7E0D9] shadow-xs space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-[#17231B] flex items-center gap-2">
-              <Heart className="w-4 h-4 text-[#922B27] fill-[#922B27]" />
-              <span>Saved Favourites</span>
-            </h3>
-            <span className="text-xs text-[#526258] font-medium">
-              {favorites.length} {favorites.length === 1 ? 'Arena' : 'Arenas'}
-            </span>
-          </div>
-
-          {favsLoading ? (
-            <div className="py-6 flex items-center justify-center gap-2 text-[#526258] text-xs">
-              <Loader2 className="w-4 h-4 animate-spin text-[#267A45]" />
-              <span>Loading saved turfs...</span>
-            </div>
-          ) : favorites.length === 0 ? (
-            <div className="py-8 text-center text-[#526258] text-xs space-y-2">
-              <Heart className="w-6 h-6 mx-auto text-[#647168]" />
-              <p>You haven't saved any favourite turfs yet.</p>
-              <Link to="/turfs" className="text-[#267A45] hover:underline font-semibold">
-                Explore Turfs
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              {favorites.map((turf) => (
-                <Link
-                  key={turf._id}
-                  to={`/turfs/${turf.slug || turf._id}`}
-                  className="p-3.5 rounded-xl bg-[#F6F8F6] border border-[#D7E0D9] hover:border-[#267A45] hover:bg-white transition-all flex items-center justify-between group"
-                >
-                  <div className="space-y-0.5">
-                    <h4 className="text-xs font-bold text-[#17231B] group-hover:text-[#267A45] transition-colors">
-                      {turf.name}
-                    </h4>
-                    <p className="text-[11px] text-[#526258] flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-[#267A45] shrink-0" />
-                      <span>{turf.address?.city || 'Sports Arena'}</span>
-                    </p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-[#647168] group-hover:text-[#267A45] group-hover:translate-x-0.5 transition-all" />
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
 
         {/* Admin Quick Action Card (shown only if admin) */}
         {isAdmin && (

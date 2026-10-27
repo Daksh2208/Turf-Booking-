@@ -206,12 +206,32 @@ export const changePassword = async (req, res, next) => {
       })
     }
 
-    if (newPassword.length < 6) {
+    if (currentPassword === newPassword) {
       return res.status(400).json({
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'New password must be at least 6 characters.',
+          message: 'New password cannot be the same as current password.',
+        },
+      })
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'New password must be at least 8 characters.',
+        },
+      })
+    }
+
+    if (!/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'New password must contain at least one letter, one number, and one special character.',
         },
       })
     }
