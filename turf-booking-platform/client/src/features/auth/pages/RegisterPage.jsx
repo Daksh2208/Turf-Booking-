@@ -88,11 +88,15 @@ export const RegisterPage = () => {
   const onSubmit = async (data) => {
     setServerError(null)
     try {
-      await registerCustomer({
+      const result = await registerCustomer({
         name: data.name.trim(),
         email: data.email.trim(),
         password: data.password,
       })
+      if (result?.role === 'admin' || user?.role === 'admin') {
+        navigate('/admin/dashboard', { replace: true })
+        return
+      }
       // Successful registration: navigate to login with state for immediate sign-in
       navigate('/login', {
         state: {

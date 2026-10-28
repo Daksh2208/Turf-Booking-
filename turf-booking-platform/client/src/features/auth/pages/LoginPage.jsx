@@ -31,8 +31,9 @@ export const LoginPage = () => {
 
   // Determine post-login destination based on user role
   const getDestination = (role, targetPath) => {
+    // Admin must strictly land on the dashboard as their primary view
     if (role === 'admin') {
-      return targetPath && targetPath.startsWith('/admin') ? targetPath : '/admin/dashboard'
+      return '/admin/dashboard'
     }
     return targetPath && !targetPath.startsWith('/admin') ? targetPath : '/'
   }
@@ -40,7 +41,8 @@ export const LoginPage = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && user) {
-      navigate(getDestination(user.role, fromPath), { replace: true })
+      const destination = user.role === 'admin' ? '/admin/dashboard' : getDestination(user.role, fromPath)
+      navigate(destination, { replace: true })
     }
   }, [isAuthenticated, user, navigate, fromPath])
 
@@ -79,7 +81,9 @@ export const LoginPage = () => {
     setServerError(null)
     try {
       const loggedInUser = await login(data.email.trim(), data.password)
-      navigate(getDestination(loggedInUser?.role, fromPath), { replace: true })
+      const role = loggedInUser?.role || user?.role
+      const destination = role === 'admin' ? '/admin/dashboard' : getDestination(role, fromPath)
+      navigate(destination, { replace: true })
     } catch (err) {
       const message =
         err.response?.data?.message ||

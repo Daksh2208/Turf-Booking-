@@ -34,7 +34,7 @@ export const ProtectedRoute = ({
 
   // Customer-only / Admin-blocked route guard
   if ((requireCustomer || forbidAdmin) && user?.role === 'admin') {
-    return <Navigate to="/admin" replace />
+    return <Navigate to="/admin/dashboard" replace />
   }
 
   return children ? children : <Outlet />
