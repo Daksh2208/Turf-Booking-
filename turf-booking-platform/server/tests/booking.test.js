@@ -157,7 +157,7 @@ describe('Booking Engine, Pricing, Blocked Slots, and Dashboard Suite', () => {
       .set('Cookie', adminCookie)
       .send({
         turf: testTurf._id,
-        date: '2026-10-27',
+        date: '2026-11-27',
         startTime: '14:00',
         endTime: '16:00',
         reason: 'maintenance',
@@ -170,7 +170,7 @@ describe('Booking Engine, Pricing, Blocked Slots, and Dashboard Suite', () => {
 
     // Customer slot query should now show blocked
     const slotRes = await request(app)
-      .get(`/api/v1/bookings/slots?turfId=${testTurf._id}&date=2026-10-27`)
+      .get(`/api/v1/bookings/slots?turfId=${testTurf._id}&date=2026-11-27`)
       .expect(200)
 
     const slot14 = slotRes.body.data.slots.find((s) => s.startTime === '14:00')
@@ -185,7 +185,7 @@ describe('Booking Engine, Pricing, Blocked Slots, and Dashboard Suite', () => {
 
     // Slot is now free again
     const freedSlotRes = await request(app)
-      .get(`/api/v1/bookings/slots?turfId=${testTurf._id}&date=2026-10-27`)
+      .get(`/api/v1/bookings/slots?turfId=${testTurf._id}&date=2026-11-27`)
       .expect(200)
 
     const slotFreed = freedSlotRes.body.data.slots.find((s) => s.startTime === '14:00')
@@ -199,7 +199,7 @@ describe('Booking Engine, Pricing, Blocked Slots, and Dashboard Suite', () => {
       .send({
         turfId: testTurf._id,
         sportId: testSport._id,
-        date: '2026-10-27',
+        date: '2026-11-27',
         startTime: '16:00',
         endTime: '17:00',
         paymentMethod: 'pay_at_venue',
@@ -215,7 +215,7 @@ describe('Booking Engine, Pricing, Blocked Slots, and Dashboard Suite', () => {
 
     // Slot should now show 'booked'
     const bookedCheck = await request(app)
-      .get(`/api/v1/bookings/slots?turfId=${testTurf._id}&date=2026-10-27`)
+      .get(`/api/v1/bookings/slots?turfId=${testTurf._id}&date=2026-11-27`)
       .expect(200)
 
     const slot16 = bookedCheck.body.data.slots.find((s) => s.startTime === '16:00')

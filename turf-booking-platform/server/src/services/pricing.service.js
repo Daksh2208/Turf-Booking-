@@ -94,7 +94,8 @@ export const pricingService = {
 
     if (isWeekend && isPeak) {
       // Deterministic rule for overlap: Highest applicable rate
-      const effectiveRate = Math.max(weekendRate || 0, matchedPeakRate || 0)
+      const effectiveWeekendRate = weekendRate !== undefined && weekendRate !== null ? weekendRate : baseRate
+      const effectiveRate = Math.max(effectiveWeekendRate, matchedPeakRate)
       return {
         rateType: 'weekend_peak',
         hourlyRate: effectiveRate,

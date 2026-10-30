@@ -135,6 +135,16 @@ describe('Phase 13: Stripe Payment Integration Tests', () => {
   })
 
   describe('1. Default Disabled State & Safe Public Configuration', () => {
+    let disabledSpy
+
+    beforeAll(() => {
+      disabledSpy = vi.spyOn(stripeService, 'isEnabled').mockReturnValue(false)
+    })
+
+    afterAll(() => {
+      disabledSpy?.mockRestore()
+    })
+
     it('returns public config showing online payment disabled when credentials are not configured', async () => {
       const res = await request(app).get('/api/v1/payments/stripe/config')
 

@@ -129,10 +129,17 @@ export const bookingService = {
     }
 
     const turf = await Turf.findById(turfId)
-    if (!turf || !turf.isActive) {
-      const error = new Error('Turf arena not found or inactive.')
+    if (!turf) {
+      const error = new Error('Turf arena not found.')
       error.statusCode = 404
       error.code = 'TURF_NOT_FOUND'
+      throw error
+    }
+
+    if (!turf.isActive) {
+      const error = new Error('Turf arena is currently inactive.')
+      error.statusCode = 400
+      error.code = 'TURF_INACTIVE'
       throw error
     }
 
@@ -207,6 +214,8 @@ export const bookingService = {
     const customerPhone = contactDetails?.phone?.trim() || user.phone || '9876543210'
 
     // 7. Check for Admin Blocked Slots conflict for each discrete slot
+    await reservationService.expireStaleReservations(turfId, date)
+
     for (const st of slotTimesToReserve) {
       const isBlocked = await BlockedSlot.findOne({
         turf: turfId,
@@ -246,13 +255,30 @@ export const bookingService = {
     }
 
     // 8. Check for existing active bookings conflict for each discrete slot
-    const existingActiveBooking = await SlotReservation.findOne({
-      turf: turfId,
-      date,
-      slotTime: { $in: slotTimesToReserve },
-      status: 'active',
-    })
-    if (existingActiveBooking) {
+    const [existingActiveBooking, existingBookingDoc] = await Promise.all([
+      SlotReservation.findOne({
+        turf: turfId,
+        date,
+        slotTime: { $in: slotTimesToReserve },
+        status: 'active',
+      }),
+      Booking.findOne({
+        turf: turfId,
+        date,
+        status: { $in: ['pending', 'confirmed'] },
+        $or: [
+          { selectedSlots: { $in: slotTimesToReserve } },
+          {
+            $and: [
+              { startTime: { $lt: effectiveEndTime } },
+              { endTime: { $gt: effectiveStartTime } },
+            ],
+          },
+        ],
+      }),
+    ])
+
+    if (existingActiveBooking || existingBookingDoc) {
       if (idempotencyKey) {
         const existingKeyBooking = await Booking.findOne({
           user: user._id,
@@ -264,7 +290,8 @@ export const bookingService = {
         ])
         if (existingKeyBooking) return existingKeyBooking
       }
-      const error = new Error(`Slot ${existingActiveBooking.slotTime} is already booked by another customer.`)
+      const conflictSlot = existingActiveBooking?.slotTime || slotTimesToReserve[0]
+      const error = new Error(`Slot ${conflictSlot} is already booked by another customer.`)
       error.statusCode = 409
       error.code = 'SLOT_ALREADY_BOOKED'
       throw error
@@ -300,9 +327,32 @@ export const bookingService = {
       user,
     })
 
+    // If client supplied expected price, protect from price change race condition
+    if (data.expectedTotal !== undefined && data.expectedTotal !== null) {
+      const clientExpectedTotal = Number(data.expectedTotal)
+      if (Number.isInteger(clientExpectedTotal) && clientExpectedTotal !== quote.finalTotal) {
+        const error = new Error(
+          `The booking price has changed from ₹${(clientExpectedTotal / 100).toFixed(2)} to ₹${(quote.finalTotal / 100).toFixed(2)}. Please review the updated amount before confirming.`
+        )
+        error.statusCode = 409
+        error.code = 'PRICE_CHANGED'
+        error.data = {
+          expectedTotal: clientExpectedTotal,
+          currentTotal: quote.finalTotal,
+        }
+        throw error
+      }
+    }
+
     // 11. Resolve and Validate Sport
     let resolvedSportId = sportId
     if (resolvedSportId) {
+      if (!mongoose.Types.ObjectId.isValid(resolvedSportId)) {
+        const error = new Error(`Invalid sport ID format: "${resolvedSportId}".`)
+        error.statusCode = 400
+        error.code = 'INVALID_SPORT_ID'
+        throw error
+      }
       const sportDoc = await Sport.findById(resolvedSportId)
       if (!sportDoc) {
         const error = new Error('Referenced sport not found.')
@@ -314,6 +364,16 @@ export const bookingService = {
         const error = new Error(`The sport "${sportDoc.name}" is currently inactive and not available for new bookings.`)
         error.statusCode = 400
         error.code = 'SPORT_INACTIVE'
+        throw error
+      }
+      if (
+        Array.isArray(turf.sports) &&
+        turf.sports.length > 0 &&
+        !turf.sports.some((s) => s.toString() === resolvedSportId.toString())
+      ) {
+        const error = new Error(`The selected sport "${sportDoc.name}" is not supported by ${turf.name}.`)
+        error.statusCode = 400
+        error.code = 'SPORT_NOT_SUPPORTED'
         throw error
       }
     } else {
@@ -783,6 +843,14 @@ export const bookingService = {
         { path: 'paymentRecordedBy', select: 'name email' },
         { path: 'cancelledBy.user', select: 'name email' },
       ])
+    }
+
+    // Customer cannot cancel completed bookings
+    if (!isAdmin && booking.status === 'completed') {
+      const error = new Error('Completed bookings cannot be cancelled by customers.')
+      error.statusCode = 400
+      error.code = 'CANNOT_CANCEL_COMPLETED_BOOKING'
+      throw error
     }
 
     // If customer is cancelling, enforce business settings cancellation cutoff

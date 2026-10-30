@@ -1,12 +1,37 @@
 import mongoose from 'mongoose'
 import { Reservation } from '../models/Reservation.js'
 import { HeldSlot } from '../models/HeldSlot.js'
+import { SlotReservation } from '../models/SlotReservation.js'
 import { BlockedSlot } from '../models/BlockedSlot.js'
 import { Booking } from '../models/Booking.js'
 import { Turf } from '../models/Turf.js'
 import pricingService from './pricing.service.js'
 import { broadcastAvailabilityUpdate } from '../socket.js'
 import { logger } from '../config/logger.js'
+
+let isTxSupported = null
+
+/**
+ * Check if the active MongoDB deployment supports multi-document transactions (e.g. Replica Set)
+ */
+async function checkTransactionSupport() {
+  if (isTxSupported !== null) return isTxSupported
+  try {
+    const session = await mongoose.startSession()
+    try {
+      session.startTransaction()
+      await session.abortTransaction()
+      isTxSupported = true
+    } catch {
+      isTxSupported = false
+    } finally {
+      await session.endSession()
+    }
+  } catch {
+    isTxSupported = false
+  }
+  return isTxSupported
+}
 
 // Default hold duration: 10 minutes (600 seconds)
 export const HOLD_DURATION_MINUTES = 10
@@ -31,6 +56,23 @@ export const reservationService = {
       // Broadcast update for each affected turf/date
       const affected = new Set(expiredRes.map((r) => `${r.turf}:${r.date}`))
       for (const key of affected) {
+        const [tId, d] = key.split(':')
+        broadcastAvailabilityUpdate({ turfId: tId, date: d, reason: 'hold_expired' })
+      }
+    }
+
+    // Direct sweep of any remaining active HeldSlot documents whose expiresAt has passed
+    const heldQuery = { status: 'active', expiresAt: { $lte: now } }
+    if (turfId) heldQuery.turf = turfId
+    if (date) heldQuery.date = date
+
+    const staleHeldSlots = await HeldSlot.find(heldQuery).select('_id turf date')
+    if (staleHeldSlots.length > 0) {
+      const heldIds = staleHeldSlots.map((h) => h._id)
+      await HeldSlot.updateMany({ _id: { $in: heldIds } }, { $set: { status: 'expired' } })
+
+      const affectedHeld = new Set(staleHeldSlots.map((h) => `${h.turf}:${h.date}`))
+      for (const key of affectedHeld) {
         const [tId, d] = key.split(':')
         broadcastAvailabilityUpdate({ turfId: tId, date: d, reason: 'hold_expired' })
       }
@@ -140,22 +182,30 @@ export const reservationService = {
       }
     }
 
-    // 3. Check Confirmed / Pending Bookings
-    const booked = await Booking.findOne({
-      turf: turfId,
-      date,
-      status: { $in: ['pending', 'confirmed'] },
-      $or: [
-        { selectedSlots: { $in: slotTimes } },
-        {
-          $and: [
-            { startTime: { $lt: endTime } },
-            { endTime: { $gt: startTime } },
-          ],
-        },
-      ],
-    })
-    if (booked) {
+    // 3. Check Confirmed / Pending Bookings & Active Slot Reservations
+    const [activeBooking, activeSlotReservation] = await Promise.all([
+      Booking.findOne({
+        turf: turfId,
+        date,
+        status: { $in: ['pending', 'confirmed'] },
+        $or: [
+          { selectedSlots: { $in: slotTimes } },
+          {
+            $and: [
+              { startTime: { $lt: endTime } },
+              { endTime: { $gt: startTime } },
+            ],
+          },
+        ],
+      }),
+      SlotReservation.findOne({
+        turf: turfId,
+        date,
+        slotTime: { $in: slotTimes },
+        status: 'active',
+      }),
+    ])
+    if (activeBooking || activeSlotReservation) {
       const err = new Error('One or more selected slots are already booked by another customer.')
       err.statusCode = 409
       err.code = 'SLOT_ALREADY_BOOKED'
@@ -215,16 +265,6 @@ export const reservationService = {
       const slotsToRemove = oldSlots.filter((s) => !slotTimes.includes(s))
       const slotsToAdd = slotTimes.filter((s) => !oldSlots.includes(s))
 
-      if (slotsToRemove.length > 0) {
-        await HeldSlot.updateMany(
-          {
-            reservation: existingReservation._id,
-            slotTime: { $in: slotsToRemove },
-          },
-          { $set: { status: 'released' } }
-        )
-      }
-
       if (slotsToAdd.length > 0) {
         const newHeldDocs = slotsToAdd.map((st) => ({
           turf: turfId,
@@ -238,6 +278,11 @@ export const reservationService = {
         try {
           await HeldSlot.insertMany(newHeldDocs)
         } catch (err) {
+          // Atomic rollback: clean up any partially inserted slotsToAdd
+          await HeldSlot.deleteMany({
+            reservation: existingReservation._id,
+            slotTime: { $in: slotsToAdd },
+          }).catch(() => {})
           if (err.code === 11000) {
             const conflictErr = new Error('One or more selected slots were just held by another customer.')
             conflictErr.statusCode = 409
@@ -246,6 +291,17 @@ export const reservationService = {
           }
           throw err
         }
+      }
+
+      // Safely release slotsToRemove only after newly requested slots have been acquired
+      if (slotsToRemove.length > 0) {
+        await HeldSlot.updateMany(
+          {
+            reservation: existingReservation._id,
+            slotTime: { $in: slotsToRemove },
+          },
+          { $set: { status: 'released' } }
+        )
       }
 
       existingReservation.slots = slotTimes
@@ -261,41 +317,107 @@ export const reservationService = {
       const randomCode = Math.floor(1000 + Math.random() * 9000)
       const newReservationId = `RES-${dateCode}-${randomCode}`
 
-      try {
-        reservationDoc = await Reservation.create({
-          reservationId: newReservationId,
-          user: user._id,
-          turf: turfId,
-          date,
-          slots: slotTimes,
-          startTime,
-          endTime,
-          status: 'active',
-          expiresAt,
-        })
+      const supportsTx = await checkTransactionSupport()
+      if (supportsTx) {
+        const session = await mongoose.startSession()
+        try {
+          await session.withTransaction(async () => {
+            const conflict = await HeldSlot.findOne({
+              turf: turfId,
+              date,
+              slotTime: { $in: slotTimes },
+              status: 'active',
+              user: { $ne: user._id },
+              expiresAt: { $gt: new Date() },
+            }).session(session)
+            if (conflict) {
+              const conflictErr = new Error('One or more selected slots were just held by another customer.')
+              conflictErr.statusCode = 409
+              conflictErr.code = 'SLOT_ALREADY_HELD'
+              throw conflictErr
+            }
 
-        const heldDocs = slotTimes.map((st) => ({
-          turf: turfId,
-          date,
-          slotTime: st,
-          reservation: reservationDoc._id,
-          user: user._id,
-          status: 'active',
-          expiresAt,
-        }))
+            const [createdRes] = await Reservation.create(
+              [
+                {
+                  reservationId: newReservationId,
+                  user: user._id,
+                  turf: turfId,
+                  date,
+                  slots: slotTimes,
+                  startTime,
+                  endTime,
+                  status: 'active',
+                  expiresAt,
+                },
+              ],
+              { session }
+            )
+            reservationDoc = createdRes
 
-        await HeldSlot.insertMany(heldDocs)
-      } catch (err) {
-        if (reservationDoc?._id) {
-          await Reservation.deleteOne({ _id: reservationDoc._id }).catch(() => {})
+            const heldDocs = slotTimes.map((st) => ({
+              turf: turfId,
+              date,
+              slotTime: st,
+              reservation: createdRes._id,
+              user: user._id,
+              status: 'active',
+              expiresAt,
+            }))
+
+            await HeldSlot.insertMany(heldDocs, { session })
+          })
+        } catch (err) {
+          if (err.code === 11000) {
+            const conflictErr = new Error('One or more selected slots were just held by another customer.')
+            conflictErr.statusCode = 409
+            conflictErr.code = 'SLOT_ALREADY_HELD'
+            throw conflictErr
+          }
+          throw err
+        } finally {
+          await session.endSession()
         }
-        if (err.code === 11000) {
-          const conflictErr = new Error('One or more selected slots were just held by another customer.')
-          conflictErr.statusCode = 409
-          conflictErr.code = 'SLOT_ALREADY_HELD'
-          throw conflictErr
+      } else {
+        try {
+          reservationDoc = await Reservation.create({
+            reservationId: newReservationId,
+            user: user._id,
+            turf: turfId,
+            date,
+            slots: slotTimes,
+            startTime,
+            endTime,
+            status: 'active',
+            expiresAt,
+          })
+
+          const heldDocs = slotTimes.map((st) => ({
+            turf: turfId,
+            date,
+            slotTime: st,
+            reservation: reservationDoc._id,
+            user: user._id,
+            status: 'active',
+            expiresAt,
+          }))
+
+          await HeldSlot.insertMany(heldDocs)
+        } catch (err) {
+          if (reservationDoc?._id) {
+            await Promise.all([
+              Reservation.deleteOne({ _id: reservationDoc._id }).catch(() => {}),
+              HeldSlot.deleteMany({ reservation: reservationDoc._id }).catch(() => {}),
+            ])
+          }
+          if (err.code === 11000) {
+            const conflictErr = new Error('One or more selected slots were just held by another customer.')
+            conflictErr.statusCode = 409
+            conflictErr.code = 'SLOT_ALREADY_HELD'
+            throw conflictErr
+          }
+          throw err
         }
-        throw err
       }
     }
 

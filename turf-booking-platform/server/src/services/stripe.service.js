@@ -7,6 +7,7 @@ import { StripeEvent } from '../models/StripeEvent.js'
 import { bookingService } from './booking.service.js'
 import couponService from './coupon.service.js'
 import { logAudit } from '../utils/auditLogger.js'
+import { broadcastAvailabilityUpdate } from '../socket.js'
 
 let stripeClientInstance = null
 
@@ -359,6 +360,7 @@ export const stripeService = {
             await couponService.releaseRedemption(booking._id)
           }
           await booking.save()
+          broadcastAvailabilityUpdate({ turfId: booking.turf._id || booking.turf, date: booking.date, reason: 'booking_cancelled' })
 
           return {
             paymentStatus: 'failed',
@@ -457,6 +459,7 @@ export const stripeService = {
                 booking.stripePaymentIntentId = session.payment_intent
                 await booking.save()
                 await SlotReservation.updateMany({ booking: booking._id }, { status: 'active' })
+                broadcastAvailabilityUpdate({ turfId: booking.turf, date: booking.date, reason: 'booking_confirmed' })
               }
             }
           }
@@ -482,6 +485,7 @@ export const stripeService = {
               await couponService.releaseRedemption(booking._id)
             }
             await booking.save()
+            broadcastAvailabilityUpdate({ turfId: booking.turf, date: booking.date, reason: 'booking_cancelled' })
           }
         }
         break
@@ -550,6 +554,7 @@ export const stripeService = {
         await couponService.releaseRedemption(booking._id)
       }
       await booking.save()
+      broadcastAvailabilityUpdate({ turfId: booking.turf, date: booking.date, reason: 'booking_cancelled' })
     }
 
     return { success: true, booking }
