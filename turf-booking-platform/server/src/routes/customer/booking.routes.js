@@ -7,6 +7,7 @@ import {
   getMyBookings,
   getBookingDetail,
   cancelMyBooking,
+  getCancellationPreview,
 } from '../../controllers/customer/booking.controller.js'
 
 const router = Router()
@@ -20,6 +21,7 @@ router.post('/quote', getPricingQuote)
 // Authenticated Customer Endpoints (Admin creation & listing blocked)
 router.post('/', requireAuth, requireCustomer, createBooking)
 router.get('/my', requireAuth, requireCustomer, getMyBookings)
+router.get('/:id/cancellation-preview', requireAuth, getCancellationPreview)
 router.get('/:id', requireAuth, getBookingDetail)
 router.post('/:id/cancel', requireAuth, requireCustomer, cancelMyBooking)
 

@@ -189,7 +189,7 @@ const bookingSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'completed', 'cancelled'],
+      enum: ['pending', 'confirmed', 'completed', 'cancelled', 'expired', 'failed'],
       default: 'confirmed',
       index: true,
     },
@@ -247,6 +247,7 @@ const bookingSchema = new mongoose.Schema(
       sparse: true,
       index: true,
     },
+    // Cancellation & Refund Lifecycle Tracking
     cancellationReason: {
       type: String,
       trim: true,
@@ -265,6 +266,84 @@ const bookingSchema = new mongoose.Schema(
         enum: ['admin', 'customer', 'system'],
       },
     },
+    refundStatus: {
+      type: String,
+      enum: [
+        'not_applicable',
+        'not_required',
+        'pending',
+        'processing',
+        'succeeded',
+        'failed',
+        'partially_refunded',
+      ],
+      default: 'not_applicable',
+      index: true,
+    },
+    refundAmount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Refund amount cannot be negative'],
+    }, // in integer paise
+    refundPercentage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    stripeRefundId: {
+      type: String,
+      trim: true,
+      sparse: true,
+      index: true,
+    },
+    refundFailureReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    refundRetriedAt: {
+      type: Date,
+    },
+    refundedAt: {
+      type: Date,
+    },
+    cancellationHistory: [
+      {
+        action: {
+          type: String,
+          enum: [
+            'cancelled',
+            'refund_initiated',
+            'refund_succeeded',
+            'refund_failed',
+            'refund_retried',
+          ],
+        },
+        performedBy: {
+          user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+          },
+          role: {
+            type: String,
+            enum: ['admin', 'customer', 'system'],
+          },
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+        previousStatus: String,
+        newStatus: String,
+        previousRefundStatus: String,
+        newRefundStatus: String,
+        amount: Number,
+        stripeRefundId: String,
+        reason: String,
+        failureReason: String,
+      },
+    ],
     paidAt: {
       type: Date,
     },
@@ -293,6 +372,7 @@ bookingSchema.index({ turf: 1, date: 1, startTime: 1, endTime: 1, status: 1 })
 bookingSchema.index({ turf: 1, date: 1, status: 1 })
 bookingSchema.index({ date: 1, status: 1, paymentStatus: 1 })
 bookingSchema.index({ status: 1, paymentStatus: 1 })
+bookingSchema.index({ status: 1, refundStatus: 1 })
 bookingSchema.index({ createdAt: -1 })
 
 export const Booking = mongoose.models.Booking || mongoose.model('Booking', bookingSchema)

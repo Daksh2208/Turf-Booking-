@@ -51,6 +51,17 @@ export const SettingsPage = () => {
       maxAdvanceBookingDays: 14,
       cancellationCutoffHours: 4,
     },
+    cancellationPolicy: {
+      enabled: true,
+      cutoffHours: 4,
+      allowCancellationWithinCutoff: false,
+      tiers: [
+        { hoursBefore: 24, refundPercentage: 100 },
+        { hoursBefore: 12, refundPercentage: 50 },
+        { hoursBefore: 4, refundPercentage: 0 },
+      ],
+      defaultRefundPercentage: 0,
+    },
     taxSettings: {
       taxEnabled: true,
       taxName: 'GST',
@@ -88,6 +99,20 @@ export const SettingsPage = () => {
           minAdvanceBookingHours: settings.bookingRules?.minAdvanceBookingHours ?? 1,
           maxAdvanceBookingDays: settings.bookingRules?.maxAdvanceBookingDays ?? 14,
           cancellationCutoffHours: settings.bookingRules?.cancellationCutoffHours ?? 4,
+        },
+        cancellationPolicy: {
+          enabled: settings.cancellationPolicy?.enabled ?? true,
+          cutoffHours:
+            settings.cancellationPolicy?.cutoffHours ?? settings.bookingRules?.cancellationCutoffHours ?? 4,
+          allowCancellationWithinCutoff: settings.cancellationPolicy?.allowCancellationWithinCutoff ?? false,
+          tiers: settings.cancellationPolicy?.tiers?.length
+            ? settings.cancellationPolicy.tiers
+            : [
+                { hoursBefore: 24, refundPercentage: 100 },
+                { hoursBefore: 12, refundPercentage: 50 },
+                { hoursBefore: 4, refundPercentage: 0 },
+              ],
+          defaultRefundPercentage: settings.cancellationPolicy?.defaultRefundPercentage ?? 0,
         },
         taxSettings: {
           taxEnabled: settings.taxSettings?.taxEnabled ?? true,
@@ -519,25 +544,163 @@ export const SettingsPage = () => {
             <FormField
               label="Cancellation Cutoff Window (Hours)"
               htmlFor="cancelCutoff"
-              hint="Refund window before slot start time"
+              hint="Cutoff window before match start time"
             >
               <Input
                 id="cancelCutoff"
                 type="number"
                 min="0"
-                value={formData.bookingRules.cancellationCutoffHours}
+                value={formData.cancellationPolicy?.cutoffHours ?? formData.bookingRules.cancellationCutoffHours}
                 onWheel={(e) => e.currentTarget.blur()}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const val = Math.max(0, parseInt(e.target.value, 10) || 0)
                   setFormData({
                     ...formData,
                     bookingRules: {
                       ...formData.bookingRules,
-                      cancellationCutoffHours: parseInt(e.target.value, 10) || 4,
+                      cancellationCutoffHours: val,
+                    },
+                    cancellationPolicy: {
+                      ...formData.cancellationPolicy,
+                      cutoffHours: val,
                     },
                   })
-                }
+                }}
               />
             </FormField>
+          </div>
+
+          {/* Cancellation Policy & Refund Tiers Configuration */}
+          <div className="pt-4 border-t border-[#E2E8E3] space-y-4">
+            <h3 className="text-xs font-bold text-[#17231B] uppercase tracking-wider">
+              Cancellation & Stripe Refund Tiers
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#D7E0D9] bg-[#F6F8F6] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.cancellationPolicy?.enabled ?? true}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      cancellationPolicy: {
+                        ...formData.cancellationPolicy,
+                        enabled: e.target.checked,
+                      },
+                    })
+                  }
+                  className="rounded text-[#267A45] focus:ring-[#267A45]"
+                />
+                <div>
+                  <span className="font-semibold text-[#17231B] block">Enable Self-Service Cancellation</span>
+                  <span className="text-[11px] text-[#526258]">
+                    Allow customers to cancel their own bookings online
+                  </span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-2.5 p-3 rounded-xl border border-[#D7E0D9] bg-[#F6F8F6] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.cancellationPolicy?.allowCancellationWithinCutoff ?? false}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      cancellationPolicy: {
+                        ...formData.cancellationPolicy,
+                        allowCancellationWithinCutoff: e.target.checked,
+                      },
+                    })
+                  }
+                  className="rounded text-[#267A45] focus:ring-[#267A45]"
+                />
+                <div>
+                  <span className="font-semibold text-[#17231B] block">Allow Cancellation Within Cutoff</span>
+                  <span className="text-[11px] text-[#526258]">
+                    Permit late slot releases at 0% refund instead of blocking
+                  </span>
+                </div>
+              </label>
+            </div>
+
+            {/* Tiers Table */}
+            <div className="space-y-2">
+              <span className="text-xs font-semibold text-[#17231B] block">
+                Refund Tiers (Notice Period vs Refund Percentage)
+              </span>
+              <p className="text-[11px] text-[#526258]">
+                Configure tiered refunds based on hours before the match. Evaluated in descending order of notice hours.
+              </p>
+
+              <div className="rounded-xl border border-[#D7E0D9] overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#F0F4F1] text-[#526258] uppercase text-[10px] tracking-wider border-b border-[#D7E0D9]">
+                    <tr>
+                      <th className="px-3 py-2">Notice Window</th>
+                      <th className="px-3 py-2">Hours Before Match (≥)</th>
+                      <th className="px-3 py-2">Refund % (0-100)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#E2E8E3] text-[#17231B]">
+                    {(formData.cancellationPolicy?.tiers || []).map((tier, idx) => (
+                      <tr key={idx} className="hover:bg-[#F6F8F6]">
+                        <td className="px-3 py-2 font-medium text-[#526258]">
+                          {idx === 0
+                            ? 'Early Notice Window'
+                            : idx === 1
+                            ? 'Standard Notice Window'
+                            : 'Late / Near-Slot Window'}
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            min="0"
+                            value={tier.hoursBefore}
+                            onChange={(e) => {
+                              const val = Math.max(0, parseInt(e.target.value, 10) || 0)
+                              const updated = [...formData.cancellationPolicy.tiers]
+                              updated[idx] = { ...updated[idx], hoursBefore: val }
+                              setFormData({
+                                ...formData,
+                                cancellationPolicy: {
+                                  ...formData.cancellationPolicy,
+                                  tiers: updated,
+                                },
+                              })
+                            }}
+                            className="w-24 px-2 py-1 rounded-lg border border-[#D7E0D9] text-xs font-mono"
+                          />
+                          <span className="ml-1.5 text-[#526258] text-[11px]">hours</span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={tier.refundPercentage}
+                            onChange={(e) => {
+                              const val = Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0))
+                              const updated = [...formData.cancellationPolicy.tiers]
+                              updated[idx] = { ...updated[idx], refundPercentage: val }
+                              setFormData({
+                                ...formData,
+                                cancellationPolicy: {
+                                  ...formData.cancellationPolicy,
+                                  tiers: updated,
+                                },
+                              })
+                            }}
+                            className="w-20 px-2 py-1 rounded-lg border border-[#D7E0D9] text-xs font-mono font-bold text-[#267A45]"
+                          />
+                          <span className="ml-1 text-[#526258]">%</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
 

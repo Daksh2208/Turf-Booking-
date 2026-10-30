@@ -76,11 +76,13 @@ export const getMyBookings = async (req, res, next) => {
         },
       })
     }
-    const { page, limit, status } = req.query
+    const { page, limit, status, filter, date } = req.query
     const result = await bookingService.getUserBookings(req.user._id, {
       page,
       limit,
       status,
+      filter: filter || status,
+      date,
     })
 
     res.status(200).json({
@@ -121,6 +123,19 @@ export const cancelMyBooking = async (req, res, next) => {
       success: true,
       message: 'Booking cancelled successfully.',
       data: { booking },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getCancellationPreview = async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const data = await bookingService.getCancellationPreview(id, req.user)
+    res.status(200).json({
+      success: true,
+      data,
     })
   } catch (error) {
     next(error)

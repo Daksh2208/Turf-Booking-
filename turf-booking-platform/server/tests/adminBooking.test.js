@@ -431,7 +431,7 @@ describe('Part 11: Admin Booking Management, Cancellation Workflow and Dashboard
   // 10. Pay at Venue bookings are NOT counted as collected revenue until payment is recorded
   it('10. unpaid Pay at Venue bookings are not counted as revenue until explicitly recorded as paid', async () => {
     // Today's date in business timezone
-    const todayStr = new Date().toISOString().slice(0, 10)
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' })
 
     // 1. Check current revenue before today's booking
     const dashBefore = await request(app)

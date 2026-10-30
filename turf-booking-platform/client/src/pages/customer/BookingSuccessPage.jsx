@@ -405,6 +405,12 @@ export const BookingSuccessPage = () => {
                 {booking.cancellationReason && (
                   <span className="block mt-1 font-semibold">Cancellation Note: {booking.cancellationReason}</span>
                 )}
+                {booking.refundStatus && booking.refundStatus !== 'not_applicable' && (
+                  <span className="block mt-1 font-semibold text-[#1D6537]">
+                    Refund Status: <span className="capitalize">{booking.refundStatus.replace(/_/g, ' ')}</span>
+                    {booking.refundAmount > 0 ? ` (₹${(booking.refundAmount / 100).toFixed(2)})` : ''}
+                  </span>
+                )}
               </p>
             </div>
           ) : (

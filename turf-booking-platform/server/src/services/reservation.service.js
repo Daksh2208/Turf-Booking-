@@ -8,6 +8,7 @@ import { Turf } from '../models/Turf.js'
 import pricingService from './pricing.service.js'
 import { broadcastAvailabilityUpdate } from '../socket.js'
 import { logger } from '../config/logger.js'
+import { getBusinessToday } from '../utils/dateUtils.js'
 
 let isTxSupported = null
 
@@ -119,7 +120,7 @@ export const reservationService = {
       throw err
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10)
+    const todayStr = getBusinessToday(turf.timezone || 'Asia/Kolkata')
     if (date < todayStr) {
       const err = new Error('Cannot reserve slots for past dates.')
       err.statusCode = 400

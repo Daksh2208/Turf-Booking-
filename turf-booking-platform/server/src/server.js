@@ -5,10 +5,12 @@ import { logger } from './config/logger.js'
 import { connectDB, disconnectDB } from './config/db.js'
 import { initSocket } from './socket.js'
 import couponService from './services/coupon.service.js'
+import bookingService from './services/booking.service.js'
 
 let server
 let httpServer
 let couponExpiryInterval = null
+let bookingReconciliationInterval = null
 
 // Initialize Database connection and start HTTP Server
 const startServer = async () => {
@@ -25,10 +27,24 @@ const startServer = async () => {
       logger.warn({ error: couponErr.message }, 'Initial coupon expiry check error')
     }
 
+    // Run initial overdue booking auto-completion & hold expiry
+    try {
+      await bookingService.reconcileOverdueBookings()
+      logger.info('Overdue booking auto-completion check complete on startup')
+    } catch (bookingErr) {
+      logger.warn({ error: bookingErr.message }, 'Initial booking reconciliation error')
+    }
+
     // Periodic check every 60 seconds
     couponExpiryInterval = setInterval(() => {
       couponService.autoDeactivateExpiredCoupons().catch((err) => {
         logger.error({ error: err.message }, 'Periodic expired coupons auto-deactivation failed')
+      })
+    }, 60 * 1000)
+
+    bookingReconciliationInterval = setInterval(() => {
+      bookingService.reconcileOverdueBookings().catch((err) => {
+        logger.error({ error: err.message }, 'Periodic booking auto-completion check failed')
       })
     }, 60 * 1000)
 
@@ -56,6 +72,11 @@ const handleShutdown = async (signal) => {
   if (couponExpiryInterval) {
     clearInterval(couponExpiryInterval)
     couponExpiryInterval = null
+  }
+
+  if (bookingReconciliationInterval) {
+    clearInterval(bookingReconciliationInterval)
+    bookingReconciliationInterval = null
   }
 
   if (server) {

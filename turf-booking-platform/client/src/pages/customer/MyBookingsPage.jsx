@@ -21,25 +21,51 @@ import { Modal } from '../../components/common/Modal'
 
 export const MyBookingsPage = () => {
   const { user } = useAuth()
-  const [statusFilter, setStatusFilter] = useState('')
+  const [activeFilter, setActiveFilter] = useState('all')
+  const [selectedDate, setSelectedDate] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
 
   const [cancellingBooking, setCancellingBooking] = useState(null)
+  const [cancelPreview, setCancelPreview] = useState(null)
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false)
+  const [previewError, setPreviewError] = useState('')
   const [cancelReason, setCancelReason] = useState('')
+  const [customReason, setCustomReason] = useState('')
   const [cancelError, setCancelError] = useState('')
   const [isSubmittingCancel, setIsSubmittingCancel] = useState(false)
+  const [actionSuccessToast, setActionSuccessToast] = useState(null)
 
-  const handleOpenCancelModal = (booking) => {
+  const handleOpenCancelModal = async (booking) => {
     setCancellingBooking(booking)
     setCancelReason('')
+    setCustomReason('')
     setCancelError('')
+    setPreviewError('')
+    setCancelPreview(null)
+    setIsLoadingPreview(true)
+
+    try {
+      const data = await customerBookingService.getCancellationPreview(booking._id)
+      setCancelPreview(data?.calculation || null)
+    } catch (err) {
+      setPreviewError(
+        err.response?.data?.message ||
+        err.message ||
+        'Could not calculate live refund estimate. Standard policy applies.'
+      )
+    } finally {
+      setIsLoadingPreview(false)
+    }
   }
 
   const handleCloseCancelModal = () => {
     if (isSubmittingCancel) return
     setCancellingBooking(null)
+    setCancelPreview(null)
     setCancelReason('')
+    setCustomReason('')
     setCancelError('')
+    setPreviewError('')
   }
 
   const handleConfirmCancel = async (e) => {
@@ -47,12 +73,29 @@ export const MyBookingsPage = () => {
     if (!cancellingBooking) return
     setIsSubmittingCancel(true)
     setCancelError('')
+
+    const effectiveReason =
+      cancelReason === 'Other reason'
+        ? (customReason.trim() || 'Other reason')
+        : (cancelReason.trim() || 'Cancelled by customer')
+
     try {
-      await customerBookingService.cancelBooking(cancellingBooking._id, {
-        cancellationReason: cancelReason.trim() || 'Cancelled by customer',
+      const updated = await customerBookingService.cancelBooking(cancellingBooking._id, {
+        cancellationReason: effectiveReason,
       })
       setCancellingBooking(null)
+      setCancelPreview(null)
       refetch()
+
+      const refundNote =
+        updated?.refundStatus === 'succeeded' || updated?.refundStatus === 'partially_refunded'
+          ? ` Refund of ₹${((updated.refundAmount || 0) / 100).toFixed(2)} initiated via Stripe.`
+          : updated?.refundStatus === 'not_required'
+            ? ' No refund was due under the cancellation policy.'
+            : ' Slot has been released.'
+
+      setActionSuccessToast(`Booking ${cancellingBooking.bookingId} cancelled successfully.${refundNote}`)
+      setTimeout(() => setActionSuccessToast(null), 6000)
     } catch (err) {
       const msg =
         err.response?.data?.error?.message ||
@@ -76,24 +119,28 @@ export const MyBookingsPage = () => {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['myBookings', { page: currentPage, status: statusFilter }],
+    queryKey: ['myBookings', { page: currentPage, filter: activeFilter, date: selectedDate }],
     queryFn: () =>
       customerBookingService.getMyBookings({
         page: currentPage,
         limit: 8,
-        status: statusFilter,
+        filter: activeFilter,
+        status: activeFilter,
+        date: selectedDate,
       }),
     refetchInterval: 5000,
   })
 
   const bookings = data?.bookings || []
   const pagination = data?.pagination || { page: 1, totalPages: 1, total: 0 }
+  const counts = data?.counts || {}
 
-  const statusTabs = [
-    { label: 'All Bookings', value: '' },
-    { label: 'Confirmed', value: 'confirmed' },
-    { label: 'Completed', value: 'completed' },
-    { label: 'Cancelled', value: 'cancelled' },
+  const filterTabs = [
+    { label: 'All', value: 'all', countKey: 'all' },
+    { label: 'Upcoming', value: 'upcoming', countKey: 'upcoming' },
+    { label: 'Today', value: 'today', countKey: 'today' },
+    { label: 'Past', value: 'past', countKey: 'past' },
+    { label: 'Cancelled', value: 'cancelled', countKey: 'cancelled' },
   ]
 
   const getStatusBadge = (status) => {
@@ -117,6 +164,20 @@ export const MyBookingsPage = () => {
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#FDF0EF] text-[#922B27] border border-[#F8D2CE]">
             <XCircle className="w-3 h-3 text-[#922B27]" />
             <span>Cancelled</span>
+          </span>
+        )
+      case 'expired':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+            <Clock3 className="w-3 h-3 text-[#B45309]" />
+            <span>Expired</span>
+          </span>
+        )
+      case 'failed':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-[#FEE2E2] text-[#991B1B] border border-[#FECACA]">
+            <AlertCircle className="w-3 h-3 text-[#DC2626]" />
+            <span>Failed</span>
           </span>
         )
       default:
@@ -166,8 +227,68 @@ export const MyBookingsPage = () => {
     )
   }
 
+  const getRefundBadge = (booking) => {
+    if (booking.status !== 'cancelled') return null
+    const { refundStatus, refundAmount, paymentMethod, paymentStatus } = booking
+
+    if (refundStatus === 'succeeded') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]">
+          <CheckCircle2 className="w-2.5 h-2.5 text-[#267A45]" />
+          <span>Refunded: ₹{((refundAmount || 0) / 100).toFixed(2)}</span>
+        </span>
+      )
+    }
+    if (refundStatus === 'partially_refunded') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#F3E8FF] text-[#6B21A8] border border-[#E9D5FF]">
+          <span>Partially Refunded: ₹{((refundAmount || 0) / 100).toFixed(2)}</span>
+        </span>
+      )
+    }
+    if (refundStatus === 'pending' || refundStatus === 'processing') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#FDF4E7] text-[#79420D] border border-[#F8E3C5]">
+          <Loader2 className="w-2.5 h-2.5 animate-spin text-[#79420D]" />
+          <span>Refund Processing</span>
+        </span>
+      )
+    }
+    if (refundStatus === 'failed') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#FDF0EF] text-[#922B27] border border-[#F8D2CE]">
+          <AlertCircle className="w-2.5 h-2.5 text-[#922B27]" />
+          <span>Refund Issue</span>
+        </span>
+      )
+    }
+    if (refundStatus === 'not_required') {
+      return (
+        <span className="px-2 py-0.5 rounded text-[10px] font-semibold text-[#526258] bg-[#F0F2F0] border border-[#E2E8E3]">
+          No Refund Due
+        </span>
+      )
+    }
+    if (refundStatus === 'not_applicable') {
+      return (
+        <span className="px-2 py-0.5 rounded text-[10px] font-semibold text-[#526258] bg-[#F0F2F0] border border-[#E2E8E3]">
+          {paymentMethod === 'stripe' && paymentStatus !== 'paid' ? 'Unpaid Session' : 'No Refund (Pay at Venue)'}
+        </span>
+      )
+    }
+    return null
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* Toast Notification */}
+      {actionSuccessToast && (
+        <div className="p-4 rounded-xl bg-[#E7F3E9] border border-[#C9DFCE] text-[#1D6537] text-xs font-semibold flex items-center gap-2 shadow-xs">
+          <CheckCircle2 className="w-4 h-4 text-[#267A45] shrink-0" />
+          <span>{actionSuccessToast}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-2">
@@ -195,26 +316,108 @@ export const MyBookingsPage = () => {
         </Link>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-[#E2E8E3] pb-3">
-        {statusTabs.map((tab) => (
+      {/* Filter Tabs & Calendar Date Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#E2E8E3] pb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {filterTabs.map((tab) => {
+            const isSelected = activeFilter === tab.value
+            const countVal = counts[tab.countKey]
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => {
+                  setActiveFilter(tab.value)
+                  if (tab.value === 'today') {
+                    setSelectedDate('')
+                  }
+                  setCurrentPage(1)
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer inline-flex items-center gap-1.5 ${
+                  isSelected
+                    ? 'bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]'
+                    : 'text-[#46564A] hover:text-[#17231B] bg-white border border-[#D7E0D9] hover:bg-[#F0F6F1]'
+                }`}
+              >
+                <span>{tab.label}</span>
+                {typeof countVal === 'number' && (
+                  <span
+                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                      isSelected
+                        ? 'bg-[#267A45] text-white'
+                        : 'bg-[#E2E8E3] text-[#526258]'
+                    }`}
+                  >
+                    {countVal}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Calendar Date Picker Filter */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className="relative flex items-center">
+            <Calendar className="w-3.5 h-3.5 text-[#267A45] absolute left-3 pointer-events-none" />
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => {
+                setSelectedDate(e.target.value)
+                setCurrentPage(1)
+              }}
+              aria-label="Filter bookings by date"
+              className="pl-8.5 pr-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-[#D7E0D9] text-[#17231B] hover:border-[#267A45]/60 focus:outline-none focus:ring-2 focus:ring-[#267A45]/20 focus:border-[#267A45] transition-all cursor-pointer shadow-2xs"
+              title="Filter bookings by date"
+            />
+          </div>
+          {selectedDate && (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedDate('')
+                setCurrentPage(1)
+              }}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[#F0F2F0] hover:bg-[#E2E8E3] text-[#526258] transition-colors cursor-pointer"
+              title="Clear date filter"
+            >
+              Clear Date
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Active Calendar Date Filter Banner */}
+      {selectedDate && (
+        <div className="px-4 py-2.5 rounded-2xl bg-[#F0F6F1] border border-[#C9DFCE] text-xs font-semibold text-[#1D6537] flex items-center justify-between gap-2 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-[#267A45] shrink-0" />
+            <span>
+              Showing matches on{' '}
+              <strong className="font-bold underline">
+                {new Date(selectedDate + 'T00:00:00Z').toLocaleDateString('en-IN', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                  timeZone: 'UTC',
+                })}
+              </strong>
+            </span>
+          </div>
           <button
-            key={tab.value}
             type="button"
             onClick={() => {
-              setStatusFilter(tab.value)
+              setSelectedDate('')
               setCurrentPage(1)
             }}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-              statusFilter === tab.value
-                ? 'bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]'
-                : 'text-[#46564A] hover:text-[#17231B] bg-white border border-[#D7E0D9] hover:bg-[#F0F6F1]'
-            }`}
+            className="text-[11px] font-bold text-[#267A45] hover:underline cursor-pointer"
           >
-            {tab.label}
+            Show All Dates
           </button>
-        ))}
-      </div>
+        </div>
+      )}
 
       {/* Bookings List Content */}
       {isLoading ? (
@@ -245,8 +448,14 @@ export const MyBookingsPage = () => {
           <div>
             <h2 className="text-lg font-bold text-[#17231B]">No Bookings Found</h2>
             <p className="text-xs text-[#526258] mt-1">
-              {statusFilter
-                ? `You have no ${statusFilter} bookings.`
+              {activeFilter === 'upcoming'
+                ? 'You have no upcoming matches scheduled. Time to book a game!'
+                : activeFilter === 'today'
+                ? 'No matches scheduled for today. Ready to hit the pitch?'
+                : activeFilter === 'past'
+                ? 'You have no completed match history yet.'
+                : activeFilter === 'cancelled'
+                ? 'You have no cancelled bookings.'
                 : "You haven't reserved any turf match slots yet. Ready to hit the pitch?"}
             </p>
           </div>
@@ -264,12 +473,12 @@ export const MyBookingsPage = () => {
             {bookings.map((booking) => {
               const formattedDate = booking.date
                 ? new Date(booking.date + 'T00:00:00Z').toLocaleDateString('en-IN', {
-                    weekday: 'short',
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                    timeZone: 'UTC',
-                  })
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                  timeZone: 'UTC',
+                })
                 : booking.date
 
               return (
@@ -317,12 +526,49 @@ export const MyBookingsPage = () => {
                       </div>
                       <div className="flex items-center gap-2 text-[#46564A]">
                         <span className="text-[#267A45] font-bold">
-                          {booking.durationMinutes ? `${Math.round(booking.durationMinutes / 60)}h` : '1h'}
+                          {booking.durationMinutes ? `${booking.durationMinutes}m` : '60m'}
                         </span>
                         <span className="text-[#D7E0D9]">•</span>
                         <span>{booking.playerCount || 10} Players</span>
                       </div>
                     </div>
+
+                    {/* Cancellation details box */}
+                    {booking.status === 'cancelled' && (
+                      <div className="p-2.5 rounded-2xl bg-[#FDF0EF] border border-[#F8D2CE] text-xs space-y-1">
+                        <div className="flex items-center gap-1.5 text-[#922B27] font-semibold">
+                          <XCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>Cancellation Details</span>
+                          {booking.cancelledAt && (
+                            <span className="text-[10px] font-normal text-[#526258]">
+                              • {new Date(booking.cancelledAt).toLocaleDateString('en-IN', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </span>
+                          )}
+                        </div>
+                        {booking.cancellationReason && (
+                          <p className="text-[11px] text-[#526258] italic pl-5">
+                            "{booking.cancellationReason}"
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Expired details box */}
+                    {booking.status === 'expired' && (
+                      <div className="p-2.5 rounded-2xl bg-[#FEF3C7] border border-[#FDE68A] text-xs space-y-1">
+                        <div className="flex items-center gap-1.5 text-[#92400E] font-semibold">
+                          <Clock3 className="w-3.5 h-3.5 shrink-0" />
+                          <span>Reservation Window Expired</span>
+                        </div>
+                        <p className="text-[11px] text-[#78350F] pl-5">
+                          {booking.paymentFailureReason || 'Temporary reservation expired before payment confirmation.'}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Bottom Row: Total & Action */}
@@ -331,15 +577,16 @@ export const MyBookingsPage = () => {
                       <span className="text-[10px] uppercase font-bold text-[#526258] block">
                         Total Amount
                       </span>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-base font-black font-mono text-[#17231B]">
                           ₹{(booking.totalAmount / 100).toFixed(2)}
                         </span>
                         {getPaymentBadge(booking.paymentStatus, booking.paymentMethod)}
+                        {getRefundBadge(booking)}
                       </div>
                     </div>
 
-                    {booking.status === 'cancelled' || booking.paymentStatus === 'failed' ? (
+                    {booking.status === 'cancelled' || booking.status === 'expired' || booking.status === 'failed' ? (
                       <div className="flex items-center gap-2">
                         <Link
                           to={`/bookings/success/${booking._id}`}
@@ -358,9 +605,28 @@ export const MyBookingsPage = () => {
                           </Link>
                         )}
                       </div>
+                    ) : booking.status === 'completed' ? (
+                      <div className="flex items-center gap-2">
+                        <Link
+                          to={`/bookings/success/${booking._id}`}
+                          className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#EFF6FF] text-[#1B4E82] text-xs font-semibold border border-[#BFDBFE] transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>View Pass</span>
+                          <ExternalLink className="w-3.5 h-3.5 text-[#1B4E82]" />
+                        </Link>
+                        {booking.turf && (
+                          <Link
+                            to={`/turfs/${booking.turf.slug || booking.turf._id}`}
+                            className="px-3 py-1.5 rounded-xl bg-[#267A45] hover:bg-[#1E6338] text-white text-xs font-bold transition-all inline-flex items-center gap-1 cursor-pointer"
+                            title="Book this arena again"
+                          >
+                            <span>Book Again</span>
+                          </Link>
+                        )}
+                      </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        {(booking.status === 'confirmed' || booking.status === 'pending') && (
+                        {booking.canCancel !== false && (
                           <button
                             type="button"
                             onClick={() => handleOpenCancelModal(booking)}
@@ -420,31 +686,145 @@ export const MyBookingsPage = () => {
         onClose={handleCloseCancelModal}
         title="Cancel Match Booking"
         subtitle={`Booking Reference: ${cancellingBooking?.bookingId || ''}`}
-        maxWidth="max-w-md"
+        maxWidth="max-w-lg"
       >
-        <form onSubmit={handleConfirmCancel} className="space-y-4">
-          <div className="p-3.5 rounded-2xl bg-[#F6F8F6] border border-[#D7E0D9] text-xs space-y-1.5">
-            <p className="font-bold text-[#17231B]">
-              {cancellingBooking?.turf?.name || 'Turf Arena'}
-            </p>
-            <p className="text-[#526258]">
-              Date: <strong className="text-[#17231B]">{cancellingBooking?.date}</strong> • Slot:{' '}
-              <strong className="text-[#17231B]">
-                {cancellingBooking?.startTime} - {cancellingBooking?.endTime}
-              </strong>
-            </p>
-            <p className="text-[#526258]">
-              Total Amount:{' '}
-              <strong className="text-[#267A45] font-mono">
-                ₹{((cancellingBooking?.totalAmount || 0) / 100).toFixed(2)}
-              </strong>
-            </p>
+        <form onSubmit={handleConfirmCancel} className="space-y-4 text-xs">
+          {/* Booking Summary Card */}
+          <div className="p-3.5 rounded-2xl bg-[#F6F8F6] border border-[#D7E0D9] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-[#17231B] text-sm">
+                {cancellingBooking?.turf?.name || 'Turf Arena'}
+              </span>
+              <span className="text-[11px] font-semibold text-[#267A45] bg-[#E7F3E9] px-2 py-0.5 rounded-md">
+                {cancellingBooking?.sport?.name || 'Sport Arena'}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[#526258] pt-1">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-[#526258] block">Date & Slots</span>
+                <p className="font-semibold text-[#17231B]">{cancellingBooking?.date}</p>
+                <p className="font-mono text-[11px] text-[#267A45]">
+                  {cancellingBooking?.selectedSlots?.length
+                    ? cancellingBooking.selectedSlots.join(', ')
+                    : `${cancellingBooking?.startTime} - ${cancellingBooking?.endTime}`}
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] uppercase font-bold text-[#526258] block">Payment Method</span>
+                <p className="font-semibold text-[#17231B] capitalize">
+                  {cancellingBooking?.paymentMethod === 'stripe' ? 'Stripe Online Payment' : 'Pay at Venue'}
+                </p>
+                <p className="font-mono font-bold text-sm text-[#17231B]">
+                  ₹{((cancellingBooking?.totalAmount || 0) / 100).toFixed(2)}
+                </p>
+              </div>
+            </div>
           </div>
 
-          <p className="text-xs text-[#526258] leading-relaxed">
-            Are you sure you want to cancel this booking? Cancelling will release this match slot back to general availability.
-          </p>
+          {/* Refund Calculation & Policy Banner */}
+          {isLoadingPreview ? (
+            <div className="p-4 rounded-2xl bg-[#F0F6F1] border border-[#C9DFCE] flex items-center justify-center gap-2 text-[#267A45] font-semibold">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Calculating cancellation policy and refund estimate...</span>
+            </div>
+          ) : cancelPreview ? (
+            <div className="space-y-3">
+              {/* Category Banner */}
+              {cancelPreview.refundType === 'full' && (
+                <div className="p-3 rounded-2xl bg-[#E7F3E9] border border-[#C9DFCE] text-[#1D6537] flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-[#267A45]" />
+                  <div>
+                    <p className="font-bold">Full Refund Eligible (100%)</p>
+                    <p className="text-[11px] text-[#2A5E35] mt-0.5">
+                      You are cancelling well in advance. You are eligible for a complete 100% refund of your payment.
+                    </p>
+                  </div>
+                </div>
+              )}
 
+              {cancelPreview.refundType === 'partial' && (
+                <div className="p-3 rounded-2xl bg-[#FDF4E7] border border-[#F8E3C5] text-[#79420D] flex items-start gap-2.5">
+                  <Clock3 className="w-4 h-4 shrink-0 mt-0.5 text-[#79420D]" />
+                  <div>
+                    <p className="font-bold">Partial Refund Eligible ({cancelPreview.refundPercentage}%)</p>
+                    <p className="text-[11px] text-[#79420D] mt-0.5">
+                      Under facility cancellation policy, a {cancelPreview.refundPercentage}% partial refund is eligible.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {cancelPreview.refundType === 'zero' && (
+                <div className="p-3 rounded-2xl bg-[#FDF0EF] border border-[#F8D2CE] text-[#922B27] flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#922B27]" />
+                  <div>
+                    <p className="font-bold">No Refund Due (0%)</p>
+                    <p className="text-[11px] text-[#922B27] mt-0.5">
+                      You may cancel this booking to release the slot, but no refund will be issued under the venue policy.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {(cancelPreview.refundType === 'not_applicable' || cancelPreview.refundType === 'not_required') && (
+                <div className="p-3 rounded-2xl bg-[#EFF6FF] border border-[#BFDBFE] text-[#1B4E82] flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#1B4E82]" />
+                  <div>
+                    <p className="font-bold">Pay at Venue Booking</p>
+                    <p className="text-[11px] text-[#1B4E82] mt-0.5">
+                      No online payment was charged. Cancelling will simply release the slot back to the public.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Financial Breakdown Table */}
+              <div className="p-3.5 rounded-2xl bg-white border border-[#D7E0D9] space-y-2">
+                <div className="flex justify-between items-center pb-1.5 border-b border-[#E2E8E3]">
+                  <span className="text-[#526258]">Original Booking Amount:</span>
+                  <span className="font-mono font-bold text-[#17231B]">
+                    ₹{((cancelPreview.originalAmount || 0) / 100).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pb-1.5 border-b border-[#E2E8E3]">
+                  <span className="text-[#526258]">Eligible Refund Amount:</span>
+                  <span className="font-mono font-black text-sm text-[#267A45]">
+                    ₹{((cancelPreview.eligibleRefundAmount || 0) / 100).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[#526258]">Non-Refundable Amount:</span>
+                  <span className="font-mono font-semibold text-[#922B27]">
+                    ₹{((cancelPreview.nonRefundableAmount || 0) / 100).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Explanation & Disclaimer */}
+              <div className="p-2.5 rounded-xl bg-[#F6F8F6] text-[11px] text-[#526258] space-y-1">
+                <p>
+                  <strong className="text-[#17231B]">Policy:</strong> {cancelPreview.policyExplanation}
+                </p>
+                <p className="text-[10px] text-[#718277]">
+                  * The refund shown is an authoritative estimate based on your current cancellation time. Online refunds will be returned via Stripe to your original payment method.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-[#526258] leading-relaxed">
+              Are you sure you want to cancel this booking? Cancelling will immediately release this slot back to general availability.
+            </p>
+          )}
+
+          {previewError && (
+            <div className="p-3 rounded-xl bg-[#FDF0EF] border border-[#F8D2CE] text-[#922B27] text-xs flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-[#922B27] shrink-0 mt-0.5" />
+              <span>{previewError}</span>
+            </div>
+          )}
+
+          {/* Cancellation Reason */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-[#17231B] block">
               Reason for Cancellation (Optional)
@@ -459,8 +839,19 @@ export const MyBookingsPage = () => {
               <option value="Players / squad unavailable">Players / squad unavailable</option>
               <option value="Weather or rain forecast">Weather or rain forecast</option>
               <option value="Booked by mistake">Booked by mistake</option>
+              <option value="Emergency or personal conflict">Emergency or personal conflict</option>
               <option value="Other reason">Other reason</option>
             </select>
+
+            {cancelReason === 'Other reason' && (
+              <input
+                type="text"
+                placeholder="Please describe reason..."
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+                className="w-full mt-2 bg-white text-xs text-[#17231B] px-3 py-2 rounded-xl border border-[#D7E0D9] focus:outline-none focus:border-[#267A45]"
+              />
+            )}
           </div>
 
           {cancelError && (
@@ -481,16 +872,16 @@ export const MyBookingsPage = () => {
             </button>
             <button
               type="submit"
-              disabled={isSubmittingCancel}
+              disabled={isSubmittingCancel || (cancelPreview && !cancelPreview.canCustomerCancel)}
               className="px-4 py-2 rounded-xl bg-[#922B27] hover:bg-[#7A1E1A] text-white text-xs font-bold shadow-xs disabled:opacity-50 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               {isSubmittingCancel ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Cancelling...</span>
+                  <span>Processing Cancellation...</span>
                 </>
               ) : (
-                <span>Yes, Cancel Booking</span>
+                <span>Confirm Cancellation</span>
               )}
             </button>
           </div>

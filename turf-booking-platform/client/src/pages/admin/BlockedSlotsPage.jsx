@@ -19,6 +19,7 @@ import { Modal } from '../../components/common/Modal'
 import { Button } from '../../components/common/Button'
 import { FormField } from '../../components/common/FormField'
 import { Input } from '../../components/common/Input'
+import { getTodayDateString } from '../../lib/dateUtils'
 
 const REASONS = [
   { id: 'maintenance', label: 'Arena Maintenance / Turf Repair', icon: Wrench },
@@ -44,7 +45,7 @@ export const BlockedSlotsPage = () => {
   // Form State
   const [formData, setFormData] = useState({
     turf: '',
-    date: new Date().toISOString().slice(0, 10),
+    date: getTodayDateString('Asia/Kolkata'),
     startTime: '10:00',
     endTime: '12:00',
     reason: 'maintenance',
@@ -129,7 +130,7 @@ export const BlockedSlotsPage = () => {
     setEditingSlot(null)
     setFormData({
       turf: turfs[0]?._id || '',
-      date: new Date().toISOString().slice(0, 10),
+      date: getTodayDateString('Asia/Kolkata'),
       startTime: '10:00',
       endTime: '12:00',
       reason: 'maintenance',

@@ -149,6 +149,16 @@ export const adminInventoryService = {
     return response.data?.data?.booking
   },
 
+  async getCancellationPreview(id) {
+    const response = await apiClient.get(`/admin/bookings/${id}/cancellation-preview`)
+    return response.data?.data
+  },
+
+  async retryRefund(id) {
+    const response = await apiClient.post(`/admin/bookings/${id}/refund/retry`)
+    return response.data?.data?.booking
+  },
+
   // ==========================================
   // Blocked Slots Management
   // ==========================================

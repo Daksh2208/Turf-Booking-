@@ -64,6 +64,49 @@ const businessSettingsSchema = new mongoose.Schema(
         min: [0, 'Cancellation cutoff hours cannot be negative'],
       },
     },
+    cancellationPolicy: {
+      enabled: {
+        type: Boolean,
+        default: true,
+      },
+      cutoffHours: {
+        type: Number,
+        default: 4,
+        min: [0, 'Cancellation cutoff hours cannot be negative'],
+      },
+      allowCancellationWithinCutoff: {
+        type: Boolean,
+        default: false,
+      },
+      tiers: {
+        type: [
+          {
+            hoursBefore: {
+              type: Number,
+              required: true,
+              min: [0, 'Tier cutoff hours cannot be negative'],
+            },
+            refundPercentage: {
+              type: Number,
+              required: true,
+              min: [0, 'Refund percentage cannot be negative'],
+              max: [100, 'Refund percentage cannot exceed 100%'],
+            },
+          },
+        ],
+        default: [
+          { hoursBefore: 24, refundPercentage: 100 },
+          { hoursBefore: 12, refundPercentage: 50 },
+          { hoursBefore: 4, refundPercentage: 0 },
+        ],
+      },
+      defaultRefundPercentage: {
+        type: Number,
+        default: 0,
+        min: [0, 'Default refund percentage cannot be negative'],
+        max: [100, 'Default refund percentage cannot exceed 100%'],
+      },
+    },
     taxSettings: {
       taxEnabled: {
         type: Boolean,
@@ -106,6 +149,19 @@ businessSettingsSchema.statics.getSettings = async function () {
   let settings = await this.findOne()
   if (!settings) {
     settings = await this.create({})
+  } else if (!settings.cancellationPolicy || !settings.cancellationPolicy.tiers?.length) {
+    settings.cancellationPolicy = {
+      enabled: true,
+      cutoffHours: settings.bookingRules?.cancellationCutoffHours ?? 4,
+      allowCancellationWithinCutoff: false,
+      tiers: [
+        { hoursBefore: 24, refundPercentage: 100 },
+        { hoursBefore: 12, refundPercentage: 50 },
+        { hoursBefore: 4, refundPercentage: 0 },
+      ],
+      defaultRefundPercentage: 0,
+    }
+    await settings.save()
   }
   return settings
 }

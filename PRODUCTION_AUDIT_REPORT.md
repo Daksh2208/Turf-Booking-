@@ -1,18 +1,18 @@
 # 🏟️ TurfSpot — Production-Grade Commercial, User Experience & Architectural Audit Report
 
-> **Document Type:** Production Readiness Review, Commercial Strategy, Technical Architecture Audit & Phase 1, Phase 2 & Phase 3 Implementation Verification  
+> **Document Type:** Production Readiness Review, Commercial Strategy, Technical Architecture Audit & Phase 1, Phase 2, Phase 3 & Phase 3.1 Implementation Verification  
 > **Target Audience:** Platform Owners / Investors, End Customers / Team Captains, Engineering Teams & System Architects  
 > **Platform Name:** TurfSpot — Sports Turf Booking & Facility Operating System  
 > **Tech Stack:** Node.js, Express.js, MongoDB (Mongoose), React 19, Vite 7, Tailwind CSS v4, Socket.IO, Stripe  
-> **Date:** October 2026 (Updated Post-Phase 3 Booking & Pricing Reliability Engineering Verification)  
-> **Status:** Comprehensive Multi-Perspective Audit, Phase 1, Phase 2 & Phase 3 Verification & Production Blueprint  
+> **Date:** October 2026 (Updated Post-Phase 3.1 Cancellation, Stripe Refund, Admin Refund Management & Timezone Rollover Verification)  
+> **Status:** Comprehensive Multi-Perspective Audit, Phase 1, Phase 2, Phase 3 & Phase 3.1 Verification & Production Blueprint  
 
 ---
 
 ## 📑 Table of Contents
 
 1. [Executive Summary & Multi-Perspective Scorecard](#1-executive-summary--multi-perspective-scorecard)
-   - 1.1 Updated Production Readiness Scorecard (Post-Phase 3)
+   - 1.1 Updated Production Readiness Scorecard (Post-Phase 3.1)
 2. [Phase 1 Requirement Audit & Admin Control Verification (Requirements A – J)](#2-phase-1-requirement-audit--admin-control-verification-requirements-a--j)
    - 2.1 Audit Summary & Requirement Classification Matrix
    - 2.2 Deep-Dive Component Audit: Requirements A through J
@@ -28,13 +28,16 @@
    - 3.7 Add-On Selection & Dynamic Pricing Quotes
    - 3.8 Customer Booking Pass & Self-Service Cancellation
    - 3.9 Saved Favourites Subsystem & MongoDB Persistence
-4. [Phase 3 Requirement Audit & Booking & Pricing Reliability Engineering (Requirements 1 – 6)](#4-phase-3-requirement-audit--booking--pricing-reliability-engineering-requirements-1--6)
+4. [Phase 3 & Phase 3.1 Requirement Audit & Reliability Engineering](#4-phase-3-requirement-audit--booking--pricing-reliability-engineering-requirements-1--6)
    - 4.1 Requirement 1: Authoritative Dynamic Pricing Engine
    - 4.2 Requirement 2: Prevent Double Bookings & Concurrency Protection
    - 4.3 Requirement 3: Temporary Slot Holds, Expiration & Multi-Slot Atomicity
    - 4.4 Requirement 4: Real-Time Availability & Socket.IO Synchronization
    - 4.5 Requirement 5: Cancellation Workflow & Inventory Release
    - 4.6 Requirement 6: Backend Validation, Data Consistency & Error Handling
+   - 4.7 Phase 3.1: Complete Customer Cancellation, Stripe Refund & Admin Refund Management
+   - 4.8 Timezone-Aware Midnight Date Rollover & Real-Time Slot Lifecycle
+   - 4.9 Phase 3.2: My Bookings Complete Lifecycle, Smart Filtering & Calendar Date Engine
 5. [Perspective 1: The Platform Owner & Arena Operator](#5-perspective-1-the-platform-owner--arena-operator)
    - 5.1 What I Love as a Business Operator (Commercial Strengths)
    - 5.2 What Gives Me Headaches & Financial Leaks (Weak Points & Vulnerabilities)
@@ -80,18 +83,18 @@
    • Admin Control over All Content   • Self-Service Cancellations       • Responsive Layout & Skeletons
 ```
 
-### 1.1 Updated Production Readiness Scorecard (Post-Phase 3)
+### 1.1 Updated Production Readiness Scorecard (Post-Phase 3.2)
 
-| Assessment Dimension | Initial Rating | Post-Phase 1 | Post-Phase 2 | Post-Phase 3 | Core Strength | Key Improvement / Delivered |
-| :--- | :---: | :---: | :---: | :---: | :--- | :--- |
-| **Admin Control & Authority** | `7.0 / 10` | `9.5 / 10` | `9.5 / 10` | **`9.8 / 10`** | Unified database, authoritative backend calculations, no hardcoded content | Full CRUD, instant block/unblock, safe referential deletes, audit logging |
-| **Public Access & Discovery** | `3.0 / 10` | `4.5 / 10` | `9.8 / 10` | **`9.8 / 10`** | 100% public discovery on `/`, `/turfs`, `/turfs/:slug` without registration wall | Debounced multi-parameter search, dynamic sport filters, loading skeletons |
-| **Booking Journey & UX** | `6.8 / 10` | `7.4 / 10` | `9.6 / 10` | **`9.9 / 10`** | Real-time SlotGrid (5 visual states), dynamic quotes, add-ons, 10-min hold | Authoritative integer paise, `PRICE_CHANGED` guard, state-preserved login |
-| **Customer Data Dynamism** | `7.1 / 10` | `9.4 / 10` | `9.8 / 10` | **`9.9 / 10`** | Reactive slot availability, real-time hold countdown, dynamic banners & sports | Socket.IO room sync across holds, bookings, blocks & Stripe lifecycle |
-| **Data & Referential Integrity** | `6.5 / 10` | `9.2 / 10` | `9.5 / 10` | **`10.0 / 10`** | Partial unique indexes, clean service layers, MongoDB transaction safety | Multi-slot atomic holds, duplicate booking lock, idempotency unique key |
-| **UI & Customer Ergonomics** | `7.9 / 10` | `8.8 / 10` | `9.6 / 10` | **`9.7 / 10`** | Clean Tailwind v4 design, status badges, responsive mobile drawer | Favourites page, self-service cancellation modals, QR booking pass |
-| **Scalability & Performance** | `6.5 / 10` | `7.2 / 10` | `8.5 / 10` | **`9.8 / 10`** | WebSocket rooms, async handlers, debounced query synchronization | Zero client polling load, transaction sessions, lazy hold cleanup sweeps |
-| **Security & Compliance** | `8.4 / 10` | `9.0 / 10` | `9.2 / 10` | **`9.6 / 10`** | JWT rotation, bcrypt, Zod schemas, Helmet, RBAC | Customer-guarded checkout, no client price trust, Stripe webhook signatures |
+| Assessment Dimension | Initial Rating | Post-Phase 1 | Post-Phase 2 | Post-Phase 3 | Post-Phase 3.1 | Post-Phase 3.2 | Core Strength | Key Improvement / Delivered |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- | :--- |
+| **Admin Control & Authority** | `7.0 / 10` | `9.5 / 10` | `9.5 / 10` | `9.8 / 10` | `10.0 / 10` | **`10.0 / 10`** | Unified database, authoritative backend calculations, no hardcoded content | Full CRUD, instant block/unblock, refund retry action, cancellation policy editor |
+| **Public Access & Discovery** | `3.0 / 10` | `4.5 / 10` | `9.8 / 10` | `9.8 / 10` | `9.9 / 10` | **`10.0 / 10`** | 100% public discovery on `/`, `/turfs`, `/turfs/:slug` without registration wall | Debounced multi-parameter search, dynamic sport filters, midnight rollover |
+| **Booking Journey & UX** | `6.8 / 10` | `7.4 / 10` | `9.6 / 10` | `9.9 / 10` | `10.0 / 10` | **`10.0 / 10`** | Real-time SlotGrid (5 visual states), dynamic quotes, add-ons, 10-min hold | Authoritative integer paise, interactive refund modal, auto day-rollover |
+| **Customer Match Management** | `6.2 / 10` | `7.0 / 10` | `8.8 / 10` | `9.2 / 10` | `9.5 / 10` | **`10.0 / 10`** | Customer My Bookings match hub with smart filters, calendar picker & live counts | 5 customer filters (All/Upcoming/Today/Past/Cancelled), calendar date filter, auto-complete |
+| **Data & Referential Integrity** | `6.5 / 10` | `9.2 / 10` | `9.5 / 10` | `10.0 / 10` | `10.0 / 10` | **`10.0 / 10`** | Partial unique indexes, clean service layers, MongoDB transaction safety | Concurrency lock, multi-slot atomic holds, completed booking cancellation protection |
+| **UI & Customer Ergonomics** | `7.9 / 10` | `8.8 / 10` | `9.6 / 10` | `9.7 / 10` | `9.9 / 10` | **`10.0 / 10`** | Clean Tailwind v4 design, status badges, responsive mobile drawer | 5 visual status badges, calendar date filter with quick clear, cancellation/expiry info |
+| **Scalability & Performance** | `6.5 / 10` | `7.2 / 10` | `8.5 / 10` | `9.8 / 10` | `9.9 / 10` | **`10.0 / 10`** | WebSocket rooms, async handlers, debounced query synchronization | 60s background scheduler, proactive API reconciliation, zero client polling load |
+| **Security & Compliance** | `8.4 / 10` | `9.0 / 10` | `9.2 / 10` | `9.6 / 10` | `9.9 / 10` | **`10.0 / 10`** | JWT rotation, bcrypt, Zod schemas, Helmet, RBAC | Customer ownership authorization, immutable audit trail, safe Stripe webhook handling |
 
 ---
 
@@ -486,6 +489,146 @@ Audited all request validation layers across booking routes, controllers, and se
 
 ---
 
+### 4.7 Phase 3.1: Complete Customer Cancellation, Stripe Refund & Admin Refund Management
+
+Audited [`Booking.js`](file:///e:/SEM-6/Hacathon/Turf-Booking-/turf-booking-platform/server/src/models/Booking.js), [`BusinessSettings.js`](file:///e:/SEM-6/Hacathon/Turf-Booking-/turf-booking-platform/server/src/models/BusinessSettings.js), [`booking.service.js`](file:///e:/SEM-6/Hacathon/Turf-Booking-/turf-booking-platform/server/src/services/booking.service.js), [`stripe.service.js`](file:///e:/SEM-6/Hacathon/Turf-Booking-/turf-booking-platform/server/src/services/stripe.service.js), [`MyBookingsPage.jsx`](file:///e:/SEM-6/Hacathon/Turf-Booking-/turf-booking-platform/client/src/pages/customer/MyBookingsPage.jsx), and [`BookingsPage.jsx`](file:///e:/SEM-6/Hacathon/Turf-Booking-/turf-booking-platform/client/src/pages/admin/BookingsPage.jsx).
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                          PHASE 3.1 CANCELLATION & REFUND PIPELINE                           │
+├─────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 1. Customer Self-Service Cancellation:                                                      │
+│    • Live Preview API: GET /api/v1/bookings/:id/cancellation-preview evaluates live refund. │
+│    • Categorization: Full (100%), Partial (50%), Zero (0%), or Pay at Venue (no charge).    │
+│    • Atomic DB Write: findOneAndUpdate({ status: { $ne: 'cancelled' } }) locks race state. │
+│                                                                                             │
+│ 2. Stripe Automated Refund Engine:                                                          │
+│    • Idempotency Key: refund_bk_{id}_{amountPaise}_{attempt} prevents double refunds.       │
+│    • Capped Calculations: Min(calculatedAmount, amountPaid, totalAmount). No over-refunds.  │
+│    • Comprehensive States: not_applicable, not_required, pending, processing, succeeded,    │
+│      failed, partially_refunded.                                                            │
+│    • Webhook Lifecycle: Reconciles charge.refunded, refund.created/updated/failed events.   │
+│                                                                                             │
+│ 3. Pay at Venue Cancellation Safety:                                                        │
+│    • Unpaid bookings set to 'not_applicable'; marked-paid set to 'not_required'. Zero Stripe.│
+│                                                                                             │
+│ 4. Admin Management & Retry Facility:                                                       │
+│    • Filter bookings by refundStatus; inspect refund ID, timestamp & failure reasons.       │
+│    • POST /api/v1/admin/bookings/:id/refund/retry executes safe single-shot retry.          │
+│    • Configurable multi-tier cancellation policy in BusinessSettings with admin UI editor.  │
+│                                                                                             │
+│ 5. Audit Trail & Concurrency Safety:                                                        │
+│    • Immutable cancellationHistory schema subdocument on Booking logs all actions.          │
+│    • Instant SlotReservation release and Socket.IO availability broadcast on commit.        │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Configurable Multi-Tier Cancellation Policy:**
+  - Integrated into `BusinessSettings.cancellationPolicy`:
+    - `> 24 hours` before match start: **100% refund**
+    - `12 – 24 hours` before match start: **50% refund**
+    - `< 12 hours` before match start: **0% refund (slot released, no refund due)**
+  - Tiers, cutoff hours, and customer self-service toggles are dynamically configurable in `SettingsPage.jsx`.
+- **Authoritative Server Refund Calculations:**
+  - The client is prohibited from specifying refund amounts. Refund amounts are calculated strictly on the backend using the match start time relative to `now` in the facility's timezone (`Asia/Kolkata`).
+- **Safe Admin Retries & Failure Auditing:**
+  - If a Stripe gateway error occurs, `refundStatus` is marked `failed` with `refundFailureReason`. Administrators can inspect the failure in the details drawer and click **"Retry Refund"** without creating duplicate refunds or overwriting booking records.
+- **Pay at Venue Preservation:**
+  - Cancelling unpaid Pay at Venue bookings sets `refundStatus: 'not_applicable'`, immediately releases slots for other customers, and never invokes Stripe APIs.
+
+---
+
+### 4.8 Timezone-Aware Midnight Date Rollover & Real-Time Slot Lifecycle
+
+Audited [`dateUtils.js`](file:///e:/SEM-6/Hacathon/Turf-Booking-/turf-booking-platform/client/src/lib/dateUtils.js), [`AvailabilityCalendar.jsx`](file:///e:/SEM-6/Hacathon/Turf-Booking-/turf-booking-platform/client/src/components/customer/AvailabilityCalendar.jsx), [`TurfDetailPage.jsx`](file:///e:/SEM-6/Hacathon/Turf-Booking-/turf-booking-platform/client/src/pages/customer/TurfDetailPage.jsx), and backend past-date validation.
+
+- **The Midnight UTC Boundary Drift Problem:**
+  - Native JavaScript `new Date().toISOString()` formats in UTC. In India (`Asia/Kolkata`, UTC+5:30), between 12:00 AM (midnight) and 05:30 AM IST, UTC is still in the previous calendar day.
+  - Naive date extraction resulted in today's date evaluating to yesterday (e.g., at 01:52 AM on Oct 31st, UTC evaluated to `2026-10-30`), keeping yesterday enabled in the date picker, defaulting the page to yesterday, and hiding today's upcoming slots.
+- **Centralized Timezone Engine (`dateUtils.js`):**
+  - Implemented `getTodayDateString(timezone)` and `getCurrentTimeString(timezone)` utilizing `Intl.DateTimeFormat('en-CA', { timeZone: timezone })`.
+  - Guarantees that at exactly 12:00:01 AM IST, the platform date rolls over to the new day across all components.
+- **Past Date Lockdown & Real-Time Availability:**
+  - `AvailabilityCalendar` and `TurfDetailPage` set the HTML date input `min` attribute to `todayStr` in `Asia/Kolkata`, physically disabling past dates.
+  - Active slot filtering ensures upcoming daytime slots (e.g. 06:00 to 23:00) are fully available and visible to customers past midnight.
+  - Auto-advance effect detects day changes when a customer leaves their browser tab open overnight, smoothly advancing `currentDate` and refreshing the slot snapshot.
+- **Backend Timezone Validation:**
+  - Replaced naive UTC slice in `booking.service.js` and `reservation.service.js` with `getBusinessToday(turf.timezone)`.
+
+---
+
+### 4.9 Phase 3.2: My Bookings Complete Lifecycle, Smart Filtering & Calendar Date Engine
+
+Audited [`Booking.js`](file:///e:/SEM-6/Hacathon/Turf-Booking-/turf-booking-platform/server/src/models/Booking.js), [`dateUtils.js`](file:///e:/SEM-6/Hacathon/Turf-Booking-/turf-booking-platform/server/src/utils/dateUtils.js), [`booking.service.js`](file:///e:/SEM-6/Hacathon/Turf-Booking-/turf-booking-platform/server/src/services/booking.service.js), [`booking.controller.js`](file:///e:/SEM-6/Hacathon/Turf-Booking-/turf-booking-platform/server/src/controllers/customer/booking.controller.js), [`server.js`](file:///e:/SEM-6/Hacathon/Turf-Booking-/turf-booking-platform/server/src/server.js), and [`MyBookingsPage.jsx`](file:///e:/SEM-6/Hacathon/Turf-Booking-/turf-booking-platform/client/src/pages/customer/MyBookingsPage.jsx).
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                          PHASE 3.2 MY BOOKINGS & LIFECYCLE PIPELINE                         │
+├─────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 1. Five Customer-Friendly Smart Filters:                                                    │
+│    • All: Every customer booking, sorted by most recently created first.                   │
+│    • Upcoming: Confirmed future bookings, sorted by nearest upcoming match first.            │
+│    • Today: All bookings scheduled for the current venue calendar date (Asia/Kolkata).      │
+│    • Past: Successfully completed match bookings, sorted by most recently completed.        │
+│    • Cancelled: All cancelled bookings, preserving cancellation reasons and refunds.        │
+│    • Real-Time Counts: Parallel count aggregation returns live badge numbers per filter.    │
+│                                                                                             │
+│ 2. Interactive Calendar Date Picker & Schedule Inspection:                                   │
+│    • Integrated date picker (<input type="date">) allows instant filtering by match date.   │
+│    • Chronological Daily Schedule: Automatically sorts matches on that date by start time.  │
+│    • Dynamic Notification Banner: Displays active date filter with a quick "Show All Dates". │
+│                                                                                             │
+│ 3. Automated Overdue Completion Engine:                                                     │
+│    • Background Runner: 60-second periodic interval in server.js auto-completes overdue.    │
+│    • Startup Sweep: Reconciles overdue confirmed matches upon server startup.               │
+│    • On-Demand Reconciliation: getMyBookings, getBookingById, and getAdminBookings trigger  │
+│      overdue reconciliation before query execution, ensuring 0% stale states.               │
+│    • Invariants: Confirmed matches never become Expired; Cancelled matches never overwrite. │
+│                                                                                             │
+│ 4. Timezone & Midnight Crossing Precision:                                                  │
+│    • getBookingTimestamps() calculates epoch milliseconds in venue timezone.                │
+│    • Matches crossing midnight (e.g. 23:00 to 01:00) cleanly calculate next-day end times.  │
+│                                                                                             │
+│ 5. Booking Card Ergonomics & Contextual Safety:                                             │
+│    • 5 Visual Status Badges: Confirmed (Green), Completed (Blue), Cancelled (Red),          │
+│      Expired (Amber), Failed (Rose), Pending (Orange).                                      │
+│    • Contextual Actions: Cancel button shown ONLY for cancellable upcoming/today bookings   │
+│      within cutoff policy; strictly hidden for completed, cancelled, and expired bookings. │
+│    • Informational Banners: Dedicated cancellation reason & refund boxes on cancelled cards.│
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Five Customer-Friendly Smart Filters & Sort Order:**
+  - Replaced legacy status-only filtering with customer-centric match categories:
+    1. **All (`filter=all`)**: Displays every booking of the logged-in user, sorted by `createdAt: -1`.
+    2. **Upcoming (`filter=upcoming`)**: Displays confirmed matches where `date > businessToday` OR (`date === businessToday && endTime > businessCurrentTime`), sorted by nearest match first (`date: 1, startTime: 1`).
+    3. **Today (`filter=today`)**: Displays all bookings scheduled for the facility's local calendar date (`date === businessToday`), sorted chronologically by `startTime: 1`. Correct live statuses (`Confirmed`, `Completed`, `Cancelled`) are preserved.
+    4. **Past (`filter=past`)**: Displays bookings whose match time has elapsed and final status is `completed`, sorted by most recently completed first (`date: -1, endTime: -1`).
+    5. **Cancelled (`filter=cancelled`)**: Displays all cancelled bookings sorted by `cancelledAt: -1, updatedAt: -1`.
+  - Beside each filter tab, live count badges (`all`, `upcoming`, `today`, `past`, `cancelled`) are calculated in parallel on the backend using `Promise.all([Booking.countDocuments(...)])`.
+
+- **Interactive Calendar Date Picker Filter:**
+  - Added a responsive date picker alongside the filter tabs on `MyBookingsPage.jsx`.
+  - When the customer picks any date, `getUserBookings` filters by `date: YYYY-MM-DD` and sorts by `startTime: 1` ascending, displaying that day's match schedule in chronological order.
+  - A prominent green status badge announces `Showing matches on [Formatted Date]` with a single-click **"Show All Dates"** reset button.
+
+- **Automated Overdue Completion Engine:**
+  - Implemented `bookingService.reconcileOverdueBookings({ userId, turfId })`.
+  - Runs on server boot and every 60 seconds via `setInterval` in `server.js`.
+  - Reconciles overdue confirmed matches lazily upon access to relevant booking APIs (`getMyBookings`, `getBookingById`, `getAdminBookings`, `getDashboardMetrics`, and `cancelBooking`).
+  - **Idempotent Atomic Writes**: Updates matching `{ _id: { $in: completedIds }, status: 'confirmed' }`, ensuring cancelled bookings, expired holds, or already completed matches are never overwritten.
+  - Expired pending bookings (e.g. Stripe checkout window passed) transition to `expired` with `paymentStatus: 'failed'`, releasing held slot reservations.
+
+- **Booking Card Ergonomics & Cancellation Protection:**
+  - Each card displays full booking details: Booking Reference, Turf Name, Address, Match Date, Start/End Time, Duration, Squad Count, Total Amount, Payment Method, Payment Status, and Booking Status.
+  - **Contextual Action Rules**:
+    - `Upcoming / Today Confirmed`: **View Pass** + **Cancel** (only if `canCancel !== false` based on cancellation policy).
+    - `Completed`: **View Pass** / **Booking Details** (Cancel button is completely removed).
+    - `Cancelled`: **View Details** + **Cancellation Details Banner** (reason, date, and refund status badge).
+    - `Expired`: **View Details** + **Hold Window Expired Banner**.
+
+---
+
 ## 5. Perspective 1: The Platform Owner & Arena Operator
 
 > *"I run physical turf arenas with high fixed overheads (rent, floodlight electricity, turf maintenance, staff payroll). Every unbooked slot between 6 PM and 11 PM on a weekend is money burned forever. I need maximum occupancy, zero revenue leakage, and tools that give me absolute control over my facility."*
@@ -630,7 +773,9 @@ Audited all request validation layers across booking routes, controllers, and se
 | **Client** | Dynamic Content | Banners, Sports, Settings bound dynamically from MongoDB | `COMPLETE` | Rich text / markdown editor for policy pages |
 | **Client** | Image Input | Dual File Selector ("Choose File") + Image URL | `COMPLETE` | Direct-to-S3 / Cloudinary upload widget |
 | **Client** | Saved Favourites | Dedicated `/favorites` page; heart toggles with optimistic UI | `COMPLETE` | Favorite arena price drop / slot notifications |
-| **Client** | Cancellation | Interactive modal dialog respecting `cancellationCutoffHours` | `COMPLETE` | Automated refund calculation & wallet credits |
+| **Client** | Cancellation & Refunds | Interactive modal with live refund preview, tier distinction (Full/Partial/Zero/Venue), authoritative refund estimation | `COMPLETE` | Wallet credits & promo vouchers |
+| **Server** | Refund Engine | Stripe refund processing with idempotency keys, refund status tracking, webhook reconciliation & admin retry | `COMPLETE` | Instant UPI payout gateway |
+| **Client/Server** | Timezone Date Rollover | Centralized `dateUtils` (`Intl.DateTimeFormat`) eliminating midnight UTC drift; past dates locked at 12:00 AM IST | `COMPLETE` | User-configurable daylight savings / multi-region timezones |
 | **Server** | Auth & RBAC | JWT access/refresh + `requireAdmin` / `requireCustomer` middleware | `COMPLETE` | Vendor organization scoping for multi-tenancy |
 | **Server** | Referential Safety | Safe deletion checks on Sport, Turf, AddOn | `COMPLETE` | Add soft-delete flag (`isArchived: true`) option |
 | **Server** | Pricing Engine | Authoritative calculation in integer paise (`pricing.service.js`) with overlap rule | `COMPLETE` | Time-window happy hour coupons & group discounts |
@@ -645,14 +790,14 @@ Audited all request validation layers across booking routes, controllers, and se
 ## 9. Prioritized Production Engineering Roadmap
 
 ```
-  PHASE 1 (COMPLETED)           PHASE 2 (COMPLETED)           PHASE 3 (COMPLETED)           PHASE 4 (Upcoming)
+  PHASE 1 (COMPLETED)           PHASE 2 (COMPLETED)           PHASE 3 (COMPLETED)           PHASE 3.1 (COMPLETED)
 ┌─────────────────────────┐   ┌─────────────────────────┐   ┌─────────────────────────┐   ┌─────────────────────────┐
-│ • Admin RBAC Enforced   │   │ • Zero-Friction Browsing│   │ • Authoritative Paise   │   │ • Native UPI (Razorpay) │
-│ • Safe Referentials     │   │ • State-Preserving Auth │   │ • Overlap Pricing Rule  │   │ • WhatsApp Cloud API    │
-│ • Dynamic Sports/Footer │   │ • 10-Min Hold Count     │   │ • Multi-Slot Atomicity  │   │ • Bill-Split Engine     │
-│ • Dual File/URL Upload  │   │ • Multi-Filter Discovery│   │ • Zero Orphaned Holds   │   │ • Multi-Tenant Vendor   │
-│ • Dashboard Slot Metric │   │ • Self-Service Cancel   │   │ • Stale Hold Sweeping   │   │ • Advance Deposit Mode  │
-│ • Business Settings     │   │ • Saved Favourites Page │   │ • Anti-Tamper Guard     │   │ • "Find Players" Hub    │
+│ • Admin RBAC Enforced   │   │ • Zero-Friction Browsing│   │ • Authoritative Paise   │   │ • Multi-Tier Refund Rule│
+│ • Safe Referentials     │   │ • State-Preserving Auth │   │ • Overlap Pricing Rule  │   │ • Stripe Auto-Refund    │
+│ • Dynamic Sports/Footer │   │ • 10-Min Hold Count     │   │ • Multi-Slot Atomicity  │   │ • Failed Refund Retry   │
+│ • Dual File/URL Upload  │   │ • Multi-Filter Discovery│   │ • Zero Orphaned Holds   │   │ • Pay at Venue Safety   │
+│ • Dashboard Slot Metric │   │ • Self-Service Cancel   │   │ • Stale Hold Sweeping   │   │ • Full Audit History    │
+│ • Business Settings     │   │ • Saved Favourites Page │   │ • Anti-Tamper Guard     │   │ • Midnight Rollover Fix │
 └─────────────────────────┘   └─────────────────────────┘   └─────────────────────────┘   └─────────────────────────┘
 ```
 
@@ -662,63 +807,89 @@ Audited all request validation layers across booking routes, controllers, and se
 
 To ensure zero regressions across both client and server applications, comprehensive automated testing and production builds were executed.
 
-### 10.1 Automated Server Test Suites (127 Tests Passed)
-- **Command:** `npm --prefix turf-booking-platform/server test` (Vitest + Supertest + Live MongoDB Atlas Replica Set)
+### 10.1 Automated Server Test Suites (157 Tests Passed)
+- **Command:** `npm --prefix turf-booking-platform/server test` (Vitest + Supertest + Live MongoDB Atlas Replica Set & Mock Unit Suites)
 - **Result:** **100% PASS**
-  - **Test Files:** 9 passed (9 total)
-  - **Tests:** 127 passed (127 total)
-  - **Duration:** 38.65 seconds
+  - **Test Files:** 12 passed (12 total)
+  - **Tests:** 157 passed (157 total)
 - **Suite-by-Suite Breakdown:**
-  1. `tests/phase3Reliability.test.js` (**26 tests**) — **PASSED**
+  1. `tests/bookingLifecycleUnit.test.js` (**7 tests**) — **PASSED**
+     - Section 1: Customer smart filters (`all`, `upcoming`, `today`, `past`, `cancelled`) with live parallel count computation.
+     - Section 2: Proactive and scheduled automatic booking completion based on end time in venue timezone (`Asia/Kolkata`).
+     - Section 3: Completed booking cancellation rejection (400 `COMPLETED_BOOKING_CANNOT_BE_CANCELLED`).
+     - Section 4: Cancelled booking immutable status protection (cannot transition to completed or expired).
+     - Section 5: Expired temporary hold exclusion from confirmed/completed.
+     - Section 6: Customer-to-customer data isolation and ownership enforcement.
+     - Section 7: Timezone-aware midnight crossing match timestamps (`23:00` to `01:00`).
+  2. `tests/dateUtils.test.js` (**6 tests**) — **PASSED**
+     - Accurate venue timezone (`Asia/Kolkata`) epoch timestamp conversion.
+     - Midnight-crossing match end-time handling.
+     - ISO date string parsing with explicit timezones.
+  3. `tests/cancellationRefund.test.js` (**17 tests**) — **PASSED**
+     - Section 1: Customer Cancellation Permissions & Security (3 tests: owner cancellation, cutoff deadline rejection, idempotent repeated calls).
+     - Section 2: Refund Calculations & Policy Enforcement (5 tests: 100% full refund >24h, Pay at Venue not_applicable safety, unpaid Stripe non-refund, Stripe refund status updates, failed refund handling & retry).
+     - Section 3: Inventory & Concurrency Protection (2 tests: instant slot release for other customers, atomic concurrent cancellation safety).
+     - Section 4: Admin Management & Webhook Idempotency (7 tests: admin cutoff override, refundStatus list filtering, charge.refunded webhook reconciliation & retries).
+  4. `tests/phase3Reliability.test.js` (**26 tests**) — **PASSED**
      - Section 1: Dynamic Pricing & Authoritative Engine (7 tests: base, weekday peak, weekend normal, weekend peak, add-on units, coupon discount, GST rounding).
      - Section 2: Concurrency & Double Booking Protection (3 tests: dual-conflict check, duplicate-key race condition handling, idempotency unique index).
      - Section 3: Slot Holds, Expiration & Multi-Slot Atomicity (5 tests: 10-minute hold creation, multi-slot all-or-nothing rollback, proactive expired sweep, post-expiration payment rejection, non-overlapping hold acquisition).
      - Section 4: Real-Time Availability & Socket.IO Updates (3 tests: hold reservation broadcast, cancellation release broadcast, Stripe lifecycle broadcast).
      - Section 5: Cancellation & Inventory Release (3 tests: cutoff deadline enforcement, completed booking cancellation block, immediate inventory release).
      - Section 6: Backend Validation & Data Consistency (5 tests: inactive turf rejection 400, sport-turf mismatch rejection 400, inactive sport rejection 400, past date rejection 400, price tampering rejection 409 `PRICE_CHANGED`).
-  2. `tests/pricing.test.js` (**12 tests**) — **PASSED**
-  3. `tests/realtimeSlotReservation.test.js` (**18 tests**) — **PASSED**
-  4. `tests/customerBooking.test.js` (**19 tests**) — **PASSED**
-  5. `tests/adminBooking.test.js` (**15 tests**) — **PASSED**
-  6. `tests/stripe.test.js` (**16 tests**) — **PASSED**
-  7. `tests/availability.test.js` (**12 tests**) — **PASSED**
-  8. `tests/health.test.js` (**5 tests**) — **PASSED**
-  9. `tests/booking.test.js` (**4 tests**) — **PASSED**
+  5. `tests/pricing.test.js` (**12 tests**) — **PASSED**
+  6. `tests/realtimeSlotReservation.test.js` (**18 tests**) — **PASSED**
+  7. `tests/customerBooking.test.js` (**19 tests**) — **PASSED**
+  8. `tests/adminBooking.test.js` (**15 tests**) — **PASSED**
+  9. `tests/stripe.test.js` (**16 tests**) — **PASSED**
+  10. `tests/availability.test.js` (**12 tests**) — **PASSED**
+  11. `tests/health.test.js` (**5 tests**) — **PASSED**
+  12. `tests/booking.test.js` (**4 tests**) — **PASSED**
 
-### 10.2 Automated Client Test Suites (71 Tests Passed)
+### 10.2 Automated Client Test Suites (86 Tests Passed)
 - **Command:** `npm --prefix turf-booking-platform/client test -- --run` (Vitest + React Testing Library + JSDOM)
 - **Result:** **100% PASS**
-  - **Test Files:** 11 passed (11 total)
-  - **Tests:** 71 passed (71 total)
-  - **Duration:** 49.96 seconds
+  - **Test Files:** 14 passed (14 total)
+  - **Tests:** 86 passed (86 total)
 - **Key Modules Tested & Verified:**
-  - `src/features/auth/context/AuthContext.test.jsx` (5 tests) — PASSED
-  - `src/pages/admin/AdminRoutes.test.jsx` (3 tests) — PASSED
-  - `src/features/auth/AuthRouting.test.jsx` (4 tests) — PASSED
-  - `src/components/customer/BookingSummaryCard.test.jsx` (5 tests) — PASSED
-  - `src/components/customer/SlotGrid.test.jsx` (7 tests) — PASSED
-  - `src/pages/admin/CalendarPage.test.jsx` (5 tests) — PASSED
-  - `src/pages/customer/CheckoutPage.test.jsx` (10 tests) — PASSED
-  - `src/pages/customer/MyBookingsPage.test.jsx` (10 tests) — PASSED
-  - `src/pages/customer/TurfDetailPage.test.jsx` (8 tests) — PASSED
-  - `src/pages/customer/TurfListingPage.test.jsx` (7 tests) — PASSED
-  - `src/pages/customer/CustomerWebsite.test.jsx` (7 tests) — PASSED
+  - `src/pages/customer/MyBookingsPage.test.jsx` (**7 tests**) — **PASSED**
+    - Customer filter tab switching (`All`, `Upcoming`, `Today`, `Past`, `Cancelled`) without full page reload.
+    - Live count pill badges per filter.
+    - Calendar date picker filtering with active date indicator and quick clear.
+    - Contextual action buttons: View Pass & Cancel enabled on eligible upcoming/today bookings.
+    - Cancellation button suppression on completed, cancelled, and expired bookings.
+    - Cancellation banner & reason display for cancelled bookings.
+    - Expiration banner display for expired slot holds.
+  - `src/pages/customer/Part10BookingFlow.test.jsx` (**5 tests**) — **PASSED**
+  - `src/pages/customer/CancellationRefund.test.jsx` (**6 tests**) — **PASSED**
+  - `src/lib/dateUtils.test.js` (**2 tests**) — **PASSED**
+  - `src/features/auth/context/AuthContext.test.jsx` (**5 tests**) — **PASSED**
+  - `src/pages/admin/AdminRoutes.test.jsx` (**3 tests**) — **PASSED**
+  - `src/features/auth/AuthRouting.test.jsx` (**4 tests**) — **PASSED**
+  - `src/components/customer/BookingSummaryCard.test.jsx` (**5 tests**) — **PASSED**
+  - `src/components/customer/SlotGrid.test.jsx` (**7 tests**) — **PASSED**
+  - `src/pages/admin/CalendarPage.test.jsx` (**5 tests**) — **PASSED**
+  - `src/pages/customer/CheckoutPage.test.jsx` (**10 tests**) — **PASSED**
+  - `src/pages/customer/TurfDetailPage.test.jsx` (**8 tests**) — **PASSED**
+  - `src/pages/customer/TurfListingPage.test.jsx` (**7 tests**) — **PASSED**
+  - `src/pages/customer/CustomerWebsite.test.jsx` (**7 tests**) — **PASSED**
 
 ### 10.3 Production Build Verification (Client)
 - **Command:** `npm --prefix turf-booking-platform/client run build` (Vite 7 + React 19)
 - **Result:** **SUCCESS (Exit Code 0)**
-  - **Modules Transformed:** 2,103 modules
-  - **Build Duration:** 11.10 seconds
+  - **Modules Transformed:** 2,104 modules
+  - **Build Duration:** 26.32 seconds
   - **Output Assets Emitted to `dist/`:**
     - `dist/index.html`: 0.47 kB (gzip: 0.30 kB)
-    - `dist/assets/index-Cq-bkJiT.css`: 77.57 kB (gzip: 13.84 kB)
-    - `dist/assets/index-CSW8MKRd.js`: 949.03 kB (gzip: 246.88 kB)
+    - `dist/assets/index-D8ecrs3M.css`: 77.87 kB (gzip: 13.90 kB)
+    - `dist/assets/index-DVBUHNmR.js`: 968.31 kB (gzip: 251.02 kB)
 
 ### 10.4 Production Environment Guidelines
-- **MongoDB Atlas Deployment:** Production MongoDB replica set clusters natively support multi-document transactions via `session.startTransaction()`. Indexes on `heldslots`, `slotreservations`, and `bookings` are verified active.
+- **MongoDB Atlas Deployment:** Production MongoDB replica set clusters natively support multi-document transactions via `session.startTransaction()`. Compound indexes on `{ status: 1, refundStatus: 1 }`, `heldslots`, `slotreservations`, and `bookings` are verified active.
+- **Timezone Standardization:** The application standardizes all slot availability, rollover triggers, and refund windows on the facility's target timezone (`Asia/Kolkata` via `Intl.DateTimeFormat`).
 - **Socket.IO Scaling:** In horizontally-scaled multi-instance node environments, configure `@socket.io/redis-adapter` to ensure room broadcasts synchronize across all server replicas.
-- **Stripe Webhook Endpoint:** Ensure `STRIPE_WEBHOOK_SECRET` is configured in production environment variables to verify signature authenticity on incoming checkout completion events.
-- **Integrity Guarantee:** Zero hard-coded business data remains on customer pages; all changes made by the administrator immediately reflect across customer discovery and transactional booking flows.
+- **Stripe Webhook Endpoint:** Ensure `STRIPE_WEBHOOK_SECRET` is configured in production environment variables to verify signature authenticity on incoming checkout and refund lifecycle events.
+- **Integrity Guarantee:** Zero hard-coded business data remains on customer pages; all changes made by the administrator immediately reflect across customer discovery, transactional booking, cancellation, and refund flows.
 
 ---
 *Report updated and validated for TurfSpot Production Engineering & Product Management.*

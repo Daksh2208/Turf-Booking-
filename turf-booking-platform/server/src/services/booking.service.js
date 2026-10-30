@@ -15,6 +15,14 @@ import availabilityService from './availability.service.js'
 import couponService from './coupon.service.js'
 import reservationService from './reservation.service.js'
 import { broadcastAvailabilityUpdate } from '../socket.js'
+import {
+  getBusinessToday,
+  getBusinessCurrentTime,
+  getSlotTimestamp,
+  getBookingTimestamps,
+  DEFAULT_TIMEZONE,
+} from '../utils/dateUtils.js'
+import { logger } from '../config/logger.js'
 
 let isTxSupported = null
 
@@ -38,6 +46,122 @@ async function checkTransactionSupport() {
     isTxSupported = false
   }
   return isTxSupported
+}
+
+let _stripeService = null
+async function getStripeService() {
+  if (!_stripeService) {
+    const mod = await import('./stripe.service.js')
+    _stripeService = mod.stripeService || mod.default
+  }
+  return _stripeService
+}
+
+/**
+ * Convert a local turf date (YYYY-MM-DD) and time (HH:mm) into a UTC epoch timestamp
+ * in the specified business timezone using Intl.
+ */
+function getSlotStartTimeInTimezone(dateStr, timeStr, timezone = DEFAULT_TIMEZONE) {
+  return getSlotTimestamp(dateStr, timeStr, timezone)
+}
+
+/**
+ * Authoritative refund calculation based on BusinessSettings cancellation policy
+ */
+export function calculateRefundDetails({ booking, settings, now = new Date() }) {
+  const policy = settings?.cancellationPolicy || {
+    enabled: true,
+    cutoffHours: settings?.bookingRules?.cancellationCutoffHours ?? 4,
+    allowCancellationWithinCutoff: false,
+    tiers: [
+      { hoursBefore: 24, refundPercentage: 100 },
+      { hoursBefore: 12, refundPercentage: 50 },
+      { hoursBefore: 4, refundPercentage: 0 },
+    ],
+    defaultRefundPercentage: 0,
+  }
+
+  const timezone = settings?.timezone || 'Asia/Kolkata'
+  const slotStartTimeMs = getSlotStartTimeInTimezone(booking.date, booking.startTime, timezone)
+  const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime()
+  const hoursRemaining = (slotStartTimeMs - nowMs) / (1000 * 60 * 60)
+
+  const cutoffHours = policy.cutoffHours ?? settings?.bookingRules?.cancellationCutoffHours ?? 4
+  const canCustomerCancel =
+    policy.enabled !== false && (hoursRemaining >= cutoffHours || policy.allowCancellationWithinCutoff)
+
+  // Sort tiers descending
+  const sortedTiers = [...(policy.tiers || [])].sort((a, b) => b.hoursBefore - a.hoursBefore)
+  let refundPercentage = policy.defaultRefundPercentage ?? 0
+
+  for (const tier of sortedTiers) {
+    if (hoursRemaining >= tier.hoursBefore) {
+      refundPercentage = tier.refundPercentage
+      break
+    }
+  }
+
+  const isPaidStripe = booking.paymentMethod === 'stripe' && booking.paymentStatus === 'paid'
+  const isPaidVenue = booking.paymentMethod !== 'stripe' && booking.paymentStatus === 'paid'
+  const isUnpaid = booking.paymentStatus !== 'paid'
+
+  let eligibleRefundAmount = 0
+  let nonRefundableAmount = 0
+  let refundType = 'zero' // 'full' | 'partial' | 'zero' | 'not_applicable' | 'not_required'
+
+  if (isUnpaid) {
+    refundType = 'not_applicable'
+    refundPercentage = 0
+    eligibleRefundAmount = 0
+    nonRefundableAmount = 0
+  } else if (isPaidVenue) {
+    refundType = 'not_required'
+    const totalCollected = booking.amountPaid || booking.totalAmount || 0
+    eligibleRefundAmount = Math.round(totalCollected * (refundPercentage / 100))
+    nonRefundableAmount = totalCollected - eligibleRefundAmount
+  } else if (isPaidStripe) {
+    const totalCollected = booking.amountPaid || booking.totalAmount || 0
+    eligibleRefundAmount = Math.round(totalCollected * (refundPercentage / 100))
+    nonRefundableAmount = totalCollected - eligibleRefundAmount
+    if (refundPercentage >= 100) {
+      refundType = 'full'
+    } else if (refundPercentage > 0) {
+      refundType = 'partial'
+    } else {
+      refundType = 'zero'
+    }
+  }
+
+  let policyExplanation = ''
+  if (!policy.enabled) {
+    policyExplanation = 'Customer self-service cancellation is currently disabled by facility management.'
+  } else if (hoursRemaining < cutoffHours && !policy.allowCancellationWithinCutoff) {
+    policyExplanation = `Cancellations must be made at least ${cutoffHours} hours prior to slot start time. This booking is within the non-cancellable cutoff window.`
+  } else if (refundPercentage === 100) {
+    policyExplanation = `Cancelled with sufficient notice (>= ${sortedTiers[0]?.hoursBefore || 24}h before): 100% full refund eligible.`
+  } else if (refundPercentage > 0) {
+    policyExplanation = `Cancelled within ${sortedTiers[0]?.hoursBefore || 24}h window: ${refundPercentage}% partial refund eligible.`
+  } else {
+    policyExplanation = `Cancelled close to match time: 0% refund applies under cancellation policy.`
+  }
+
+  return {
+    canCustomerCancel,
+    hoursRemaining: Number(hoursRemaining.toFixed(2)),
+    cutoffHours,
+    refundPercentage,
+    eligibleRefundAmount,
+    nonRefundableAmount,
+    originalAmount: booking.amountPaid || booking.totalAmount || 0,
+    refundType,
+    policyExplanation,
+    isPaidStripe,
+    isPaidVenue,
+    isUnpaid,
+    paymentMethod: booking.paymentMethod,
+    paymentStatus: booking.paymentStatus,
+    policyTiers: sortedTiers,
+  }
 }
 
 export const bookingService = {
@@ -151,7 +275,8 @@ export const bookingService = {
       throw error
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10)
+    const businessTimezone = turf.timezone || 'Asia/Kolkata'
+    const todayStr = getBusinessToday(businessTimezone)
     if (date < todayStr) {
       const error = new Error('Cannot book a slot for a past date.')
       error.statusCode = 400
@@ -694,10 +819,12 @@ export const bookingService = {
 
     // State transition rules
     const ALLOWED_STATUS_TRANSITIONS = {
-      pending: ['confirmed', 'cancelled'],
+      pending: ['confirmed', 'cancelled', 'expired', 'failed'],
       confirmed: ['completed', 'cancelled'],
       completed: ['cancelled'],
       cancelled: [], // Terminal status: cannot transition to confirmed or completed through ordinary update
+      expired: [],
+      failed: [],
     }
 
     if (!ALLOWED_STATUS_TRANSITIONS[previousStatus]?.includes(status)) {
@@ -707,24 +834,11 @@ export const bookingService = {
       throw error
     }
 
-    booking.status = status
-
     if (status === 'cancelled') {
-      booking.cancellationReason = cancellationReason || 'Cancelled by Administrator'
-      booking.cancelledAt = new Date()
-      booking.cancelledBy = {
-        user: adminUser._id,
-        role: adminUser.role || 'admin',
-      }
-
-      // Immediately release active slot reservations so slot becomes available again
-      await SlotReservation.updateMany({ booking: booking._id }, { status: 'released' })
-      if (booking.coupon?.couponId) {
-        await couponService.releaseCouponOnCancellation(booking._id).catch(() => {})
-      }
-      broadcastAvailabilityUpdate({ turfId: booking.turf, date: booking.date, reason: 'booking_cancelled' })
+      return this.cancelBooking(id, { cancellationReason }, adminUser, ip)
     }
 
+    booking.status = status
     await booking.save()
 
     await logAudit({
@@ -813,11 +927,12 @@ export const bookingService = {
 
   /**
    * Secure Cancellation Workflow
-   * Handles both Admin-authorized cancellation and Customer cancellation with cutoff verification.
+   * Handles both Admin-authorized cancellation and Customer cancellation with policy & cutoff verification,
+   * safe concurrency control, automated Stripe refund processing, and slot release.
    */
   async cancelBooking(id, { cancellationReason = '' } = {}, requestingUser, ip = '') {
-    const booking = await Booking.findById(id)
-    if (!booking) {
+    const originalBooking = await Booking.findById(id)
+    if (!originalBooking) {
       const error = new Error('Booking not found.')
       error.statusCode = 404
       error.code = 'BOOKING_NOT_FOUND'
@@ -825,7 +940,9 @@ export const bookingService = {
     }
 
     const isAdmin = requestingUser.role === 'admin'
-    const isOwner = booking.user?.toString() === requestingUser._id.toString()
+    const isOwner =
+      originalBooking.user?._id?.toString() === requestingUser._id?.toString() ||
+      originalBooking.user?.toString() === requestingUser._id?.toString()
 
     if (!isAdmin && !isOwner) {
       const error = new Error('You are not authorized to cancel this booking.')
@@ -835,8 +952,8 @@ export const bookingService = {
     }
 
     // Idempotent cancellation: if already cancelled, safe return
-    if (booking.status === 'cancelled') {
-      return booking.populate([
+    if (originalBooking.status === 'cancelled') {
+      return originalBooking.populate([
         { path: 'turf', select: 'name slug address images' },
         { path: 'sport', select: 'name slug' },
         { path: 'user', select: 'name email phone' },
@@ -846,26 +963,43 @@ export const bookingService = {
     }
 
     // Customer cannot cancel completed bookings
-    if (!isAdmin && booking.status === 'completed') {
+    if (!isAdmin && originalBooking.status === 'completed') {
       const error = new Error('Completed bookings cannot be cancelled by customers.')
       error.statusCode = 400
       error.code = 'CANNOT_CANCEL_COMPLETED_BOOKING'
       throw error
     }
 
-    // If customer is cancelling, enforce business settings cancellation cutoff
+    const settings = await BusinessSettings.getSettings()
+
+    // If match scheduled end time in venue timezone has passed, transition to completed
+    if (!isAdmin && originalBooking.status === 'confirmed') {
+      const tz = originalBooking.turf?.timezone || settings?.timezone || DEFAULT_TIMEZONE
+      const { endMs } = getBookingTimestamps(originalBooking, tz)
+      if (Date.now() >= endMs) {
+        await Booking.updateOne({ _id: originalBooking._id, status: 'confirmed' }, { $set: { status: 'completed' } })
+        originalBooking.status = 'completed'
+        const error = new Error('Completed bookings cannot be cancelled by customers.')
+        error.statusCode = 400
+        error.code = 'CANNOT_CANCEL_COMPLETED_BOOKING'
+        throw error
+      }
+    }
+
+    const refundDetails = calculateRefundDetails({ booking: originalBooking, settings })
+
+    // Customer cancellation policy enforcement
     if (!isAdmin) {
-      const settings = await BusinessSettings.getSettings()
-      const cutoffHours = settings?.bookingRules?.cancellationCutoffHours ?? 4
+      if (settings.cancellationPolicy?.enabled === false) {
+        const error = new Error('Customer self-service cancellation is disabled by facility management.')
+        error.statusCode = 400
+        error.code = 'CANCELLATION_DISABLED'
+        throw error
+      }
 
-      const slotDateTimeStr = `${booking.date}T${booking.startTime}:00`
-      const slotTime = new Date(slotDateTimeStr).getTime()
-      const now = Date.now()
-      const hoursRemaining = (slotTime - now) / (1000 * 60 * 60)
-
-      if (hoursRemaining < cutoffHours) {
+      if (!refundDetails.canCustomerCancel) {
         const error = new Error(
-          `Cancellations must be made at least ${cutoffHours} hours prior to the slot start time.`
+          `Cancellations must be made at least ${refundDetails.cutoffHours} hours prior to the slot start time.`
         )
         error.statusCode = 400
         error.code = 'CANCELLATION_CUTOFF_EXCEEDED'
@@ -873,12 +1007,47 @@ export const bookingService = {
       }
     }
 
-    booking.status = 'cancelled'
-    booking.cancellationReason = cancellationReason || (isAdmin ? 'Cancelled by Administrator' : 'Cancelled by Customer')
-    booking.cancelledAt = new Date()
-    booking.cancelledBy = {
-      user: requestingUser._id,
-      role: requestingUser.role,
+    const effectiveReason =
+      cancellationReason || (isAdmin ? 'Cancelled by Administrator' : 'Cancelled by Customer')
+
+    // Atomic concurrency lock: transition status only if not cancelled yet
+    const booking = await Booking.findOneAndUpdate(
+      { _id: originalBooking._id, status: { $ne: 'cancelled' } },
+      {
+        $set: {
+          status: 'cancelled',
+          cancellationReason: effectiveReason,
+          cancelledAt: new Date(),
+          'cancelledBy.user': requestingUser._id,
+          'cancelledBy.role': requestingUser.role || (isAdmin ? 'admin' : 'customer'),
+          refundPercentage: refundDetails.refundPercentage,
+        },
+        $push: {
+          cancellationHistory: {
+            action: 'cancelled',
+            performedBy: {
+              user: requestingUser._id,
+              role: requestingUser.role || (isAdmin ? 'admin' : 'customer'),
+            },
+            timestamp: new Date(),
+            previousStatus: originalBooking.status,
+            newStatus: 'cancelled',
+            reason: effectiveReason,
+          },
+        },
+      },
+      { new: true }
+    )
+
+    if (!booking) {
+      // Concurrent cancellation request won the race
+      return Booking.findById(originalBooking._id).populate([
+        { path: 'turf', select: 'name slug address images' },
+        { path: 'sport', select: 'name slug' },
+        { path: 'user', select: 'name email phone' },
+        { path: 'paymentRecordedBy', select: 'name email' },
+        { path: 'cancelledBy.user', select: 'name email' },
+      ])
     }
 
     // Release slot reservations immediately
@@ -886,8 +1055,42 @@ export const bookingService = {
     if (booking.coupon?.couponId) {
       await couponService.releaseCouponOnCancellation(booking._id).catch(() => {})
     }
+
+    // Process refund logic according to payment method and status
+    if (booking.paymentMethod === 'stripe' && booking.paymentStatus === 'paid') {
+      if (refundDetails.eligibleRefundAmount > 0) {
+        const stripe = await getStripeService()
+        await stripe.processStripeRefund({
+          booking,
+          refundAmountPaise: refundDetails.eligibleRefundAmount,
+          requestingUser,
+          reason: effectiveReason,
+        })
+      } else {
+        // Zero refund due under cancellation policy
+        booking.refundStatus = 'not_required'
+        booking.refundAmount = 0
+        await booking.save()
+      }
+    } else if (booking.paymentMethod === 'stripe' && booking.paymentStatus !== 'paid') {
+      booking.refundStatus = 'not_applicable'
+      booking.paymentStatus = 'failed'
+      booking.refundAmount = 0
+      await booking.save()
+    } else {
+      // Pay at Venue / Cash / Counter
+      if (booking.paymentStatus === 'paid') {
+        booking.refundStatus = 'not_required'
+        booking.refundAmount = refundDetails.eligibleRefundAmount
+      } else {
+        booking.refundStatus = 'not_applicable'
+        booking.refundAmount = 0
+      }
+      await booking.save()
+    }
+
+    // Emit availability update strictly AFTER database write is complete
     broadcastAvailabilityUpdate({ turfId: booking.turf, date: booking.date, reason: 'booking_cancelled' })
-    await booking.save()
 
     await logAudit({
       actorId: requestingUser._id,
@@ -896,8 +1099,146 @@ export const bookingService = {
       entityId: booking._id,
       details: {
         bookingId: booking.bookingId,
-        cancelledBy: requestingUser.role,
+        cancelledBy: requestingUser.role || (isAdmin ? 'admin' : 'customer'),
         reason: booking.cancellationReason,
+        refundPercentage: booking.refundPercentage,
+        refundAmount: booking.refundAmount,
+        refundStatus: booking.refundStatus,
+      },
+      ip,
+    })
+
+    return booking.populate([
+      { path: 'turf', select: 'name slug address images' },
+      { path: 'sport', select: 'name slug' },
+      { path: 'user', select: 'name email phone' },
+      { path: 'paymentRecordedBy', select: 'name email' },
+      { path: 'cancelledBy.user', select: 'name email' },
+    ])
+  },
+
+  /**
+   * Get Authoritative Cancellation & Refund Preview
+   * Calculates the exact refund estimate according to configured business rules and timezone
+   */
+  async getCancellationPreview(id, requestingUser) {
+    const booking = await Booking.findById(id).populate([
+      { path: 'turf', select: 'name slug address images' },
+      { path: 'sport', select: 'name slug' },
+      { path: 'user', select: 'name email phone' },
+    ])
+    if (!booking) {
+      const error = new Error('Booking not found.')
+      error.statusCode = 404
+      error.code = 'BOOKING_NOT_FOUND'
+      throw error
+    }
+
+    const isAdmin = requestingUser.role === 'admin'
+    const isOwner =
+      booking.user?._id?.toString() === requestingUser._id?.toString() ||
+      booking.user?.toString() === requestingUser._id?.toString()
+
+    if (!isAdmin && !isOwner) {
+      const error = new Error('You are not authorized to preview cancellation for this booking.')
+      error.statusCode = 403
+      error.code = 'FORBIDDEN'
+      throw error
+    }
+
+    const settings = await BusinessSettings.getSettings()
+    const refundDetails = calculateRefundDetails({ booking, settings })
+
+    return {
+      booking: {
+        _id: booking._id,
+        bookingId: booking.bookingId,
+        turf: booking.turf,
+        sport: booking.sport,
+        date: booking.date,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        selectedSlots: booking.selectedSlots,
+        totalAmount: booking.totalAmount,
+        amountPaid: booking.amountPaid,
+        paymentMethod: booking.paymentMethod,
+        paymentStatus: booking.paymentStatus,
+        status: booking.status,
+        refundStatus: booking.refundStatus,
+      },
+      calculation: refundDetails,
+    }
+  },
+
+  /**
+   * Admin Retry of Failed Stripe Refund
+   * Safely retries Stripe refund processing with idempotency key
+   */
+  async retryRefund(id, adminUser, ip = '') {
+    const booking = await Booking.findById(id)
+    if (!booking) {
+      const error = new Error('Booking not found.')
+      error.statusCode = 404
+      error.code = 'BOOKING_NOT_FOUND'
+      throw error
+    }
+
+    if (booking.status !== 'cancelled') {
+      const error = new Error('Only cancelled bookings can have refunds processed.')
+      error.statusCode = 400
+      error.code = 'BOOKING_NOT_CANCELLED'
+      throw error
+    }
+
+    if (booking.paymentMethod !== 'stripe') {
+      const error = new Error('Only Stripe online payments can be refunded via Stripe.')
+      error.statusCode = 400
+      error.code = 'NOT_STRIPE_PAYMENT'
+      throw error
+    }
+
+    if (booking.refundStatus === 'succeeded') {
+      const error = new Error('This booking has already been successfully refunded.')
+      error.statusCode = 400
+      error.code = 'REFUND_ALREADY_SUCCEEDED'
+      throw error
+    }
+
+    const settings = await BusinessSettings.getSettings()
+    const refundDetails = calculateRefundDetails({ booking, settings })
+
+    const refundAmountToRetry =
+      refundDetails.eligibleRefundAmount > 0
+        ? refundDetails.eligibleRefundAmount
+        : Math.round((booking.amountPaid || 0) * ((booking.refundPercentage || 100) / 100))
+
+    if (refundAmountToRetry <= 0) {
+      const error = new Error('Eligible refund amount for this booking is zero.')
+      error.statusCode = 400
+      error.code = 'ZERO_REFUND_AMOUNT'
+      throw error
+    }
+
+    const retryIdempotencyKey = `retry_refund_${booking._id}_${Date.now()}`
+    const stripe = await getStripeService()
+    const result = await stripe.processStripeRefund({
+      booking,
+      refundAmountPaise: refundAmountToRetry,
+      requestingUser: adminUser,
+      reason: 'Admin retry of failed refund',
+      idempotencyKey: retryIdempotencyKey,
+    })
+
+    await logAudit({
+      actorId: adminUser._id,
+      action: 'REFUND_RETRIED',
+      entityType: 'Booking',
+      entityId: booking._id,
+      details: {
+        bookingId: booking.bookingId,
+        refundStatus: booking.refundStatus,
+        refundAmount: booking.refundAmount,
+        success: result.success,
       },
       ip,
     })
@@ -920,6 +1261,7 @@ export const bookingService = {
     limit = 20,
     status = '',
     paymentStatus = '',
+    refundStatus = '',
     turf = '',
     date = '',
     startDate = '',
@@ -928,6 +1270,7 @@ export const bookingService = {
     sortBy = 'createdAt',
     sortOrder = 'desc',
   } = {}) {
+    await this.reconcileOverdueBookings().catch(() => {})
     const query = {}
 
     if (status) {
@@ -936,6 +1279,10 @@ export const bookingService = {
 
     if (paymentStatus) {
       query.paymentStatus = paymentStatus.toLowerCase()
+    }
+
+    if (refundStatus) {
+      query.refundStatus = refundStatus.toLowerCase()
     }
 
     if (turf && mongoose.Types.ObjectId.isValid(turf)) {
@@ -1046,31 +1393,235 @@ export const bookingService = {
       }
     }
 
+    // Auto-complete if confirmed and scheduled end time in venue timezone has passed
+    if (booking.status === 'confirmed') {
+      const tz = booking.turf?.timezone || DEFAULT_TIMEZONE
+      const { endMs } = getBookingTimestamps(booking, tz)
+      if (Date.now() >= endMs) {
+        await Booking.updateOne({ _id: booking._id, status: 'confirmed' }, { $set: { status: 'completed' } })
+        booking.status = 'completed'
+      }
+    }
+
     return booking
   },
 
   /**
-   * Get customer's booking history with pagination & optional status filter
+   * Helper to determine whether a booking is eligible for customer self-service cancellation
    */
-  async getUserBookings(userId, { page = 1, limit = 10, status = '' } = {}) {
-    const query = { user: userId }
-    if (status) {
-      query.status = status.toLowerCase()
+  isBookingCancellableByCustomer(booking, settings) {
+    if (!booking) return false
+    if (booking.status !== 'confirmed' && booking.status !== 'pending') {
+      return false
+    }
+
+    const policy = settings?.cancellationPolicy || {
+      enabled: true,
+      cutoffHours: settings?.bookingRules?.cancellationCutoffHours ?? 4,
+      allowCancellationWithinCutoff: false,
+    }
+
+    if (policy.enabled === false) return false
+
+    const tz = booking.turf?.timezone || settings?.timezone || DEFAULT_TIMEZONE
+    const slotStartTimeMs = getSlotTimestamp(booking.date, booking.startTime, tz)
+    const nowMs = Date.now()
+    const hoursRemaining = (slotStartTimeMs - nowMs) / (1000 * 60 * 60)
+    const cutoffHours = policy.cutoffHours ?? settings?.bookingRules?.cancellationCutoffHours ?? 4
+
+    return hoursRemaining >= cutoffHours || Boolean(policy.allowCancellationWithinCutoff)
+  },
+
+  /**
+   * Reconcile overdue confirmed bookings into completed bookings,
+   * expire stale unconfirmed pending bookings, and release unconfirmed holds.
+   * Idempotent and concurrency-safe under simultaneous requests.
+   */
+  async reconcileOverdueBookings({ userId, turfId } = {}) {
+    try {
+      const settings = await BusinessSettings.getSettings()
+      const defaultTimezone = settings?.timezone || DEFAULT_TIMEZONE
+      const todayStr = getBusinessToday(defaultTimezone)
+      const nowMs = Date.now()
+
+      // 1. Reconcile confirmed bookings whose end time has passed
+      const confirmedQuery = {
+        status: 'confirmed',
+        date: { $lte: todayStr },
+      }
+      if (userId) confirmedQuery.user = userId
+      if (turfId) confirmedQuery.turf = turfId
+
+      const overdueConfirmedCandidates = await Booking.find(confirmedQuery)
+        .populate('turf', 'timezone')
+        .select('_id date startTime endTime durationMinutes turf status')
+
+      const completedIds = []
+      for (const booking of overdueConfirmedCandidates) {
+        const tz = booking.turf?.timezone || defaultTimezone
+        const { endMs } = getBookingTimestamps(booking, tz)
+        if (nowMs >= endMs) {
+          completedIds.push(booking._id)
+        }
+      }
+
+      if (completedIds.length > 0) {
+        // Atomic & Idempotent: strictly matches status: 'confirmed'
+        // Never overwrites cancelled or already completed bookings
+        await Booking.updateMany(
+          { _id: { $in: completedIds }, status: 'confirmed' },
+          { $set: { status: 'completed' } }
+        )
+      }
+
+      // 2. Expire unconfirmed pending bookings that exceeded payment window
+      const pendingQuery = {
+        status: 'pending',
+        paymentExpiresAt: { $ne: null, $lte: new Date(nowMs) },
+      }
+      if (userId) pendingQuery.user = userId
+      if (turfId) pendingQuery.turf = turfId
+
+      const expiredPending = await Booking.find(pendingQuery).select('_id turf date')
+      if (expiredPending.length > 0) {
+        const expiredIds = expiredPending.map((b) => b._id)
+        await Booking.updateMany(
+          { _id: { $in: expiredIds }, status: 'pending' },
+          {
+            $set: {
+              status: 'expired',
+              paymentStatus: 'failed',
+              paymentFailureReason: 'Payment session expired',
+            },
+          }
+        )
+        await SlotReservation.updateMany(
+          { booking: { $in: expiredIds } },
+          { $set: { status: 'released' } }
+        )
+        for (const b of expiredPending) {
+          broadcastAvailabilityUpdate({
+            turfId: b.turf,
+            date: b.date,
+            reason: 'hold_expired',
+          })
+        }
+      }
+
+      // 3. Expire stale temporary reservations and held slots
+      await reservationService.expireStaleReservations(turfId, todayStr).catch(() => {})
+    } catch (err) {
+      logger.error({ error: err.message }, 'Failed during booking reconciliation')
+    }
+  },
+
+  /**
+   * Get customer's booking history with smart customer-friendly filters,
+   * live counts, calendar date filtering, timezone awareness, automatic completion reconciliation, and pagination.
+   */
+  async getUserBookings(userId, { page = 1, limit = 10, status = '', filter = '', date = '' } = {}) {
+    // 1. Reconcile overdue bookings first for this customer
+    await this.reconcileOverdueBookings({ userId })
+
+    const settings = await BusinessSettings.getSettings()
+    const timezone = settings?.timezone || DEFAULT_TIMEZONE
+    const businessToday = getBusinessToday(timezone)
+    const businessCurrentTime = getBusinessCurrentTime(timezone)
+
+    const activeFilter = (filter || status || 'all').toLowerCase()
+
+    // 2. Compute live counts for all filter tabs in parallel
+    const [allCount, upcomingCount, todayCount, pastCount, cancelledCount] = await Promise.all([
+      Booking.countDocuments({ user: userId }),
+      Booking.countDocuments({
+        user: userId,
+        status: 'confirmed',
+        $or: [
+          { date: { $gt: businessToday } },
+          { date: businessToday, endTime: { $gt: businessCurrentTime } },
+        ],
+      }),
+      Booking.countDocuments({ user: userId, date: businessToday }),
+      Booking.countDocuments({ user: userId, status: 'completed' }),
+      Booking.countDocuments({ user: userId, status: 'cancelled' }),
+    ])
+
+    // 3. Build query and sort based on activeFilter and optional date
+    let query = { user: userId }
+    let sortObj = { createdAt: -1 }
+
+    if (date) {
+      query.date = date
+      if (activeFilter === 'upcoming') {
+        query.status = 'confirmed'
+      } else if (activeFilter === 'past' || activeFilter === 'completed') {
+        query.status = 'completed'
+      } else if (activeFilter === 'cancelled') {
+        query.status = 'cancelled'
+      }
+      sortObj = { startTime: 1 }
+    } else if (activeFilter === 'upcoming') {
+      query = {
+        user: userId,
+        status: 'confirmed',
+        $or: [
+          { date: { $gt: businessToday } },
+          { date: businessToday, endTime: { $gt: businessCurrentTime } },
+        ],
+      }
+      sortObj = { date: 1, startTime: 1 }
+    } else if (activeFilter === 'today') {
+      query = {
+        user: userId,
+        date: businessToday,
+      }
+      sortObj = { startTime: 1 }
+    } else if (activeFilter === 'past') {
+      query = {
+        user: userId,
+        status: 'completed',
+      }
+      sortObj = { date: -1, endTime: -1, createdAt: -1 }
+    } else if (activeFilter === 'cancelled') {
+      query = {
+        user: userId,
+        status: 'cancelled',
+      }
+      sortObj = { cancelledAt: -1, updatedAt: -1 }
+    } else if (activeFilter === 'confirmed') {
+      // Legacy backward compatibility
+      query = { user: userId, status: 'confirmed' }
+      sortObj = { createdAt: -1 }
+    } else if (activeFilter === 'completed') {
+      // Legacy backward compatibility
+      query = { user: userId, status: 'completed' }
+      sortObj = { date: -1, endTime: -1 }
+    } else {
+      // 'all'
+      query = { user: userId }
+      sortObj = { createdAt: -1 }
     }
 
     const pageNum = Math.max(1, Number(page) || 1)
     const limitNum = Math.max(1, Math.min(50, Number(limit) || 10))
     const skip = (pageNum - 1) * limitNum
 
-    const [bookings, total] = await Promise.all([
+    const [rawBookings, total] = await Promise.all([
       Booking.find(query)
-        .populate('turf', 'name slug address images')
+        .populate('turf', 'name slug address images facilities timezone openingHours')
         .populate('sport', 'name slug')
-        .sort({ createdAt: -1 })
+        .sort(sortObj)
         .skip(skip)
         .limit(limitNum),
       Booking.countDocuments(query),
     ])
+
+    // Compute contextual properties such as canCancel for each booking
+    const bookings = rawBookings.map((b) => {
+      const bObj = b.toObject ? b.toObject() : { ...b }
+      bObj.canCancel = this.isBookingCancellableByCustomer(bObj, settings)
+      return bObj
+    })
 
     return {
       bookings,
@@ -1079,6 +1630,13 @@ export const bookingService = {
         limit: limitNum,
         total,
         totalPages: Math.ceil(total / limitNum) || 1,
+      },
+      counts: {
+        all: allCount,
+        upcoming: upcomingCount,
+        today: todayCount,
+        past: pastCount,
+        cancelled: cancelledCount,
       },
     }
   },
@@ -1094,6 +1652,7 @@ export const bookingService = {
    * 6. Booking status breakdown.
    */
   async getDashboardMetrics() {
+    await this.reconcileOverdueBookings().catch(() => {})
     const settings = await BusinessSettings.getSettings()
     const timezone = settings?.timezone || 'Asia/Kolkata'
 

@@ -104,6 +104,31 @@ export const cancelBooking = async (req, res, next) => {
   }
 }
 
+export const retryRefund = async (req, res, next) => {
+  try {
+    const booking = await bookingService.retryRefund(req.params.id, req.user, req.ip)
+    res.status(200).json({
+      success: true,
+      message: 'Refund retry submitted successfully.',
+      data: { booking },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getAdminCancellationPreview = async (req, res, next) => {
+  try {
+    const data = await bookingService.getCancellationPreview(req.params.id, req.user)
+    res.status(200).json({
+      success: true,
+      data,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 // ==========================================
 // BLOCKED SLOTS CONTROLLERS
 // ==========================================

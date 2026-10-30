@@ -16,6 +16,7 @@ import {
 import customerBookingService from '../../services/customer/booking.service'
 import { useBookingReservation } from '../../context/BookingReservationContext'
 import { useAuth } from '../../hooks/useAuth'
+import { getTodayDateString, getCurrentTimeString } from '../../lib/dateUtils'
 
 /**
  * World-Class Sports Turf Availability Calendar Component
@@ -35,8 +36,6 @@ export const AvailabilityCalendar = ({
   onSlotSelect,
   onDateChange,
 }) => {
-  const todayStr = new Date().toISOString().split('T')[0]
-  const [currentDate, setCurrentDate] = useState(initialDate || todayStr)
   const { isAuthenticated, user } = useAuth()
   const {
     currentReservation,
@@ -50,11 +49,16 @@ export const AvailabilityCalendar = ({
     subscribeToTurfDate,
   } = useBookingReservation()
 
+  // Initial calculation in venue timezone (Asia/Kolkata default)
+  const initialTimezone = 'Asia/Kolkata'
+  const todayStr = getTodayDateString(initialTimezone)
+  const [currentDate, setCurrentDate] = useState(() => (initialDate && initialDate >= todayStr ? initialDate : todayStr))
+
   // Track array of selected slot start times and the specific date they belong to
   const [selectedSlotDate, setSelectedSlotDate] = useState(() => {
-    if (selectedSlot?.date) return selectedSlot.date
-    if (currentReservation?.turfId === turfId) return currentReservation.date
-    return initialDate || todayStr
+    if (selectedSlot?.date && selectedSlot.date >= todayStr) return selectedSlot.date
+    if (currentReservation?.turfId === turfId && currentReservation.date >= todayStr) return currentReservation.date
+    return initialDate && initialDate >= todayStr ? initialDate : todayStr
   })
 
   const [selectedSlotTimes, setSelectedSlotTimes] = useState(() => {
@@ -78,11 +82,23 @@ export const AvailabilityCalendar = ({
   // Synchronize internal currentDate if initialDate prop changes from parent
   useEffect(() => {
     if (initialDate && initialDate !== currentDate) {
-      setCurrentDate(initialDate)
-      setSelectedSlotDate(initialDate)
+      const validTarget = initialDate >= todayStr ? initialDate : todayStr
+      setCurrentDate(validTarget)
+      setSelectedSlotDate(validTarget)
       setSelectedSlotTimes([])
     }
-  }, [initialDate])
+  }, [initialDate, currentDate, todayStr])
+
+  // Auto-advance currentDate if day changes after midnight
+  useEffect(() => {
+    if (currentDate && currentDate < todayStr) {
+      setCurrentDate(todayStr)
+      setSelectedSlotDate(todayStr)
+      setSelectedSlotTimes([])
+      if (onDateChange) onDateChange(todayStr)
+      if (onSlotSelect) onSlotSelect(null)
+    }
+  }, [todayStr, currentDate, onDateChange, onSlotSelect])
 
   // Query Availability from backend API
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -190,6 +206,9 @@ export const AvailabilityCalendar = ({
   }, [selectedSlot, propSelectedSlots, currentDate, currentReservation])
 
   const handleDateChange = (newDate) => {
+    if (!newDate) return
+    // Prevent navigating to past dates
+    if (newDate < todayStr) return
     setCurrentDate(newDate)
     setSelectedSlotTimes([])
     setSelectedSlotDate(newDate)
@@ -334,29 +353,10 @@ export const AvailabilityCalendar = ({
   }
 
   const getCurrentArenaTime = () => {
-    try {
-      const now = new Date()
-      const tz = timezone || 'Asia/Kolkata'
-      const timeStr = new Intl.DateTimeFormat('en-GB', {
-        timeZone: tz,
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      }).format(now)
-
-      const dateStr = new Intl.DateTimeFormat('en-CA', {
-        timeZone: tz,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(now)
-
-      return { currentTime: timeStr, todayDate: dateStr }
-    } catch {
-      const now = new Date()
-      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-      const dateStr = now.toISOString().split('T')[0]
-      return { currentTime: timeStr, todayDate: dateStr }
+    const tz = timezone || 'Asia/Kolkata'
+    return {
+      currentTime: getCurrentTimeString(tz),
+      todayDate: getTodayDateString(tz),
     }
   }
 

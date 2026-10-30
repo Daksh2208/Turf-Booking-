@@ -42,12 +42,21 @@ import { Modal } from '../../components/common/Modal'
 import { Button } from '../../components/common/Button'
 import { useBookingReservation } from '../../context/BookingReservationContext'
 
-// Helper: Get today's YYYY-MM-DD
+// Helper: Get today's YYYY-MM-DD in Asia/Kolkata timezone
 function getLocalDateString(date = new Date()) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date)
+  } catch {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
 }
 
 // Helper: Format YYYY-MM-DD to human readable string

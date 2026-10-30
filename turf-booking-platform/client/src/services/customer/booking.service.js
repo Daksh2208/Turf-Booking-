@@ -43,11 +43,11 @@ export const customerBookingService = {
   },
 
   /**
-   * Fetch current authenticated customer's bookings with pagination
+   * Fetch current authenticated customer's bookings with pagination, smart filters and optional calendar date
    */
-  async getMyBookings({ page = 1, limit = 10, status = '' } = {}) {
+  async getMyBookings({ page = 1, limit = 10, status = '', filter = '', date = '' } = {}) {
     const response = await apiClient.get('/bookings/my', {
-      params: { page, limit, status },
+      params: { page, limit, status, filter: filter || status, date: date || undefined },
     })
     return response.data?.data
   },
@@ -118,6 +118,14 @@ export const customerBookingService = {
   async cancelBooking(id, payload = {}) {
     const response = await apiClient.post(`/bookings/${id}/cancel`, payload)
     return response.data?.data?.booking
+  },
+
+  /**
+   * Get cancellation and estimated refund preview for booking
+   */
+  async getCancellationPreview(id) {
+    const response = await apiClient.get(`/bookings/${id}/cancellation-preview`)
+    return response.data?.data
   },
 }
 

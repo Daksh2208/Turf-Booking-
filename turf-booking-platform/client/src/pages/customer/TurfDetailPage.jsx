@@ -23,6 +23,7 @@ import customerBookingService from '../../services/customer/booking.service'
 import { AvailabilityCalendar } from '../../components/customer/AvailabilityCalendar'
 import { useAuth } from '../../hooks/useAuth'
 import { useBookingReservation } from '../../context/BookingReservationContext'
+import { getTodayDateString, formatDateDisplay } from '../../lib/dateUtils'
 
 export const TurfDetailPage = () => {
   const { slug } = useParams()
@@ -31,33 +32,6 @@ export const TurfDetailPage = () => {
   const { isAuthenticated, user } = useAuth()
   const { currentReservation, countdownSeconds } = useBookingReservation()
 
-  const todayStr = new Date().toISOString().split('T')[0]
-  const [selectedDate, setSelectedDate] = useState(todayStr)
-  const [selectedSlot, setSelectedSlot] = useState(null)
-  const [selectedAddOns, setSelectedAddOns] = useState([])
-  const [playerCount, setPlayerCount] = useState(10)
-  const [activeImageIdx, setActiveImageIdx] = useState(0)
-
-  const [isFav, setIsFav] = useState(false)
-  const [isTogglingFav, setIsTogglingFav] = useState(false)
-
-  const formatDateDisplay = (dateString) => {
-    if (!dateString) return ''
-    try {
-      const [y, m, d] = dateString.split('-').map(Number)
-      const dObj = new Date(y, m - 1, d)
-      return dObj.toLocaleDateString('en-GB', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      })
-    } catch {
-      return dateString
-    }
-  }
-
-  // 1. Fetch Turf Details by Slug or ID
   const {
     data: turf,
     isLoading: turfLoading,
@@ -69,6 +43,25 @@ export const TurfDetailPage = () => {
     enabled: !!slug,
     refetchInterval: 5000,
   })
+
+  const arenaTimezone = turf?.timezone || 'Asia/Kolkata'
+  const todayStr = getTodayDateString(arenaTimezone)
+  const [selectedDate, setSelectedDate] = useState(() => getTodayDateString('Asia/Kolkata'))
+  const [selectedSlot, setSelectedSlot] = useState(null)
+  const [selectedAddOns, setSelectedAddOns] = useState([])
+  const [playerCount, setPlayerCount] = useState(10)
+  const [activeImageIdx, setActiveImageIdx] = useState(0)
+
+  const [isFav, setIsFav] = useState(false)
+  const [isTogglingFav, setIsTogglingFav] = useState(false)
+
+  // Auto-advance selectedDate when midnight passes or if state was set to a past date
+  useEffect(() => {
+    if (selectedDate && selectedDate < todayStr) {
+      setSelectedDate(todayStr)
+      setSelectedSlot(null)
+    }
+  }, [todayStr, selectedDate])
 
   // Set default player count based on turf capacity when turf data loads
   useEffect(() => {

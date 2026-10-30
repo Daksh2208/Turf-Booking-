@@ -37,6 +37,7 @@ export const BookingsPage = () => {
   const queryClient = useQueryClient()
   const [selectedStatus, setSelectedStatus] = useState('')
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('')
+  const [selectedRefundStatus, setSelectedRefundStatus] = useState('')
   const [selectedTurf, setSelectedTurf] = useState('')
   const [search, setSearch] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -74,6 +75,7 @@ export const BookingsPage = () => {
       {
         status: selectedStatus,
         paymentStatus: selectedPaymentStatus,
+        refundStatus: selectedRefundStatus,
         turf: selectedTurf,
         search,
         startDate,
@@ -85,6 +87,7 @@ export const BookingsPage = () => {
       adminInventoryService.getBookings({
         status: selectedStatus,
         paymentStatus: selectedPaymentStatus,
+        refundStatus: selectedRefundStatus,
         turf: selectedTurf,
         search,
         startDate,
@@ -127,6 +130,25 @@ export const BookingsPage = () => {
     },
     onError: (err) => {
       setServerError(err.response?.data?.message || 'Failed to record payment.')
+    },
+  })
+
+  // Retry Stripe refund mutation
+  const retryRefundMutation = useMutation({
+    mutationFn: (id) => adminInventoryService.retryRefund(id),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ['adminBookings'] })
+      queryClient.invalidateQueries({ queryKey: ['adminDashboard'] })
+      if (selectedBooking && selectedBooking._id === updated._id) {
+        setSelectedBooking(updated)
+      }
+      setSuccessToast(
+        `Stripe refund retry submitted for booking ${updated.bookingId}. Status: ${updated.refundStatus}.`
+      )
+      setTimeout(() => setSuccessToast(null), 5000)
+    },
+    onError: (err) => {
+      setServerError(err.response?.data?.message || 'Failed to retry Stripe refund.')
     },
   })
 
@@ -228,6 +250,53 @@ export const BookingsPage = () => {
             Unpaid
           </span>
         )
+    }
+  }
+
+  const getRefundStatusBadge = (refundStatus, refundAmount) => {
+    switch (refundStatus) {
+      case 'succeeded':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]">
+            <Check className="w-2.5 h-2.5" />
+            Refunded {refundAmount ? `₹${(refundAmount / 100).toFixed(2)}` : ''}
+          </span>
+        )
+      case 'partially_refunded':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#F3E8FF] text-[#6B21A8] border border-[#E9D5FF]">
+            Partial {refundAmount ? `₹${(refundAmount / 100).toFixed(2)}` : ''}
+          </span>
+        )
+      case 'pending':
+      case 'processing':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#FDF4E7] text-[#79420D] border border-[#F8E3C5]">
+            <RefreshCw className="w-2.5 h-2.5 animate-spin text-[#79420D]" />
+            Processing
+          </span>
+        )
+      case 'failed':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#FDF0EF] text-[#922B27] border border-[#F5C2BF]">
+            <AlertCircle className="w-2.5 h-2.5 text-[#922B27]" />
+            Refund Failed
+          </span>
+        )
+      case 'not_required':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold text-[#526258] bg-[#F0F2F0] border border-[#E2E8E3]">
+            No Refund Due
+          </span>
+        )
+      case 'not_applicable':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold text-[#526258] bg-[#F0F2F0] border border-[#E2E8E3]">
+            N/A
+          </span>
+        )
+      default:
+        return null
     }
   }
 
@@ -350,6 +419,25 @@ export const BookingsPage = () => {
           </select>
         </div>
 
+        {/* Refund Status Filter */}
+        <div>
+          <select
+            value={selectedRefundStatus}
+            onChange={(e) => {
+              setSelectedRefundStatus(e.target.value)
+              setPage(1)
+            }}
+            className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#D7E0D9] text-xs text-[#17231B] focus:outline-none focus:border-[#267A45] cursor-pointer"
+          >
+            <option value="">All Refund States</option>
+            <option value="succeeded">Refund Succeeded</option>
+            <option value="partially_refunded">Partially Refunded</option>
+            <option value="pending">Refund Pending / Processing</option>
+            <option value="failed">Refund Failed (Needs Retry)</option>
+            <option value="not_required">No Refund Due</option>
+          </select>
+        </div>
+
         {/* Date Filter Range */}
         <div className="flex items-center gap-1.5">
           <input
@@ -438,7 +526,10 @@ export const BookingsPage = () => {
                       </td>
                       <td className="px-4 py-3.5 whitespace-nowrap">
                         <div className="space-y-1">
-                          <div>{getPaymentBadge(b.paymentStatus)}</div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {getPaymentBadge(b.paymentStatus)}
+                            {b.status === 'cancelled' && getRefundStatusBadge(b.refundStatus, b.refundAmount)}
+                          </div>
                           <span className="text-[10px] text-[#526258] block capitalize">
                             {b.paymentMethod === 'stripe' ? 'Stripe Online' : (b.paymentMethod?.replace(/_/g, ' ') || 'Pay at Venue')}
                           </span>
@@ -478,6 +569,23 @@ export const BookingsPage = () => {
                           >
                             <Banknote className="w-3.5 h-3.5 inline mr-1" />
                             Record Pay
+                          </button>
+                        )}
+
+                        {b.refundStatus === 'failed' && (
+                          <button
+                            type="button"
+                            onClick={() => retryRefundMutation.mutate(b._id)}
+                            disabled={retryRefundMutation.isPending}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#922B27] hover:text-[#7A1E1A] bg-[#FDF0EF] hover:bg-[#F8D2CE] border border-[#F8D2CE] transition-colors cursor-pointer"
+                            title="Retry failed Stripe refund"
+                          >
+                            <RefreshCw
+                              className={`w-3.5 h-3.5 inline mr-1 ${
+                                retryRefundMutation.isPending ? 'animate-spin' : ''
+                              }`}
+                            />
+                            Retry Refund
                           </button>
                         )}
 
@@ -691,9 +799,79 @@ export const BookingsPage = () => {
               </div>
             </div>
 
-            {selectedBooking.cancellationReason && (
-              <div className="p-3 rounded-xl bg-[#FDF0EF] border border-[#F5C2BF] text-[#922B27] text-xs">
-                <strong>Cancellation Reason:</strong> {selectedBooking.cancellationReason}
+            {/* Cancellation & Refund Management Section */}
+            {(selectedBooking.status === 'cancelled' || selectedBooking.refundStatus !== 'not_applicable') && (
+              <div className="p-3.5 rounded-xl bg-[#FDF0EF] border border-[#F8D2CE] space-y-2.5">
+                <div className="flex items-center justify-between border-b border-[#F5C2BF] pb-1.5">
+                  <span className="font-bold text-[#922B27] flex items-center gap-1.5 text-xs">
+                    <XCircle className="w-3.5 h-3.5" />
+                    Cancellation & Refund Summary
+                  </span>
+                  <div>{getRefundStatusBadge(selectedBooking.refundStatus, selectedBooking.refundAmount)}</div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-[#17231B]">
+                  <div>
+                    <span className="text-[#647168] block">Cancelled By:</span>
+                    <span className="font-semibold capitalize">
+                      {selectedBooking.cancelledBy?.role || 'System'}
+                      {selectedBooking.cancelledBy?.user?.name ? ` (${selectedBooking.cancelledBy.user.name})` : ''}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[#647168] block">Cancelled At:</span>
+                    <span className="font-semibold">{formatDate(selectedBooking.cancelledAt)}</span>
+                  </div>
+                  <div>
+                    <span className="text-[#647168] block">Policy Refund Rate:</span>
+                    <span className="font-semibold">{selectedBooking.refundPercentage ?? 0}%</span>
+                  </div>
+                  <div>
+                    <span className="text-[#647168] block">Actual Refunded:</span>
+                    <span className="font-mono font-bold text-[#1D6537]">
+                      ₹{((selectedBooking.refundAmount || 0) / 100).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                {selectedBooking.cancellationReason && (
+                  <div className="text-[11px] pt-1">
+                    <strong className="text-[#922B27]">Reason:</strong>{' '}
+                    <span className="text-[#17231B]">{selectedBooking.cancellationReason}</span>
+                  </div>
+                )}
+
+                {selectedBooking.stripeRefundId && (
+                  <div className="text-[11px] pt-1 border-t border-[#F8D2CE]">
+                    <span className="text-[#647168]">Stripe Refund Reference:</span>{' '}
+                    <span className="font-mono font-semibold text-[#17231B]">{selectedBooking.stripeRefundId}</span>
+                  </div>
+                )}
+
+                {selectedBooking.refundFailureReason && (
+                  <div className="p-2 rounded-lg bg-white border border-[#F5C2BF] text-[11px] text-[#922B27] flex items-start gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#922B27]" />
+                    <div>
+                      <strong>Failure Details:</strong> {selectedBooking.refundFailureReason}
+                    </div>
+                  </div>
+                )}
+
+                {selectedBooking.refundStatus === 'failed' && (
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => retryRefundMutation.mutate(selectedBooking._id)}
+                      disabled={retryRefundMutation.isPending}
+                      className="px-3 py-1.5 rounded-xl bg-[#922B27] hover:bg-[#7A1E1A] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <RefreshCw
+                        className={`w-3.5 h-3.5 ${retryRefundMutation.isPending ? 'animate-spin' : ''}`}
+                      />
+                      <span>Retry Stripe Refund</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

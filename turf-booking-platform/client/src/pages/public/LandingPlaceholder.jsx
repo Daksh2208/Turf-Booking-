@@ -24,13 +24,14 @@ import customerBookingService from '../../services/customer/booking.service'
 import { AvailabilityCalendar } from '../../components/customer/AvailabilityCalendar'
 import { Modal } from '../../components/common/Modal'
 import { Button } from '../../components/common/Button'
+import { getTodayDateString } from '../../lib/dateUtils'
 
 export const LandingPlaceholder = () => {
   const { user, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = getTodayDateString('Asia/Kolkata')
   const [selectedTurfId, setSelectedTurfId] = useState('')
   const [selectedDate, setSelectedDate] = useState(todayStr)
   const [bookingModalSlot, setBookingModalSlot] = useState(null)

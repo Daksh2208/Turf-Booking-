@@ -7,6 +7,8 @@ import {
   updateBookingStatus,
   recordPayment,
   cancelBooking,
+  retryRefund,
+  getAdminCancellationPreview,
   createBlockedSlot,
   getAdminBlockedSlots,
   updateBlockedSlot,
@@ -23,11 +25,13 @@ router.get('/dashboard', getDashboardMetrics)
 
 // Bookings
 router.get('/bookings', getAdminBookings)
+router.get('/bookings/:id/cancellation-preview', getAdminCancellationPreview)
 router.get('/bookings/:id', getBookingDetails)
 router.patch('/bookings/:id/status', updateBookingStatus)
 router.post('/bookings/:id/payment', recordPayment)
 router.patch('/bookings/:id/payment', recordPayment)
 router.post('/bookings/:id/cancel', cancelBooking)
+router.post('/bookings/:id/refund/retry', retryRefund)
 
 // Blocked Slots (maintenance & tournament)
 router.get('/blocked-slots', getAdminBlockedSlots)

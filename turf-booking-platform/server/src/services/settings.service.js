@@ -28,6 +28,17 @@ export const settingsService = {
         maxAdvanceBookingDays: settings.bookingRules.maxAdvanceBookingDays,
         cancellationCutoffHours: settings.bookingRules.cancellationCutoffHours,
       },
+      cancellationPolicy: {
+        enabled: settings.cancellationPolicy?.enabled ?? true,
+        cutoffHours: settings.cancellationPolicy?.cutoffHours ?? settings.bookingRules?.cancellationCutoffHours ?? 4,
+        allowCancellationWithinCutoff: settings.cancellationPolicy?.allowCancellationWithinCutoff ?? false,
+        tiers: settings.cancellationPolicy?.tiers ?? [
+          { hoursBefore: 24, refundPercentage: 100 },
+          { hoursBefore: 12, refundPercentage: 50 },
+          { hoursBefore: 4, refundPercentage: 0 },
+        ],
+        defaultRefundPercentage: settings.cancellationPolicy?.defaultRefundPercentage ?? 0,
+      },
       taxSettings: {
         taxEnabled: settings.taxSettings.taxEnabled,
         taxName: settings.taxSettings.taxName,
@@ -71,7 +82,47 @@ export const settingsService = {
         settings.bookingRules.maxAdvanceBookingDays = Number(data.bookingRules.maxAdvanceBookingDays)
       }
       if (data.bookingRules.cancellationCutoffHours !== undefined) {
-        settings.bookingRules.cancellationCutoffHours = Number(data.bookingRules.cancellationCutoffHours)
+        const cutoff = Number(data.bookingRules.cancellationCutoffHours)
+        settings.bookingRules.cancellationCutoffHours = cutoff
+        if (settings.cancellationPolicy) {
+          settings.cancellationPolicy.cutoffHours = cutoff
+        }
+      }
+    }
+
+    if (data.cancellationPolicy) {
+      if (!settings.cancellationPolicy) {
+        settings.cancellationPolicy = {}
+      }
+      if (data.cancellationPolicy.enabled !== undefined) {
+        settings.cancellationPolicy.enabled = Boolean(data.cancellationPolicy.enabled)
+      }
+      if (data.cancellationPolicy.cutoffHours !== undefined) {
+        const cutoff = Math.max(0, Number(data.cancellationPolicy.cutoffHours))
+        settings.cancellationPolicy.cutoffHours = cutoff
+        settings.bookingRules.cancellationCutoffHours = cutoff
+      }
+      if (data.cancellationPolicy.allowCancellationWithinCutoff !== undefined) {
+        settings.cancellationPolicy.allowCancellationWithinCutoff = Boolean(
+          data.cancellationPolicy.allowCancellationWithinCutoff
+        )
+      }
+      if (Array.isArray(data.cancellationPolicy.tiers)) {
+        // Validate each tier
+        const validatedTiers = data.cancellationPolicy.tiers
+          .filter((t) => t && typeof t.hoursBefore === 'number' && typeof t.refundPercentage === 'number')
+          .map((t) => ({
+            hoursBefore: Math.max(0, Number(t.hoursBefore)),
+            refundPercentage: Math.min(100, Math.max(0, Number(t.refundPercentage))),
+          }))
+          .sort((a, b) => b.hoursBefore - a.hoursBefore)
+        settings.cancellationPolicy.tiers = validatedTiers
+      }
+      if (data.cancellationPolicy.defaultRefundPercentage !== undefined) {
+        settings.cancellationPolicy.defaultRefundPercentage = Math.min(
+          100,
+          Math.max(0, Number(data.cancellationPolicy.defaultRefundPercentage))
+        )
       }
     }
 

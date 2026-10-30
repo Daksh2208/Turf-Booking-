@@ -298,13 +298,14 @@ describe('Part 10 Frontend: Checkout, Booking Confirmation & My Bookings', () =>
     })
 
     // Filter tabs exist
-    expect(screen.getByRole('button', { name: 'All Bookings' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Confirmed' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Completed' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Cancelled' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^All/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Upcoming/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Today/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Past/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Cancelled/i })).toBeInTheDocument()
 
     // Test clicking a filter tab
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelled' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cancelled/i }))
     await waitFor(() => {
       expect(customerBookingService.getMyBookings).toHaveBeenCalledWith(
         expect.objectContaining({

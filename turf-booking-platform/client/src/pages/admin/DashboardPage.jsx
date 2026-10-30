@@ -20,6 +20,7 @@ import {
   Eye,
 } from 'lucide-react'
 import adminInventoryService from '../../services/admin/inventory.service'
+import { getTodayDateString } from '../../lib/dateUtils'
 
 /**
  * Format raw paise into Indian Rupees with .00 decimals
@@ -56,7 +57,7 @@ export const DashboardPage = () => {
   }
 
   const timezone = data?.timezone || 'Asia/Kolkata'
-  const todayDate = data?.today || new Date().toISOString().slice(0, 10)
+  const todayDate = data?.today || getTodayDateString(timezone)
   const todaySchedule = data?.todaySchedule || []
   const recentBookings = data?.recentBookings || []
 

@@ -432,6 +432,20 @@ export const stripeService = {
           if (bookingId) {
             const booking = await Booking.findById(bookingId)
             if (booking && booking.paymentStatus !== 'paid') {
+              // If booking was already cancelled, do not revive it as confirmed!
+              if (booking.status === 'cancelled') {
+                booking.paymentStatus = 'paid'
+                booking.amountPaid = session.amount_total
+                booking.amountDue = 0
+                booking.paidAt = new Date()
+                booking.stripePaymentIntentId = session.payment_intent
+                booking.paymentNotes =
+                  booking.paymentNotes ||
+                  'Payment received after slot release; slot reallocated to another customer. Requires refund.'
+                await booking.save()
+                break
+              }
+
               // Check slot conflict before confirming
               const slotConflict = await SlotReservation.findOne({
                 turf: booking.turf,
@@ -487,6 +501,86 @@ export const stripeService = {
             await booking.save()
             broadcastAvailabilityUpdate({ turfId: booking.turf, date: booking.date, reason: 'booking_cancelled' })
           }
+        }
+        break
+      }
+
+      case 'charge.refunded': {
+        const charge = event.data.object
+        const paymentIntentId = charge.payment_intent
+        if (paymentIntentId) {
+          const booking = await Booking.findOne({
+            $or: [
+              { stripePaymentIntentId: paymentIntentId },
+              { stripeRefundId: charge.id },
+            ],
+          })
+          if (booking) {
+            const isFull = charge.refunded === true || charge.amount_refunded >= (booking.amountPaid || booking.totalAmount)
+            booking.refundAmount = charge.amount_refunded
+            booking.refundStatus = isFull ? 'succeeded' : 'partially_refunded'
+            booking.paymentStatus = isFull ? 'refunded' : 'paid'
+            booking.refundedAt = new Date()
+            booking.refundFailureReason = ''
+            await booking.save()
+          }
+        }
+        break
+      }
+
+      case 'refund.created':
+      case 'refund.updated': {
+        const refund = event.data.object
+        const bookingId = refund.metadata?.bookingId
+        let booking = null
+        if (bookingId) {
+          booking = await Booking.findById(bookingId)
+        }
+        if (!booking && refund.payment_intent) {
+          booking = await Booking.findOne({ stripePaymentIntentId: refund.payment_intent })
+        }
+        if (!booking && refund.id) {
+          booking = await Booking.findOne({ stripeRefundId: refund.id })
+        }
+
+        if (booking) {
+          booking.stripeRefundId = refund.id
+          if (refund.status === 'succeeded') {
+            const isFull = refund.amount >= (booking.amountPaid || booking.totalAmount)
+            booking.refundAmount = refund.amount
+            booking.refundStatus = isFull ? 'succeeded' : 'partially_refunded'
+            booking.paymentStatus = isFull ? 'refunded' : 'paid'
+            booking.refundedAt = new Date()
+            booking.refundFailureReason = ''
+          } else if (refund.status === 'failed') {
+            booking.refundStatus = 'failed'
+            booking.refundFailureReason = refund.failure_reason || 'Refund failed by Stripe'
+          } else if (refund.status === 'pending') {
+            booking.refundStatus = 'pending'
+          }
+          await booking.save()
+        }
+        break
+      }
+
+      case 'refund.failed': {
+        const refund = event.data.object
+        const bookingId = refund.metadata?.bookingId
+        let booking = null
+        if (bookingId) {
+          booking = await Booking.findById(bookingId)
+        }
+        if (!booking && refund.payment_intent) {
+          booking = await Booking.findOne({ stripePaymentIntentId: refund.payment_intent })
+        }
+        if (!booking && refund.id) {
+          booking = await Booking.findOne({ stripeRefundId: refund.id })
+        }
+
+        if (booking) {
+          booking.refundStatus = 'failed'
+          booking.refundFailureReason = refund.failure_reason || 'Refund failed by Stripe'
+          await booking.save()
         }
         break
       }
@@ -558,6 +652,194 @@ export const stripeService = {
     }
 
     return { success: true, booking }
+  },
+
+  /**
+   * Process a Stripe refund for an eligible paid booking.
+   * Ensures idempotency, authoritative calculation, non-exceedance of collected amount,
+   * and tracks complete refund lifecycle.
+   */
+  async processStripeRefund({
+    booking,
+    refundAmountPaise,
+    requestingUser,
+    reason = '',
+    idempotencyKey = null,
+  }) {
+    if (!this.isEnabled()) {
+      const error = new Error('Stripe payment processing is not enabled.')
+      error.statusCode = 400
+      error.code = 'STRIPE_NOT_ENABLED'
+      throw error
+    }
+
+    if (!booking) {
+      const error = new Error('Booking is required for refund processing.')
+      error.statusCode = 400
+      error.code = 'INVALID_BOOKING'
+      throw error
+    }
+
+    if (booking.paymentMethod !== 'stripe') {
+      const error = new Error('Only Stripe online payments can be refunded via Stripe.')
+      error.statusCode = 400
+      error.code = 'INVALID_PAYMENT_METHOD_FOR_STRIPE_REFUND'
+      throw error
+    }
+
+    if (booking.paymentStatus !== 'paid' && booking.paymentStatus !== 'refunded') {
+      const error = new Error('Cannot process refund for an unpaid booking.')
+      error.statusCode = 400
+      error.code = 'BOOKING_NOT_PAID'
+      throw error
+    }
+
+    // Never refund more than collected
+    const collectedAmount = booking.amountPaid || 0
+    if (!Number.isInteger(refundAmountPaise) || refundAmountPaise <= 0) {
+      const error = new Error('Refund amount must be a positive integer in paise.')
+      error.statusCode = 400
+      error.code = 'INVALID_REFUND_AMOUNT'
+      throw error
+    }
+
+    const currentRefunded = booking.refundAmount || 0
+    if (currentRefunded + refundAmountPaise > collectedAmount) {
+      const error = new Error('Total refunded amount cannot exceed original collected payment.')
+      error.statusCode = 400
+      error.code = 'REFUND_EXCEEDS_PAYMENT'
+      throw error
+    }
+
+    // Resolve Stripe payment intent ID
+    let paymentIntentId = booking.stripePaymentIntentId
+    const stripe = this.getStripeClient()
+
+    if (!paymentIntentId && booking.stripeCheckoutSessionId) {
+      try {
+        const session = await stripe.checkout.sessions.retrieve(booking.stripeCheckoutSessionId)
+        if (session.payment_intent) {
+          paymentIntentId =
+            typeof session.payment_intent === 'string'
+              ? session.payment_intent
+              : session.payment_intent.id
+          booking.stripePaymentIntentId = paymentIntentId
+        }
+      } catch (err) {
+        // Will throw below if still unresolved
+      }
+    }
+
+    if (!paymentIntentId) {
+      const error = new Error(
+        'No Stripe payment intent found for this booking. Refund cannot be initiated automatically.'
+      )
+      error.statusCode = 400
+      error.code = 'PAYMENT_INTENT_NOT_FOUND'
+      throw error
+    }
+
+    const stableKey =
+      idempotencyKey ||
+      `refund_${booking._id}_${refundAmountPaise}_${booking.cancellationHistory?.length || 0}`
+
+    const previousRefundStatus = booking.refundStatus
+    booking.refundStatus = 'processing'
+
+    try {
+      const refund = await stripe.refunds.create(
+        {
+          payment_intent: paymentIntentId,
+          amount: refundAmountPaise,
+          reason: 'requested_by_customer',
+          metadata: {
+            bookingId: booking._id.toString(),
+            bookingReference: booking.bookingId,
+            initiatedBy: requestingUser?.role || 'system',
+            initiatedByUserId: requestingUser?._id?.toString() || '',
+            reason: reason || 'Booking cancellation refund',
+          },
+        },
+        { idempotencyKey: stableKey }
+      )
+
+      booking.stripeRefundId = refund.id
+      booking.refundRetriedAt = new Date()
+
+      if (refund.status === 'succeeded') {
+        const totalRefundedNow = (booking.refundAmount || 0) + refundAmountPaise
+        booking.refundAmount = totalRefundedNow
+        booking.refundStatus = totalRefundedNow >= collectedAmount ? 'succeeded' : 'partially_refunded'
+        booking.paymentStatus = totalRefundedNow >= collectedAmount ? 'refunded' : 'paid'
+        booking.refundedAt = new Date()
+        booking.refundFailureReason = ''
+      } else if (refund.status === 'pending') {
+        booking.refundStatus = 'pending'
+        booking.refundAmount = refundAmountPaise
+        booking.refundFailureReason = ''
+      } else if (refund.status === 'failed') {
+        booking.refundStatus = 'failed'
+        booking.refundFailureReason = refund.failure_reason || 'Refund failed by Stripe'
+      }
+
+      if (!Array.isArray(booking.cancellationHistory)) {
+        booking.cancellationHistory = []
+      }
+
+      booking.cancellationHistory.push({
+        action:
+          refund.status === 'succeeded'
+            ? 'refund_succeeded'
+            : refund.status === 'failed'
+            ? 'refund_failed'
+            : 'refund_initiated',
+        performedBy: {
+          user: requestingUser?._id,
+          role: requestingUser?.role || 'system',
+        },
+        timestamp: new Date(),
+        previousRefundStatus,
+        newRefundStatus: booking.refundStatus,
+        amount: refundAmountPaise,
+        stripeRefundId: refund.id,
+        reason: reason || 'Booking cancellation refund',
+        failureReason: booking.refundFailureReason || undefined,
+      })
+
+      await booking.save()
+
+      return {
+        success: refund.status !== 'failed',
+        refund,
+        booking,
+      }
+    } catch (stripeErr) {
+      booking.refundStatus = 'failed'
+      booking.refundFailureReason = stripeErr.message || 'Stripe API call failed'
+      if (!Array.isArray(booking.cancellationHistory)) {
+        booking.cancellationHistory = []
+      }
+      booking.cancellationHistory.push({
+        action: 'refund_failed',
+        performedBy: {
+          user: requestingUser?._id,
+          role: requestingUser?.role || 'system',
+        },
+        timestamp: new Date(),
+        previousRefundStatus,
+        newRefundStatus: 'failed',
+        amount: refundAmountPaise,
+        reason: reason || 'Booking cancellation refund',
+        failureReason: stripeErr.message || 'Stripe error',
+      })
+      await booking.save()
+
+      return {
+        success: false,
+        error: stripeErr.message,
+        booking,
+      }
+    }
   },
 }
 
