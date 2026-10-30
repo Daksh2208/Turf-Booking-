@@ -15,6 +15,7 @@ import {
   Layers,
   HelpCircle,
   Calendar,
+  Heart,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -28,11 +29,7 @@ export const CustomerNavbar = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault()
     if (navSearch.trim()) {
-      if (!isAuthenticated) {
-        navigate('/register', { state: { from: `/turfs?search=${encodeURIComponent(navSearch.trim())}` } })
-      } else {
-        navigate(`/turfs?search=${encodeURIComponent(navSearch.trim())}`)
-      }
+      navigate(`/turfs?search=${encodeURIComponent(navSearch.trim())}`)
       setNavSearch('')
       setMobileMenuOpen(false)
     }
@@ -153,17 +150,31 @@ export const CustomerNavbar = () => {
               <div className="flex items-center gap-2">
                 {/* My Bookings Dedicated Action Button for Customers */}
                 {user?.role === 'customer' && (
-                  <Link
-                    to="/my-bookings"
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all shadow-2xs ${
-                      isCurrent('/my-bookings')
-                        ? 'bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE] font-bold'
-                        : 'bg-white hover:bg-[#F0F6F1] text-[#17231B] border border-[#D7E0D9] hover:border-[#267A45]'
-                    }`}
-                  >
-                    <Calendar className="w-3.5 h-3.5 text-[#267A45]" />
-                    <span>My Bookings</span>
-                  </Link>
+                  <>
+                    <Link
+                      to="/my-bookings"
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all shadow-2xs ${
+                        isCurrent('/my-bookings')
+                          ? 'bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE] font-bold'
+                          : 'bg-white hover:bg-[#F0F6F1] text-[#17231B] border border-[#D7E0D9] hover:border-[#267A45]'
+                      }`}
+                    >
+                      <Calendar className="w-3.5 h-3.5 text-[#267A45]" />
+                      <span>My Bookings</span>
+                    </Link>
+                    <Link
+                      to="/favorites"
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-all shadow-2xs ${
+                        isCurrent('/favorites')
+                          ? 'bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE] font-bold'
+                          : 'bg-white hover:bg-[#F0F6F1] text-[#17231B] border border-[#D7E0D9] hover:border-[#267A45]'
+                      }`}
+                      title="Saved Favourite Turfs"
+                    >
+                      <Heart className="w-3.5 h-3.5 text-[#267A45]" />
+                      <span>Favourites</span>
+                    </Link>
+                  </>
                 )}
 
                 {/* Admin Console Shortcut */}
@@ -287,14 +298,24 @@ export const CustomerNavbar = () => {
             </button>
 
             {isAuthenticated && user?.role === 'customer' && (
-              <Link
-                to="/my-bookings"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2 rounded-xl hover:bg-[#F0F6F1] text-[#17231B] flex items-center gap-2.5"
-              >
-                <Calendar className="w-4 h-4 text-[#267A45]" />
-                <span>My Bookings</span>
-              </Link>
+              <>
+                <Link
+                  to="/my-bookings"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-3 py-2 rounded-xl hover:bg-[#F0F6F1] text-[#17231B] flex items-center gap-2.5"
+                >
+                  <Calendar className="w-4 h-4 text-[#267A45]" />
+                  <span>My Bookings</span>
+                </Link>
+                <Link
+                  to="/favorites"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-3 py-2 rounded-xl hover:bg-[#F0F6F1] text-[#17231B] flex items-center gap-2.5"
+                >
+                  <Heart className="w-4 h-4 text-[#267A45]" />
+                  <span>Saved Favourites</span>
+                </Link>
+              </>
             )}
           </nav>
 

@@ -31,10 +31,10 @@ export const RegisterPage = () => {
         navigate('/admin/dashboard', { replace: true })
       } else {
         const dest = fromPath && !fromPath.startsWith('/admin') ? fromPath : '/'
-        navigate(dest, { replace: true })
+        navigate(dest, { replace: true, state: rawFrom?.state })
       }
     }
-  }, [isAuthenticated, user, navigate, fromPath])
+  }, [isAuthenticated, user, navigate, fromPath, rawFrom])
 
   const {
     register,

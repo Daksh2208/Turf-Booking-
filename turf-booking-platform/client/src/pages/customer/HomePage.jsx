@@ -198,11 +198,10 @@ export const HomePage = () => {
                 </div>
               </div>
 
-              {/* Single Explore Button redirecting to sign in page */}
+              {/* Single Explore Button leading directly to turfs discovery */}
               <div className="pt-2 flex flex-col items-center gap-2">
                 <Link
-                  to="/login"
-                  state={{ from: '/turfs' }}
+                  to="/turfs"
                   className="py-3 px-8 rounded-2xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-xs sm:text-sm transition-all duration-200 inline-flex items-center justify-center gap-2 shadow-xs cursor-pointer group hover:scale-[1.01]"
                 >
                   <Compass className="w-4 h-4 text-[#E7F3E9] group-hover:rotate-45 transition-transform duration-300" />
@@ -210,7 +209,7 @@ export const HomePage = () => {
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
                 </Link>
                 <p className="text-[11px] text-[#647168]">
-                  Sign in to inspect live schedules, compare dynamic rates & book your slot
+                  Inspect live schedules, compare dynamic rates & book your slot
                 </p>
               </div>
             </div>
@@ -308,19 +307,12 @@ export const HomePage = () => {
 
                   <div className="pt-4 relative z-10 flex items-center justify-between">
                     <Link
-                      to={isAuthenticated ? bannerLink : '/register'}
-                      state={{ from: bannerLink }}
+                      to={bannerLink}
                       className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-xs transition-all shadow-xs cursor-pointer group-hover:translate-x-1 duration-200"
                     >
                       <span>{banner.ctaText || 'Explore & Book'}</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
-
-                    {!isAuthenticated && (
-                      <span className="text-[10px] text-white/90 bg-black/50 px-2.5 py-1 rounded-lg backdrop-blur-md border border-white/20">
-                        Sign up to reserve
-                      </span>
-                    )}
                   </div>
                 </div>
               )
@@ -347,11 +339,10 @@ export const HomePage = () => {
           </div>
 
           <Link
-            to={isAuthenticated ? '/turfs' : '/register'}
-            state={{ from: '/turfs' }}
+            to="/turfs"
             className="text-xs font-semibold text-[#267A45] hover:text-[#1E6338] flex items-center gap-1 transition-colors"
           >
-            <span>{isAuthenticated ? 'View all sports' : 'Sign up to view all sports'}</span>
+            <span>View all sports</span>
             <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
@@ -408,8 +399,7 @@ export const HomePage = () => {
                         </span>
                       ) : (
                         <Link
-                          to={isAuthenticated ? targetRoute : '/register'}
-                          state={{ from: targetRoute }}
+                          to={targetRoute}
                           onClick={(e) => e.stopPropagation()}
                           className="text-[10px] font-semibold text-[#526258] hover:text-[#267A45] hover:underline"
                           title="View on Turfs page"
@@ -474,22 +464,15 @@ export const HomePage = () => {
           <Link
             to={
               selectedSportSlug
-                ? isAuthenticated
-                  ? `/turfs?sport=${selectedSportSlug}`
-                  : '/register'
-                : isAuthenticated
-                ? '/turfs'
-                : '/register'
+                ? `/turfs?sport=${selectedSportSlug}`
+                : '/turfs'
             }
-            state={{ from: selectedSportSlug ? `/turfs?sport=${selectedSportSlug}` : '/turfs' }}
             className="text-xs font-semibold text-[#267A45] hover:text-[#1E6338] flex items-center gap-1 transition-colors"
           >
             <span>
               {selectedSportSlug
                 ? `Explore all ${activeSportObj?.cleanName || ''} arenas`
-                : isAuthenticated
-                ? `Explore all ${turfsData?.pagination?.total || ''} arenas`
-                : 'Sign up to explore all arenas'}
+                : `Explore all ${turfsData?.pagination?.total || ''} arenas`}
             </span>
             <ChevronRight className="w-4 h-4" />
           </Link>

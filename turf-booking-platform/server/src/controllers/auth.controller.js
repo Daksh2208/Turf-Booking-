@@ -1,4 +1,5 @@
 import { User } from '../models/User.js'
+import { Turf } from '../models/Turf.js'
 import mongoose from 'mongoose'
 import {
   registerCustomer,
@@ -280,6 +281,14 @@ export const toggleFavorite = async (req, res, next) => {
       })
     }
 
+    const turf = await Turf.findById(turfId)
+    if (!turf || !turf.isActive) {
+      return res.status(404).json({
+        success: false,
+        error: { code: 'TURF_NOT_FOUND', message: 'Turf arena not found or inactive.' },
+      })
+    }
+
     const user = req.user
     if (!Array.isArray(user.favorites)) {
       user.favorites = []
@@ -290,10 +299,10 @@ export const toggleFavorite = async (req, res, next) => {
     let isFavorited = false
 
     if (index > -1) {
-      user.favorites.splice(index, 1)
+      user.favorites = user.favorites.filter((f) => f && f.toString() !== turfId)
       isFavorited = false
     } else {
-      user.favorites.push(turfId)
+      user.favorites = Array.from(new Set([...user.favorites.map((f) => f.toString()), turfId]))
       isFavorited = true
     }
 
@@ -323,10 +332,12 @@ export const getFavorites = async (req, res, next) => {
       populate: { path: 'sports', select: 'name slug icon' },
     })
 
+    const activeFavorites = (user?.favorites || []).filter(Boolean)
+
     return res.status(200).json({
       success: true,
       data: {
-        favorites: user?.favorites || [],
+        favorites: activeFavorites,
       },
     })
   } catch (error) {

@@ -17,11 +17,53 @@ import {
 import { useAuth } from '../../hooks/useAuth'
 import { useQuery } from '../../hooks/useApi'
 import customerBookingService from '../../services/customer/booking.service'
+import { Modal } from '../../components/common/Modal'
 
 export const MyBookingsPage = () => {
   const { user } = useAuth()
   const [statusFilter, setStatusFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+
+  const [cancellingBooking, setCancellingBooking] = useState(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelError, setCancelError] = useState('')
+  const [isSubmittingCancel, setIsSubmittingCancel] = useState(false)
+
+  const handleOpenCancelModal = (booking) => {
+    setCancellingBooking(booking)
+    setCancelReason('')
+    setCancelError('')
+  }
+
+  const handleCloseCancelModal = () => {
+    if (isSubmittingCancel) return
+    setCancellingBooking(null)
+    setCancelReason('')
+    setCancelError('')
+  }
+
+  const handleConfirmCancel = async (e) => {
+    e?.preventDefault()
+    if (!cancellingBooking) return
+    setIsSubmittingCancel(true)
+    setCancelError('')
+    try {
+      await customerBookingService.cancelBooking(cancellingBooking._id, {
+        cancellationReason: cancelReason.trim() || 'Cancelled by customer',
+      })
+      setCancellingBooking(null)
+      refetch()
+    } catch (err) {
+      const msg =
+        err.response?.data?.error?.message ||
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to cancel booking. It may be within the non-cancellable cutoff window.'
+      setCancelError(msg)
+    } finally {
+      setIsSubmittingCancel(false)
+    }
+  }
 
   if (user?.role === 'admin') {
     return <Navigate to="/admin" replace />
@@ -317,13 +359,25 @@ export const MyBookingsPage = () => {
                         )}
                       </div>
                     ) : (
-                      <Link
-                        to={`/bookings/success/${booking._id}`}
-                        className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#F0F6F1] text-[#17231B] text-xs font-semibold border border-[#D7E0D9] transition-all inline-flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <span>View Pass</span>
-                        <ExternalLink className="w-3.5 h-3.5 text-[#267A45]" />
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        {(booking.status === 'confirmed' || booking.status === 'pending') && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCancelModal(booking)}
+                            className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#FDF0EF] text-[#922B27] text-xs font-semibold border border-[#F8D2CE] transition-all cursor-pointer"
+                            title="Cancel this booking"
+                          >
+                            <span>Cancel</span>
+                          </button>
+                        )}
+                        <Link
+                          to={`/bookings/success/${booking._id}`}
+                          className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#F0F6F1] text-[#17231B] text-xs font-semibold border border-[#D7E0D9] transition-all inline-flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span>View Pass</span>
+                          <ExternalLink className="w-3.5 h-3.5 text-[#267A45]" />
+                        </Link>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -359,6 +413,89 @@ export const MyBookingsPage = () => {
           )}
         </div>
       )}
+
+      {/* Cancellation Modal Dialog */}
+      <Modal
+        isOpen={Boolean(cancellingBooking)}
+        onClose={handleCloseCancelModal}
+        title="Cancel Match Booking"
+        subtitle={`Booking Reference: ${cancellingBooking?.bookingId || ''}`}
+        maxWidth="max-w-md"
+      >
+        <form onSubmit={handleConfirmCancel} className="space-y-4">
+          <div className="p-3.5 rounded-2xl bg-[#F6F8F6] border border-[#D7E0D9] text-xs space-y-1.5">
+            <p className="font-bold text-[#17231B]">
+              {cancellingBooking?.turf?.name || 'Turf Arena'}
+            </p>
+            <p className="text-[#526258]">
+              Date: <strong className="text-[#17231B]">{cancellingBooking?.date}</strong> • Slot:{' '}
+              <strong className="text-[#17231B]">
+                {cancellingBooking?.startTime} - {cancellingBooking?.endTime}
+              </strong>
+            </p>
+            <p className="text-[#526258]">
+              Total Amount:{' '}
+              <strong className="text-[#267A45] font-mono">
+                ₹{((cancellingBooking?.totalAmount || 0) / 100).toFixed(2)}
+              </strong>
+            </p>
+          </div>
+
+          <p className="text-xs text-[#526258] leading-relaxed">
+            Are you sure you want to cancel this booking? Cancelling will release this match slot back to general availability.
+          </p>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#17231B] block">
+              Reason for Cancellation (Optional)
+            </label>
+            <select
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className="w-full bg-white text-xs text-[#17231B] px-3 py-2 rounded-xl border border-[#D7E0D9] focus:outline-none focus:border-[#267A45]"
+            >
+              <option value="">Select a reason...</option>
+              <option value="Change in match schedule">Change in match schedule</option>
+              <option value="Players / squad unavailable">Players / squad unavailable</option>
+              <option value="Weather or rain forecast">Weather or rain forecast</option>
+              <option value="Booked by mistake">Booked by mistake</option>
+              <option value="Other reason">Other reason</option>
+            </select>
+          </div>
+
+          {cancelError && (
+            <div className="p-3 rounded-xl bg-[#FDF0EF] border border-[#F8D2CE] text-[#922B27] text-xs flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-[#922B27] shrink-0 mt-0.5" />
+              <span>{cancelError}</span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E2E8E3]">
+            <button
+              type="button"
+              disabled={isSubmittingCancel}
+              onClick={handleCloseCancelModal}
+              className="px-4 py-2 rounded-xl bg-white border border-[#D7E0D9] text-xs font-semibold text-[#17231B] hover:bg-[#F0F6F1] disabled:opacity-50 transition-colors cursor-pointer"
+            >
+              Keep Booking
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmittingCancel}
+              className="px-4 py-2 rounded-xl bg-[#922B27] hover:bg-[#7A1E1A] text-white text-xs font-bold shadow-xs disabled:opacity-50 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              {isSubmittingCancel ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Cancelling...</span>
+                </>
+              ) : (
+                <span>Yes, Cancel Booking</span>
+              )}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

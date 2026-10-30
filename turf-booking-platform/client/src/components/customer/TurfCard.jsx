@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useEffect, useMemo } from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import {
   MapPin,
   Clock,
@@ -8,17 +8,64 @@ import {
   Zap,
   Users,
   Trophy,
-  Lock,
   Check,
+  Heart,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
+import customerInventoryService from '../../services/customer/inventory.service'
 
-export const TurfCard = ({ turf, activeSportSlug }) => {
-  const { isAuthenticated } = useAuth()
+export const TurfCard = ({ turf, activeSportSlug, isFavorite: propIsFavorite, onFavoriteToggle }) => {
+  const { user, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const [isFav, setIsFav] = useState(() => {
+    if (propIsFavorite !== undefined) return propIsFavorite
+    if (!user?.favorites || !Array.isArray(user.favorites) || !turf?._id) return false
+    return user.favorites.some((f) => String(f._id || f) === String(turf._id))
+  })
+  const [isTogglingFav, setIsTogglingFav] = useState(false)
+
+  useEffect(() => {
+    if (propIsFavorite !== undefined) {
+      setIsFav(propIsFavorite)
+    } else if (user?.favorites && Array.isArray(user.favorites) && turf?._id) {
+      setIsFav(user.favorites.some((f) => String(f._id || f) === String(turf._id)))
+    }
+  }, [propIsFavorite, user?.favorites, turf?._id])
 
   if (!turf) return null
 
-  const targetLink = isAuthenticated ? `/turfs/${turf.slug || turf._id}` : '/register'
+  const targetLink = `/turfs/${turf.slug || turf._id}`
+
+  const handleToggleFavorite = async (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: location } })
+      return
+    }
+
+    const previousFav = isFav
+    setIsFav(!previousFav)
+    setIsTogglingFav(true)
+
+    try {
+      const result = await customerInventoryService.toggleFavorite(turf._id)
+      if (result && typeof result.isFavorited === 'boolean') {
+        setIsFav(result.isFavorited)
+      }
+      if (onFavoriteToggle) {
+        onFavoriteToggle(turf._id, !previousFav)
+      }
+    } catch {
+      // Revert optimistic update on failure
+      setIsFav(previousFav)
+    } finally {
+      setIsTogglingFav(false)
+    }
+  }
 
   const startingPrice =
     turf.pricing?.baseRate != null
@@ -77,6 +124,23 @@ export const TurfCard = ({ turf, activeSportSlug }) => {
           </div>
         )}
 
+        {/* Favorite Button */}
+        <button
+          type="button"
+          onClick={handleToggleFavorite}
+          disabled={isTogglingFav}
+          aria-label={isFav ? 'Remove from favourites' : 'Save to favourites'}
+          title={isFav ? 'Remove from favourites' : 'Save to favourites'}
+          className="absolute top-3 right-3 p-2 rounded-full bg-white/95 hover:bg-white backdrop-blur-md border border-[#D7E0D9] shadow-xs transition-transform active:scale-90 cursor-pointer group/fav z-10"
+        >
+          <Heart
+            className={`w-4 h-4 transition-colors ${
+              isFav
+                ? 'fill-red-500 text-red-500'
+                : 'text-[#647168] group-hover/fav:text-red-500 group-hover/fav:fill-red-500/20'
+            }`}
+          />
+        </button>
 
         {/* Starting Price Pill */}
         <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-[#C9DFCE] text-xs font-mono font-bold shadow-xs flex items-center gap-1">
@@ -181,24 +245,11 @@ export const TurfCard = ({ turf, activeSportSlug }) => {
         <div className="pt-2">
           <Link
             to={targetLink}
-            state={{ from: `/turfs/${turf.slug || turf._id}` }}
-            className={`w-full py-2.5 px-4 rounded-xl font-semibold text-xs transition-all duration-200 flex items-center justify-center gap-1.5 group/btn shadow-xs cursor-pointer ${
-              isAuthenticated
-                ? 'bg-[#267A45] hover:bg-[#1E6338] text-white'
-                : 'bg-[#E7F3E9] hover:bg-[#C9DFCE] text-[#1D6537] border border-[#C9DFCE]'
-            }`}
+            state={{ from: targetLink }}
+            className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs transition-all duration-200 flex items-center justify-center gap-1.5 group/btn shadow-xs cursor-pointer bg-[#267A45] hover:bg-[#1E6338] text-white"
           >
-            {isAuthenticated ? (
-              <>
-                <span>View Details & Slots</span>
-                <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
-              </>
-            ) : (
-              <>
-                <Lock className="w-3.5 h-3.5 text-[#267A45]" />
-                <span>Sign Up to Book Slots</span>
-              </>
-            )}
+            <span>View Details & Slots</span>
+            <ChevronRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
           </Link>
         </div>
       </div>

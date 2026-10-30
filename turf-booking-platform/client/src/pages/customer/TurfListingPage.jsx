@@ -44,12 +44,25 @@ export const TurfListingPage = () => {
   const selectedFacilities = facilitiesParam ? facilitiesParam.split(',').filter(Boolean) : []
 
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState(search)
+
+  useEffect(() => {
+    setSearchTerm(search)
+  }, [search])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm.trim() !== search) {
+        updateParam('search', searchTerm.trim())
+      }
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [searchTerm, search])
 
   // 1. Fetch Sports for filter dropdown
   const { data: sports = [] } = useQuery({
     queryKey: ['publicSports'],
     queryFn: () => customerInventoryService.getSports(),
-    refetchInterval: 5000,
   })
 
   // Deduplicate sports by base category name
@@ -84,7 +97,6 @@ export const TurfListingPage = () => {
         maxPrice: maxPrice || undefined,
         sort,
       }),
-    refetchInterval: 5000,
   })
 
   const turfs = turfsData?.turfs || []
@@ -186,6 +198,34 @@ export const TurfListingPage = () => {
                 <X className="w-4 h-4" />
               </button>
             )}
+          </div>
+
+          {/* 0. Turf Name / Location Keyword Search */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-[#17231B] block">Search Turf</label>
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-[#267A45] absolute left-3 top-2.5 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Name, area, sport..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-white text-xs text-[#17231B] placeholder-[#647168] pl-8.5 pr-7 py-2 rounded-xl border border-[#D7E0D9] focus:outline-none focus:border-[#267A45]"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm('')
+                    updateParam('search', '')
+                  }}
+                  className="absolute right-2 top-2 text-[#647168] hover:text-[#17231B] cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* 1. Sport Category Filter */}
@@ -400,9 +440,23 @@ export const TurfListingPage = () => {
 
           {/* Results Grid States */}
           {isLoading ? (
-            <div className="py-20 flex flex-col items-center justify-center gap-3 text-[#526258] text-xs">
-              <Loader2 className="w-8 h-8 text-[#267A45] animate-spin" />
-              <span>Finding matching sports arenas and hourly pricing...</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((n) => (
+                <div
+                  key={n}
+                  className="rounded-2xl bg-white border border-[#D7E0D9] overflow-hidden flex flex-col justify-between h-96 animate-pulse"
+                >
+                  <div className="h-48 bg-[#EDF5EF]" />
+                  <div className="p-5 space-y-3 flex-1 flex flex-col justify-between">
+                    <div className="space-y-2">
+                      <div className="h-4 bg-[#EDF5EF] rounded w-3/4" />
+                      <div className="h-3 bg-[#EDF5EF] rounded w-1/2" />
+                      <div className="h-3 bg-[#EDF5EF] rounded w-2/3" />
+                    </div>
+                    <div className="h-9 bg-[#EDF5EF] rounded-xl w-full" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : isError ? (
             <div className="p-6 rounded-3xl bg-[#FDF0EF] border border-[#F8D2CE] text-[#922B27] text-xs flex items-center justify-between">

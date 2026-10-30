@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery } from '../../hooks/useApi'
 import {
   MapPin,
@@ -16,6 +16,7 @@ import {
   Info,
   Zap,
   ShieldCheck,
+  Heart,
 } from 'lucide-react'
 import customerInventoryService from '../../services/customer/inventory.service'
 import customerBookingService from '../../services/customer/booking.service'
@@ -26,6 +27,7 @@ import { useBookingReservation } from '../../context/BookingReservationContext'
 export const TurfDetailPage = () => {
   const { slug } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { isAuthenticated, user } = useAuth()
   const { currentReservation, countdownSeconds } = useBookingReservation()
 
@@ -35,6 +37,9 @@ export const TurfDetailPage = () => {
   const [selectedAddOns, setSelectedAddOns] = useState([])
   const [playerCount, setPlayerCount] = useState(10)
   const [activeImageIdx, setActiveImageIdx] = useState(0)
+
+  const [isFav, setIsFav] = useState(false)
+  const [isTogglingFav, setIsTogglingFav] = useState(false)
 
   const formatDateDisplay = (dateString) => {
     if (!dateString) return ''
@@ -114,11 +119,37 @@ export const TurfDetailPage = () => {
   }, [turf?._id, currentReservation, selectedDate, selectedSlot?.date])
 
 
+  // Sync favorites state
+  useEffect(() => {
+    if (user?.favorites && Array.isArray(user.favorites) && turf?._id) {
+      setIsFav(user.favorites.some((f) => String(f._id || f) === String(turf._id)))
+    }
+  }, [user?.favorites, turf?._id])
+
+  const handleToggleFavorite = async () => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: location } })
+      return
+    }
+    const previousFav = isFav
+    setIsFav(!previousFav)
+    setIsTogglingFav(true)
+    try {
+      const result = await customerInventoryService.toggleFavorite(turf._id)
+      if (result && typeof result.isFavorited === 'boolean') {
+        setIsFav(result.isFavorited)
+      }
+    } catch {
+      setIsFav(previousFav)
+    } finally {
+      setIsTogglingFav(false)
+    }
+  }
+
   // 2. Fetch Available Equipment / Add-Ons
   const { data: addOns = [] } = useQuery({
     queryKey: ['publicAddOns'],
     queryFn: () => customerInventoryService.getAddOns(),
-    refetchInterval: 5000,
   })
 
   // 3. Query Real-Time Authoritative Pricing Quote
@@ -311,7 +342,28 @@ export const TurfDetailPage = () => {
                 })}
               </div>
 
-              <h1 className="text-2xl sm:text-3xl font-black text-[#17231B]">{turf.name}</h1>
+              <div className="flex items-center justify-between gap-4">
+                <h1 className="text-2xl sm:text-3xl font-black text-[#17231B]">{turf.name}</h1>
+                <button
+                  type="button"
+                  onClick={handleToggleFavorite}
+                  disabled={isTogglingFav}
+                  aria-label={isFav ? 'Remove from favourites' : 'Save to favourites'}
+                  title={isFav ? 'Remove from favourites' : 'Save to favourites'}
+                  className="p-2.5 rounded-2xl bg-[#F6F8F6] hover:bg-white border border-[#D7E0D9] shadow-2xs transition-all active:scale-95 cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                >
+                  <Heart
+                    className={`w-4 h-4 transition-colors ${
+                      isFav
+                        ? 'fill-red-500 text-red-500'
+                        : 'text-[#647168] hover:text-red-500'
+                    }`}
+                  />
+                  <span className="hidden sm:inline text-xs text-[#17231B]">
+                    {isFav ? 'Saved' : 'Save'}
+                  </span>
+                </button>
+              </div>
               <p className="text-xs sm:text-sm text-[#46564A] mt-1 flex items-start gap-1.5">
                 <MapPin className="w-4 h-4 text-[#267A45] shrink-0 mt-0.5" />
                 <span>{locationText}</span>

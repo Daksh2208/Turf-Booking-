@@ -47,6 +47,7 @@ import { BookingSuccessPage } from './pages/customer/BookingSuccessPage'
 import { PaymentSuccessPage } from './pages/customer/PaymentSuccessPage'
 import { PaymentCancelledPage } from './pages/customer/PaymentCancelledPage'
 import { MyBookingsPage } from './pages/customer/MyBookingsPage'
+import { FavoritesPage } from './pages/customer/FavoritesPage'
 import { LoginPage } from './features/auth/pages/LoginPage'
 import { RegisterPage } from './features/auth/pages/RegisterPage'
 import { NotFoundPage } from './pages/public/NotFoundPage'
@@ -77,26 +78,12 @@ export function App() {
           {/* Customer Website Routes wrapped in CustomerLayout */}
           <Route element={<CustomerLayout />}>
             <Route path="/" element={<HomePage />} />
-            <Route
-              path="/turfs"
-              element={
-                <ProtectedRoute redirectTo="/register">
-                  <TurfListingPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/turfs/:slug"
-              element={
-                <ProtectedRoute redirectTo="/register">
-                  <TurfDetailPage />
-                </ProtectedRoute>
-              }
-            />
+            <Route path="/turfs" element={<TurfListingPage />} />
+            <Route path="/turfs/:slug" element={<TurfDetailPage />} />
             <Route
               path="/checkout"
               element={
-                <ProtectedRoute requireCustomer={true} redirectTo="/register">
+                <ProtectedRoute requireCustomer={true} redirectTo="/login">
                   <CheckoutPage />
                 </ProtectedRoute>
               }
@@ -104,7 +91,7 @@ export function App() {
             <Route
               path="/bookings/success/:id"
               element={
-                <ProtectedRoute requireCustomer={true} redirectTo="/register">
+                <ProtectedRoute requireCustomer={true} redirectTo="/login">
                   <BookingSuccessPage />
                 </ProtectedRoute>
               }
@@ -130,6 +117,14 @@ export function App() {
               element={
                 <ProtectedRoute requireCustomer={true} redirectTo="/login">
                   <MyBookingsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/favorites"
+              element={
+                <ProtectedRoute requireCustomer={true} redirectTo="/login">
+                  <FavoritesPage />
                 </ProtectedRoute>
               }
             />

@@ -219,11 +219,11 @@ describe('Part 9: Customer-Facing Website & Discovery Suite', () => {
     expect(screen.getByText('Pickleball')).toBeInTheDocument()
     expect(screen.getByText('Badminton')).toBeInTheDocument()
 
-    // Featured arena card with protected guest lock
+    // Featured arena card with public discovery
     expect(screen.getByText('Apex Arena Alpha')).toBeInTheDocument()
     expect(screen.getByText('From')).toBeInTheDocument()
     expect(screen.getByText('₹800')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Sign Up to Book Slots/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /View Details & Slots/i })).toBeInTheDocument()
 
     // Business contact info in footer
     expect(screen.getByText('contact@turfspot.com')).toBeInTheDocument()

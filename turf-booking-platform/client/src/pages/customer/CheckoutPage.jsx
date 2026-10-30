@@ -53,9 +53,34 @@ export const CheckoutPage = () => {
     selectedAddOns = [],
   } = checkoutState
 
-  const { currentReservation, countdownSeconds, clearReservation } = useBookingReservation()
-  const reservationId = checkoutState.reservationId || currentReservation?.reservationId
+  const { currentReservation, countdownSeconds, clearReservation, holdSlots } = useBookingReservation()
+  const [activeReservationId, setActiveReservationId] = useState(
+    checkoutState.reservationId || currentReservation?.reservationId || null
+  )
+  const reservationId = activeReservationId || checkoutState.reservationId || currentReservation?.reservationId
   const isExpired = Boolean(reservationId && countdownSeconds === 0)
+
+  // Seamlessly acquire temporary hold for authenticated customer if not already held
+  useEffect(() => {
+    if (!activeReservationId && !reservationId && user && user.role === 'customer' && turfId && date) {
+      const slotsToHold = selectedSlots.length > 0 ? selectedSlots : (startTime ? [startTime] : [])
+      if (slotsToHold.length > 0) {
+        holdSlots({ turfId, date, slots: slotsToHold })
+          .then((res) => {
+            if (res?.reservation?.reservationId) {
+              setActiveReservationId(res.reservation.reservationId)
+            }
+          })
+          .catch((err) => {
+            const msg =
+              err.response?.data?.error?.message ||
+              err.response?.data?.message ||
+              err.message
+            if (msg) setSubmitError(msg)
+          })
+      }
+    }
+  }, [activeReservationId, reservationId, user, turfId, date, selectedSlots, startTime, holdSlots])
 
   const formatCountdown = (secs) => {
     const mins = Math.floor(secs / 60)

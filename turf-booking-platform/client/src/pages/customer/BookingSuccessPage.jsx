@@ -21,12 +21,18 @@ import {
 import { useAuth } from '../../hooks/useAuth'
 import { useQuery } from '../../hooks/useApi'
 import customerBookingService from '../../services/customer/booking.service'
+import { Modal } from '../../components/common/Modal'
 
 export const BookingSuccessPage = () => {
   const { user } = useAuth()
   const { id } = useParams()
   const location = useLocation()
   const [copied, setCopied] = useState(false)
+
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelError, setCancelError] = useState('')
+  const [isSubmittingCancel, setIsSubmittingCancel] = useState(false)
 
   if (user?.role === 'admin') {
     return <Navigate to="/admin" replace />
@@ -37,12 +43,35 @@ export const BookingSuccessPage = () => {
     isLoading,
     isError,
     error,
+    refetch,
   } = useQuery({
     queryKey: ['bookingDetail', id],
     queryFn: () => customerBookingService.getBookingById(id),
     enabled: !!id,
     initialData: location.state?.booking,
   })
+
+  const handleConfirmCancel = async (e) => {
+    e?.preventDefault()
+    setIsSubmittingCancel(true)
+    setCancelError('')
+    try {
+      await customerBookingService.cancelBooking(id, {
+        cancellationReason: cancelReason.trim() || 'Cancelled by customer',
+      })
+      setShowCancelModal(false)
+      refetch()
+    } catch (err) {
+      const msg =
+        err.response?.data?.error?.message ||
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to cancel booking. It may be within the non-cancellable cutoff window.'
+      setCancelError(msg)
+    } finally {
+      setIsSubmittingCancel(false)
+    }
+  }
 
   const copyBookingId = () => {
     if (booking?.bookingId) {
@@ -439,6 +468,15 @@ export const BookingSuccessPage = () => {
             <div className="flex items-center gap-3">
               <button
                 type="button"
+                onClick={() => setShowCancelModal(true)}
+                className="px-4 py-2.5 rounded-2xl bg-white hover:bg-[#FDF0EF] text-[#922B27] text-xs font-semibold border border-[#F8D2CE] transition-all inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <XCircle className="w-3.5 h-3.5 text-[#922B27]" />
+                <span>Cancel Booking</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={handlePrint}
                 className="px-4 py-2.5 rounded-2xl bg-white hover:bg-[#F0F6F1] text-[#17231B] text-xs font-semibold border border-[#D7E0D9] transition-all inline-flex items-center gap-1.5 cursor-pointer"
               >
@@ -457,6 +495,97 @@ export const BookingSuccessPage = () => {
           </>
         )}
       </div>
+
+      {/* Cancellation Modal Dialog */}
+      <Modal
+        isOpen={showCancelModal}
+        onClose={() => {
+          if (!isSubmittingCancel) {
+            setShowCancelModal(false)
+            setCancelError('')
+          }
+        }}
+        title="Cancel Match Booking"
+        subtitle={`Booking Reference: ${booking?.bookingId || ''}`}
+        maxWidth="max-w-md"
+      >
+        <form onSubmit={handleConfirmCancel} className="space-y-4">
+          <div className="p-3.5 rounded-2xl bg-[#F6F8F6] border border-[#D7E0D9] text-xs space-y-1.5">
+            <p className="font-bold text-[#17231B]">
+              {booking?.turf?.name || 'Turf Arena'}
+            </p>
+            <p className="text-[#526258]">
+              Date: <strong className="text-[#17231B]">{booking?.date}</strong> • Slot:{' '}
+              <strong className="text-[#17231B]">
+                {booking?.startTime} - {booking?.endTime}
+              </strong>
+            </p>
+            <p className="text-[#526258]">
+              Total Amount:{' '}
+              <strong className="text-[#267A45] font-mono">
+                ₹{((booking?.totalAmount || 0) / 100).toFixed(2)}
+              </strong>
+            </p>
+          </div>
+
+          <p className="text-xs text-[#526258] leading-relaxed">
+            Are you sure you want to cancel this booking pass? Cancelling will release the match slot immediately back to general availability.
+          </p>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-[#17231B] block">
+              Reason for Cancellation (Optional)
+            </label>
+            <select
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              className="w-full bg-white text-xs text-[#17231B] px-3 py-2 rounded-xl border border-[#D7E0D9] focus:outline-none focus:border-[#267A45]"
+            >
+              <option value="">Select a reason...</option>
+              <option value="Change in match schedule">Change in match schedule</option>
+              <option value="Players / squad unavailable">Players / squad unavailable</option>
+              <option value="Weather or rain forecast">Weather or rain forecast</option>
+              <option value="Booked by mistake">Booked by mistake</option>
+              <option value="Other reason">Other reason</option>
+            </select>
+          </div>
+
+          {cancelError && (
+            <div className="p-3 rounded-xl bg-[#FDF0EF] border border-[#F8D2CE] text-[#922B27] text-xs flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-[#922B27] shrink-0 mt-0.5" />
+              <span>{cancelError}</span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E2E8E3]">
+            <button
+              type="button"
+              disabled={isSubmittingCancel}
+              onClick={() => {
+                setShowCancelModal(false)
+                setCancelError('')
+              }}
+              className="px-4 py-2 rounded-xl bg-white border border-[#D7E0D9] text-xs font-semibold text-[#17231B] hover:bg-[#F0F6F1] disabled:opacity-50 transition-colors cursor-pointer"
+            >
+              Keep Booking
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmittingCancel}
+              className="px-4 py-2 rounded-xl bg-[#922B27] hover:bg-[#7A1E1A] text-white text-xs font-bold shadow-xs disabled:opacity-50 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              {isSubmittingCancel ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Cancelling...</span>
+                </>
+              ) : (
+                <span>Yes, Cancel Booking</span>
+              )}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

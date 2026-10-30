@@ -42,9 +42,9 @@ export const LoginPage = () => {
   useEffect(() => {
     if (isAuthenticated && user) {
       const destination = user.role === 'admin' ? '/admin/dashboard' : getDestination(user.role, fromPath)
-      navigate(destination, { replace: true })
+      navigate(destination, { replace: true, state: user.role === 'admin' ? undefined : rawFrom?.state })
     }
-  }, [isAuthenticated, user, navigate, fromPath])
+  }, [isAuthenticated, user, navigate, fromPath, rawFrom])
 
   const {
     register,
@@ -82,7 +82,7 @@ export const LoginPage = () => {
       const loggedInUser = await login(data.email.trim(), data.password)
       const role = loggedInUser?.role || user?.role
       const destination = role === 'admin' ? '/admin/dashboard' : getDestination(role, fromPath)
-      navigate(destination, { replace: true })
+      navigate(destination, { replace: true, state: role === 'admin' ? undefined : rawFrom?.state })
     } catch (err) {
       const message =
         err.response?.data?.message ||

@@ -111,6 +111,14 @@ export const customerBookingService = {
     const response = await apiClient.post('/reservations/renew', { reservationId })
     return response.data?.data
   },
+
+  /**
+   * Cancel customer's own booking (subject to cancellation cutoff rules)
+   */
+  async cancelBooking(id, payload = {}) {
+    const response = await apiClient.post(`/bookings/${id}/cancel`, payload)
+    return response.data?.data?.booking
+  },
 }
 
 export default customerBookingService
