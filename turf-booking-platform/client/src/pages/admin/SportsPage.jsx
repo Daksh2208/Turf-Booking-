@@ -11,6 +11,9 @@ import {
   Image as ImageIcon,
   Loader2,
   Trash2,
+  Upload,
+  FileImage,
+  X,
 } from 'lucide-react'
 import adminInventoryService from '../../services/admin/inventory.service'
 import { Modal } from '../../components/common/Modal'
@@ -111,8 +114,34 @@ export const SportsPage = () => {
     setTimeout(() => setSuccessToast(null), 4000)
   }
 
+  const [selectedFileName, setSelectedFileName] = useState('')
+
+  const handleImageFileUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setServerError('Selected file must be an image (PNG, JPG, WEBP, etc.).')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setServerError('Image file size must be less than 5MB.')
+      return
+    }
+
+    setServerError(null)
+    setSelectedFileName(file.name)
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setFormData((prev) => ({ ...prev, image: ev.target.result }))
+    }
+    reader.readAsDataURL(file)
+  }
+
   const handleOpenCreate = () => {
     setEditingSport(null)
+    setSelectedFileName('')
     setFormData({ name: '', slug: '', description: '', image: '', icon: '' })
     setServerError(null)
     setIsModalOpen(true)
@@ -120,6 +149,7 @@ export const SportsPage = () => {
 
   const handleOpenEdit = (sport) => {
     setEditingSport(sport)
+    setSelectedFileName('')
     setFormData({
       name: sport.name || '',
       slug: sport.slug || '',
@@ -404,20 +434,90 @@ export const SportsPage = () => {
             />
           </FormField>
 
-          <FormField
-            label="Image URL Reference"
-            htmlFor="sportImage"
-            hint="Cloud-hosted public image URL for card banners"
-          >
-            <Input
-              id="sportImage"
-              type="url"
-              placeholder="https://images.unsplash.com/..."
-              value={formData.image}
-              onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-              icon={ImageIcon}
-            />
-          </FormField>
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-[#17231B] block">
+              Sport Image
+            </label>
+            <p className="text-[11px] text-[#526258]">
+              Choose an image file from your device or paste a public image URL.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              <label className="sm:w-auto shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white hover:bg-[#F0F6F1] border border-[#D7E0D9] hover:border-[#267A45] text-[#17231B] text-xs font-semibold cursor-pointer transition-all shadow-2xs">
+                <Upload className="w-4 h-4 text-[#267A45]" />
+                <span>Choose File</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageFileUpload}
+                  className="hidden"
+                />
+              </label>
+
+              <span className="text-[#647168] text-xs text-center sm:text-left font-medium">or paste URL:</span>
+
+              <div className="flex-1">
+                <Input
+                  id="sportImage"
+                  type="text"
+                  placeholder="https://images.unsplash.com/..."
+                  value={formData.image.startsWith('data:') ? '' : formData.image}
+                  onChange={(e) => {
+                    setSelectedFileName('')
+                    setFormData({ ...formData, image: e.target.value })
+                  }}
+                  icon={ImageIcon}
+                />
+              </div>
+            </div>
+
+            {selectedFileName && (
+              <div className="flex items-center justify-between text-xs px-3 py-1.5 rounded-lg bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]">
+                <span className="truncate flex items-center gap-1.5">
+                  <FileImage className="w-3.5 h-3.5 shrink-0 text-[#267A45]" />
+                  <span>Selected file: <strong>{selectedFileName}</strong></span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedFileName('')
+                    setFormData({ ...formData, image: '' })
+                  }}
+                  className="text-[11px] text-[#922B27] hover:underline ml-2 cursor-pointer font-medium"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+
+            {/* Real-time live image preview */}
+            {formData.image && (
+              <div className="rounded-xl overflow-hidden border border-[#D7E0D9] h-28 bg-[#17231B] relative mt-2 group">
+                <img
+                  src={formData.image}
+                  alt="Live Preview"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+                <span className="absolute bottom-2 left-2 text-[10px] font-bold bg-[#17231B]/90 text-[#FFFFFF] px-2 py-0.5 rounded border border-[#267A45]/40 backdrop-blur-xs">
+                  Live Image Preview {selectedFileName ? `(${selectedFileName})` : ''}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedFileName('')
+                    setFormData({ ...formData, image: '' })
+                  }}
+                  className="absolute top-2 right-2 p-1.5 rounded-lg bg-[#17231B]/80 hover:bg-[#922B27] text-white transition-colors cursor-pointer"
+                  title="Remove image"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E2E8E3]">
             <Button type="button" variant="ghost" onClick={() => setIsModalOpen(false)}>

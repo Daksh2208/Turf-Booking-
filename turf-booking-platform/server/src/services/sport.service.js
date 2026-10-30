@@ -1,5 +1,6 @@
 import { Sport } from '../models/Sport.js'
 import { Turf } from '../models/Turf.js'
+import { Booking } from '../models/Booking.js'
 import { slugify } from '../utils/slugify.js'
 import { logAudit } from '../utils/auditLogger.js'
 
@@ -183,7 +184,8 @@ export const sportService = {
   },
 
   /**
-   * Delete Sport (Admin only)
+   * Delete Sport safely (Admin only)
+   * Verifies no active turfs or historical bookings depend on this sport before deletion.
    */
   async deleteSport(id, adminUser, ip = '') {
     const sport = await Sport.findById(id)
@@ -191,6 +193,28 @@ export const sportService = {
       const error = new Error('Sport not found.')
       error.statusCode = 404
       error.code = 'SPORT_NOT_FOUND'
+      throw error
+    }
+
+    // Safety check 1: Check if any turfs are assigned this sport
+    const assignedTurfsCount = await Turf.countDocuments({ sports: id })
+    if (assignedTurfsCount > 0) {
+      const error = new Error(
+        `Cannot delete sport "${sport.name}": It is currently assigned to ${assignedTurfsCount} turf arena(s). Please remove this sport from those turfs or deactivate it instead.`
+      )
+      error.statusCode = 400
+      error.code = 'SPORT_IN_USE_BY_TURF'
+      throw error
+    }
+
+    // Safety check 2: Check if any bookings reference this sport
+    const bookingCount = await Booking.countDocuments({ sport: id })
+    if (bookingCount > 0) {
+      const error = new Error(
+        `Cannot delete sport "${sport.name}": It is referenced in ${bookingCount} historical booking record(s). Please deactivate the sport instead to preserve historical records.`
+      )
+      error.statusCode = 400
+      error.code = 'SPORT_IN_USE_BY_BOOKING'
       throw error
     }
 

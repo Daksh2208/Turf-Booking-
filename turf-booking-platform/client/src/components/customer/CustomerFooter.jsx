@@ -19,6 +19,11 @@ export const CustomerFooter = () => {
     queryFn: () => customerInventoryService.getSettings(),
   })
 
+  const { data: sports = [] } = useQuery({
+    queryKey: ['publicSports'],
+    queryFn: () => customerInventoryService.getSports(),
+  })
+
   const currentYear = new Date().getFullYear()
 
   return (
@@ -72,7 +77,8 @@ export const CustomerFooter = () => {
               </span>
             </Link>
             <p className="text-xs text-[#526258] leading-relaxed">
-              Premium sports turf booking platform connecting players to box cricket, football, pickleball, and badminton arenas with live availability.
+              {settings?.aboutText ||
+                'Premium sports turf booking platform connecting players to sports arenas with live availability.'}
             </p>
           </div>
 
@@ -88,26 +94,16 @@ export const CustomerFooter = () => {
                   <ArrowUpRight className="w-3 h-3 text-[#647168]" />
                 </Link>
               </li>
-              <li>
-                <Link to="/turfs?sport=box-cricket" className="text-[#46564A] hover:text-[#267A45] transition-colors">
-                  Box Cricket Arenas
-                </Link>
-              </li>
-              <li>
-                <Link to="/turfs?sport=football" className="text-[#46564A] hover:text-[#267A45] transition-colors">
-                  Football Pitches
-                </Link>
-              </li>
-              <li>
-                <Link to="/turfs?sport=pickleball" className="text-[#46564A] hover:text-[#267A45] transition-colors">
-                  Pickleball Courts
-                </Link>
-              </li>
-              <li>
-                <Link to="/turfs?sport=badminton" className="text-[#46564A] hover:text-[#267A45] transition-colors">
-                  Badminton Courts
-                </Link>
-              </li>
+              {sports.slice(0, 5).map((sport) => (
+                <li key={sport._id || sport.slug}>
+                  <Link
+                    to={`/turfs?sport=${sport.slug}`}
+                    className="text-[#46564A] hover:text-[#267A45] transition-colors"
+                  >
+                    {sport.name} Arenas
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 

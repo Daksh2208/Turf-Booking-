@@ -1,6 +1,8 @@
 import mongoose from 'mongoose'
 import { Turf } from '../models/Turf.js'
 import { Sport } from '../models/Sport.js'
+import { Booking } from '../models/Booking.js'
+import { BlockedSlot } from '../models/BlockedSlot.js'
 import { slugify } from '../utils/slugify.js'
 import { logAudit } from '../utils/auditLogger.js'
 /**
@@ -298,7 +300,8 @@ export const turfService = {
   },
 
   /**
-   * Delete Turf (Admin only)
+   * Delete Turf safely (Admin only)
+   * Prevents deletion if bookings exist to preserve historical records & data integrity.
    */
   async deleteTurf(id, adminUser, ip = '') {
     const turf = await Turf.findById(id)
@@ -308,6 +311,20 @@ export const turfService = {
       error.code = 'TURF_NOT_FOUND'
       throw error
     }
+
+    // Safety check: verify no historical or upcoming bookings exist for this turf
+    const bookingCount = await Booking.countDocuments({ turf: id })
+    if (bookingCount > 0) {
+      const error = new Error(
+        `Cannot delete turf "${turf.name}": It has ${bookingCount} associated booking record(s). Deactivate the turf instead to prevent new bookings while preserving historical records.`
+      )
+      error.statusCode = 400
+      error.code = 'TURF_HAS_BOOKINGS'
+      throw error
+    }
+
+    // Clean up any remaining blocked slots for this turf
+    await BlockedSlot.deleteMany({ turf: id })
 
     await Turf.findByIdAndDelete(id)
 

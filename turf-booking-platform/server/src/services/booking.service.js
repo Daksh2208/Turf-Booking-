@@ -300,14 +300,34 @@ export const bookingService = {
       user,
     })
 
-    // 11. Resolve Sport
+    // 11. Resolve and Validate Sport
     let resolvedSportId = sportId
-    if (!resolvedSportId && turf.sports && turf.sports.length > 0) {
-      resolvedSportId = turf.sports[0]
-    }
-    if (!resolvedSportId) {
-      const anySport = await Sport.findOne({ isActive: true })
-      if (anySport) resolvedSportId = anySport._id
+    if (resolvedSportId) {
+      const sportDoc = await Sport.findById(resolvedSportId)
+      if (!sportDoc) {
+        const error = new Error('Referenced sport not found.')
+        error.statusCode = 404
+        error.code = 'SPORT_NOT_FOUND'
+        throw error
+      }
+      if (!sportDoc.isActive) {
+        const error = new Error(`The sport "${sportDoc.name}" is currently inactive and not available for new bookings.`)
+        error.statusCode = 400
+        error.code = 'SPORT_INACTIVE'
+        throw error
+      }
+    } else {
+      // Pick active sport associated with turf
+      const activeTurfSport = await Sport.findOne({
+        _id: { $in: turf.sports },
+        isActive: true,
+      })
+      if (activeTurfSport) {
+        resolvedSportId = activeTurfSport._id
+      } else {
+        const anySport = await Sport.findOne({ isActive: true })
+        if (anySport) resolvedSportId = anySport._id
+      }
     }
 
     // 12. Generate unique booking reference: TB-YYMMDD-XXXX
@@ -1125,8 +1145,8 @@ export const bookingService = {
     for (const turf of activeTurfs) {
       const openH = Number((turf.openingHours?.open || '06:00').split(':')[0])
       const closeH = Number((turf.openingHours?.close || '23:00').split(':')[0])
-      const possibleHours = Math.max(0, closeH - openH)
-      totalPossibleSlotsToday += possibleHours
+      const possibleHours = closeH <= openH ? (closeH + 24 - openH) : (closeH - openH)
+      totalPossibleSlotsToday += Math.max(0, possibleHours)
 
       const occupiedSlotSet = new Set()
 

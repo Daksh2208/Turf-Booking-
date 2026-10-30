@@ -63,12 +63,11 @@ export const LoginPage = () => {
 
   // Clear server error whenever user changes inputs
   useEffect(() => {
-    if (!serverError) return
     const subscription = watch(() => {
-      setServerError(null)
+      setServerError((prev) => (prev ? null : prev))
     })
     return () => subscription.unsubscribe()
-  }, [watch, serverError])
+  }, [watch])
 
   // Set prefilled email if navigating from registration
   useEffect(() => {

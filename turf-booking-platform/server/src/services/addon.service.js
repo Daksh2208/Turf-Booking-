@@ -1,4 +1,5 @@
 import { AddOn } from '../models/AddOn.js'
+import { Booking } from '../models/Booking.js'
 import { logAudit } from '../utils/auditLogger.js'
 
 export const addOnService = {
@@ -126,7 +127,8 @@ export const addOnService = {
   },
 
   /**
-   * Delete Add-On (Admin only)
+   * Delete Add-On safely (Admin only)
+   * Prevents deletion if active or pending bookings reference this add-on.
    */
   async deleteAddOn(id, adminUser, ip = '') {
     const addon = await AddOn.findById(id)
@@ -134,6 +136,20 @@ export const addOnService = {
       const error = new Error('Add-on not found.')
       error.statusCode = 404
       error.code = 'ADDON_NOT_FOUND'
+      throw error
+    }
+
+    // Check if referenced in upcoming/active bookings
+    const activeBookingCount = await Booking.countDocuments({
+      'addOns.addOn': id,
+      status: { $in: ['pending', 'confirmed'] },
+    })
+    if (activeBookingCount > 0) {
+      const error = new Error(
+        `Cannot delete add-on "${addon.name}": It is part of ${activeBookingCount} active upcoming booking(s). Please deactivate the add-on instead.`
+      )
+      error.statusCode = 400
+      error.code = 'ADDON_IN_ACTIVE_BOOKING'
       throw error
     }
 

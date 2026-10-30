@@ -38,6 +38,12 @@ export const HomePage = () => {
     refetchInterval: 5000,
   })
 
+  // Fetch Public Business Settings
+  const { data: settings } = useQuery({
+    queryKey: ['publicBusinessSettings'],
+    queryFn: () => customerInventoryService.getSettings(),
+  })
+
   // Deduplicate sports so only unique categories appear (no duplicate "Box Cricket" variants)
   const uniqueSports = useMemo(() => {
     const seen = new Map()
@@ -53,6 +59,13 @@ export const HomePage = () => {
     }
     return Array.from(seen.values())
   }, [sports])
+
+  const sportsDisplayList = useMemo(() => {
+    if (uniqueSports.length > 0) {
+      return uniqueSports.map((s) => s.cleanName || s.name).slice(0, 4).join(', ')
+    }
+    return 'Cricket, Football, Pickleball & Badminton'
+  }, [uniqueSports])
 
   // 2. Fetch Active Promotional Banners
   const { data: banners = [] } = useQuery({
@@ -111,7 +124,8 @@ export const HomePage = () => {
           </h1>
 
           <p className="text-sm sm:text-base text-[#46564A] max-w-2xl mx-auto leading-relaxed">
-            Find and book premier sports turfs for Cricket, Football, Pickleball, and Badminton. Inspect live available slots, transparent peak/weekend rates, and play without conflicts.
+            {settings?.aboutText ||
+              `Find and book premier sports turfs for ${sportsDisplayList}. Inspect live available slots, transparent peak/weekend rates, and play without conflicts.`}
           </p>
 
           {/* Conditional Hero Action Area */}
@@ -179,7 +193,7 @@ export const HomePage = () => {
                   </div>
                   <div>
                     <div className="text-xs font-bold text-[#17231B]">Multi-Sport Arenas</div>
-                    <div className="text-[11px] text-[#526258] mt-0.5">Cricket, Football, Pickleball & Badminton</div>
+                    <div className="text-[11px] text-[#526258] mt-0.5">{sportsDisplayList}</div>
                   </div>
                 </div>
               </div>
