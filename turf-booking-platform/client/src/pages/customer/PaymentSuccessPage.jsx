@@ -47,8 +47,35 @@ export const PaymentSuccessPage = () => {
 
   const booking = statusData?.booking
   const paymentStatus = statusData?.paymentStatus || booking?.paymentStatus
-  const isPaid = paymentStatus === 'paid'
+  const isPartiallyPaid = paymentStatus === 'partially_paid' || booking?.paymentStatus === 'partially_paid'
+  const isPaid = (paymentStatus === 'paid' || booking?.paymentStatus === 'paid') && !isPartiallyPaid
+  const isFailed = paymentStatus === 'failed' || booking?.paymentStatus === 'failed' || booking?.status === 'cancelled'
   const isSlotConflict = statusData?.slotConflict === true
+
+  const [isRetrying, setIsRetrying] = useState(false)
+  const [retryError, setRetryError] = useState('')
+
+  const handleRetryPayment = async () => {
+    if (!booking?._id || isRetrying) return
+    setIsRetrying(true)
+    setRetryError('')
+    try {
+      const res = await customerPaymentService.createCheckoutSession({
+        bookingId: booking._id,
+      })
+      if (res?.data?.url) {
+        window.location.href = res.data.url
+      } else {
+        setRetryError('Unable to generate checkout redirect. Please book again.')
+      }
+    } catch (err) {
+      setRetryError(
+        err.response?.data?.message || err.message || 'Payment retry failed. The slot may have been booked by someone else.'
+      )
+    } finally {
+      setIsRetrying(false)
+    }
+  }
 
   const copyBookingId = () => {
     if (booking?.bookingId) {
@@ -163,13 +190,31 @@ export const PaymentSuccessPage = () => {
             <div>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE] mb-2">
                 <CreditCard className="w-3.5 h-3.5" />
-                <span>Online Payment Verified</span>
+                <span>Full Online Payment Verified</span>
               </span>
               <h1 className="text-2xl sm:text-3xl font-black text-[#17231B] tracking-tight">
                 Payment Successful & Slot Confirmed!
               </h1>
               <p className="text-xs sm:text-sm text-[#526258] max-w-lg mx-auto mt-1">
-                Your transaction has been securely processed by Stripe. Your arena slot is guaranteed.
+                Your transaction has been securely processed by Stripe. Your arena slot is guaranteed with zero balance remaining.
+              </p>
+            </div>
+          </>
+        ) : isPartiallyPaid ? (
+          <>
+            <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-[#E7F3E9] border-2 border-[#C9DFCE] flex items-center justify-center text-[#267A45] shadow-xs">
+              <CheckCircle2 className="w-10 h-10 sm:w-12 sm:h-12" />
+            </div>
+            <div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[#FDF4E7] text-[#79420D] border border-[#F6E1C4] mb-2">
+                <Clock className="w-3.5 h-3.5 text-[#B26213]" />
+                <span>Advance Verified • Partially Paid</span>
+              </span>
+              <h1 className="text-2xl sm:text-3xl font-black text-[#17231B] tracking-tight">
+                Advance Paid & Slot Confirmed!
+              </h1>
+              <p className="text-xs sm:text-sm text-[#526258] max-w-lg mx-auto mt-1">
+                Your advance payment has been verified by Stripe. Your slot is guaranteed. Remaining balance is payable at the venue counter on match day.
               </p>
             </div>
           </>
@@ -188,6 +233,50 @@ export const PaymentSuccessPage = () => {
               <p className="text-xs sm:text-sm text-[#526258] max-w-lg mx-auto mt-1">
                 Your payment cleared, but the temporary slot hold expired and another player booked it. Our team will contact you or process an automatic full refund.
               </p>
+            </div>
+          </>
+        ) : isFailed ? (
+          <>
+            <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-[#FDF0EF] border-2 border-[#F8D2CE] flex items-center justify-center text-[#922B27] shadow-xs">
+              <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12" />
+            </div>
+            <div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[#FDF0EF] text-[#922B27] border border-[#F8D2CE] mb-2">
+                <span>Payment Not Completed</span>
+              </span>
+              <h1 className="text-2xl sm:text-3xl font-black text-[#922B27] tracking-tight">
+                Payment Failed or Expired
+              </h1>
+              <p className="text-xs sm:text-sm text-[#526258] max-w-lg mx-auto mt-1">
+                {booking?.paymentFailureReason || 'The payment session expired or was not completed. Your card was not charged.'}
+              </p>
+              {retryError && (
+                <div className="mt-3 p-3 max-w-md mx-auto rounded-xl bg-[#FDF0EF] border border-[#F8D2CE] text-xs text-[#922B27]">
+                  {retryError}
+                </div>
+              )}
+              {booking?.status !== 'cancelled' && (
+                <div className="mt-4 flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleRetryPayment}
+                    disabled={isRetrying}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#267A45] hover:bg-[#1E6338] disabled:bg-[#D7E0D9] text-white text-xs font-bold shadow-xs transition-all cursor-pointer"
+                  >
+                    {isRetrying ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Preparing Checkout...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-3.5 h-3.5" />
+                        <span>Retry Payment with Stripe</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </>
         ) : (
@@ -256,6 +345,19 @@ export const PaymentSuccessPage = () => {
 
         {/* Body content */}
         <div className="p-5 sm:p-6 space-y-6">
+          {/* Partially Paid Venue Banner */}
+          {isPartiallyPaid && (
+            <div className="p-4 rounded-2xl bg-[#FDF4E7] border border-[#F6E1C4] text-[#79420D] space-y-1">
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <AlertCircle className="w-4 h-4 text-[#B26213] shrink-0" />
+                <span>Remaining Balance Payable at Venue</span>
+              </div>
+              <p className="text-xs text-[#79420D]/90">
+                Please pay the remaining <strong className="font-mono text-sm font-black text-[#17231B]">₹{(((booking?.amountDue ?? (booking?.totalAmount - (booking?.amountPaid || 0)))) / 100).toFixed(2)}</strong> at the turf reception counter upon arrival via Cash, UPI, or Card.
+              </p>
+            </div>
+          )}
+
           {/* Turf details */}
           <div>
             <h3 className="text-lg font-bold text-[#17231B]">{booking?.turf?.name}</h3>
@@ -295,11 +397,15 @@ export const PaymentSuccessPage = () => {
 
             <div className="p-3.5 rounded-2xl bg-[#F6F8F6] border border-[#D7E0D9]">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#526258] block">
-                Payment Channel
+                Payment Plan
               </span>
               <p className="text-sm font-bold text-[#17231B] mt-1 flex items-center gap-1.5">
                 <CreditCard className="w-4 h-4 text-[#267A45]" />
-                <span>Stripe Online</span>
+                <span>
+                  {booking?.paymentPlan === 'partial_advance'
+                    ? `Advance Online (${booking?.advancePercentage || 20}%)`
+                    : '100% Pre-Paid'}
+                </span>
               </p>
             </div>
           </div>
@@ -332,12 +438,35 @@ export const PaymentSuccessPage = () => {
               </span>
             </div>
 
-            <div className="pt-2 border-t border-[#E2E8E3] flex justify-between items-center text-sm font-black text-[#17231B]">
-              <span>Amount Paid via Stripe</span>
-              <span className="font-mono text-xl text-[#267A45]">
-                ₹{((booking?.amountPaid || booking?.totalAmount || 0) / 100).toFixed(2)}
+            <div className="flex justify-between font-bold text-[#17231B]">
+              <span>Total Booking Amount</span>
+              <span className="font-mono">
+                ₹{((booking?.totalAmount || 0) / 100).toFixed(2)}
               </span>
             </div>
+
+            <div className="flex justify-between text-[#267A45] font-semibold">
+              <span>Amount Paid via Stripe</span>
+              <span className="font-mono">
+                ₹{((booking?.amountPaid || 0) / 100).toFixed(2)}
+              </span>
+            </div>
+
+            {isPartiallyPaid ? (
+              <div className="pt-2 border-t border-[#E2E8E3] flex justify-between items-center text-sm font-black text-[#17231B]">
+                <span>Remaining Balance Due at Venue</span>
+                <span className="font-mono text-xl text-[#79420D]">
+                  ₹{(((booking?.amountDue ?? (booking?.totalAmount - (booking?.amountPaid || 0)))) / 100).toFixed(2)}
+                </span>
+              </div>
+            ) : (
+              <div className="pt-2 border-t border-[#E2E8E3] flex justify-between items-center text-sm font-black text-[#267A45]">
+                <span>Remaining Balance Due</span>
+                <span className="font-mono text-base font-bold text-[#1D6537]">
+                  ₹0.00 (Fully Paid)
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>

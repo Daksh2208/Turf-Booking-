@@ -4,6 +4,7 @@ import { env } from '../config/env.js'
 import { Booking } from '../models/Booking.js'
 import { SlotReservation } from '../models/SlotReservation.js'
 import { StripeEvent } from '../models/StripeEvent.js'
+import { Payment } from '../models/Payment.js'
 import { bookingService } from './booking.service.js'
 import couponService from './coupon.service.js'
 import { logAudit } from '../utils/auditLogger.js'
@@ -96,6 +97,7 @@ export const stripeService = {
         {
           ...bookingData,
           paymentMethod: 'stripe',
+          paymentPlan: bookingData.paymentPlan || 'full_online',
         },
         user,
         ip
@@ -129,6 +131,35 @@ export const stripeService = {
         error.code = 'BOOKING_CANCELLED'
         throw error
       }
+
+      // Re-validate slot availability for payment retry
+      const turfId = booking.turf?._id || booking.turf
+      const slotConflicts = await SlotReservation.find({
+        turf: turfId,
+        date: booking.date,
+        slotTime: { $in: booking.selectedSlots },
+        status: 'active',
+        booking: { $ne: booking._id },
+      })
+
+      if (slotConflicts.length > 0) {
+        const error = new Error('One or more slots have been booked by another customer. Please select another slot.')
+        error.statusCode = 409
+        error.code = 'SLOT_UNAVAILABLE'
+        throw error
+      }
+
+      // Re-secure slot reservations for this booking with refreshed 15-minute hold
+      for (const slotTime of booking.selectedSlots) {
+        await SlotReservation.findOneAndUpdate(
+          { turf: turfId, date: booking.date, slotTime, booking: booking._id },
+          { $set: { status: 'active' } },
+          { upsert: true }
+        )
+      }
+      booking.status = 'pending'
+      booking.paymentStatus = 'pending'
+      booking.paymentExpiresAt = new Date(Date.now() + 15 * 60 * 1000)
     } else {
       const error = new Error('Either bookingData or bookingId is required.')
       error.statusCode = 400
@@ -139,9 +170,14 @@ export const stripeService = {
     const stripe = this.getStripeClient()
     const currency = (env.STRIPE_CURRENCY || 'inr').toLowerCase()
 
+    const isPartialAdvance = booking.paymentPlan === 'partial_advance'
+    const chargeAmount = isPartialAdvance
+      ? (booking.advanceAmount || Math.round((booking.totalAmount * (booking.advancePercentage || 20)) / 100))
+      : booking.totalAmount
+
     // Validate that amount is an integer > 0
-    if (!Number.isInteger(booking.totalAmount) || booking.totalAmount <= 0) {
-      const error = new Error('Invalid booking total amount for Stripe checkout.')
+    if (!Number.isInteger(chargeAmount) || chargeAmount <= 0) {
+      const error = new Error('Invalid booking payment amount for Stripe checkout.')
       error.statusCode = 400
       error.code = 'INVALID_AMOUNT'
       throw error
@@ -197,10 +233,14 @@ export const stripeService = {
             price_data: {
               currency,
               product_data: {
-                name: `Turf Arena Booking: ${booking.bookingId}`,
-                description: `Slot reservation on ${booking.date} (${booking.startTime} - ${booking.endTime})`,
+                name: isPartialAdvance
+                  ? `Turf Booking Advance (${booking.advancePercentage || 20}%): ${booking.bookingId}`
+                  : `Turf Arena Booking: ${booking.bookingId}`,
+                description: isPartialAdvance
+                  ? `Partial advance payment of ₹${(chargeAmount / 100).toFixed(2)} on ${booking.date} (${booking.startTime} - ${booking.endTime}). Remaining ₹${((booking.remainingAmount || booking.totalAmount - chargeAmount) / 100).toFixed(2)} payable at venue counter.`
+                  : `Slot reservation on ${booking.date} (${booking.startTime} - ${booking.endTime})`,
               },
-              unit_amount: booking.totalAmount, // Integer paise
+              unit_amount: chargeAmount, // Integer paise
             },
             quantity: 1,
           },
@@ -209,13 +249,18 @@ export const stripeService = {
           bookingId: booking._id.toString(),
           bookingReference: booking.bookingId,
           userId: user._id.toString(),
+          paymentPlan: booking.paymentPlan || 'full_online',
+          chargeAmount: String(chargeAmount),
+          advanceAmount: String(booking.advanceAmount || chargeAmount),
+          remainingAmount: String(booking.remainingAmount || (booking.totalAmount - chargeAmount)),
+          totalAmount: String(booking.totalAmount),
         },
         success_url: successUrl,
         cancel_url: cancelUrl,
         expires_at: expiresAt,
       },
       {
-        idempotencyKey: `cs_${booking._id}_${booking.totalAmount}`,
+        idempotencyKey: `cs_${booking._id}_${chargeAmount}`,
       }
     )
 
@@ -226,11 +271,36 @@ export const stripeService = {
     booking.paymentExpiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15-minute slot lock
     await booking.save()
 
+    // Record or update payment transaction ledger
+    await Payment.findOneAndUpdate(
+      { booking: booking._id },
+      {
+        $set: {
+          paymentId: `PAY-${booking.bookingId}`,
+          booking: booking._id,
+          bookingReference: booking.bookingId,
+          user: booking.user,
+          turf: booking.turf,
+          amount: chargeAmount,
+          currency: currency.toUpperCase(),
+          paymentMethod: 'stripe',
+          status: 'pending',
+          stripeCheckoutSessionId: session.id,
+        },
+      },
+      { upsert: true, new: true }
+    ).catch(() => {})
+
     return {
       sessionId: session.id,
       url: session.url,
       bookingId: booking._id,
       bookingReference: booking.bookingId,
+      paymentPlan: booking.paymentPlan || 'full_online',
+      chargeAmount,
+      advanceAmount: booking.advanceAmount || chargeAmount,
+      remainingAmount: booking.remainingAmount || (booking.totalAmount - chargeAmount),
+      totalAmount: booking.totalAmount,
     }
   },
 
@@ -288,10 +358,10 @@ export const stripeService = {
       }
     }
 
-    // If already marked paid, return authoritative record
-    if (booking.paymentStatus === 'paid') {
+    // If already marked paid or partially_paid, return authoritative record
+    if (booking.paymentStatus === 'paid' || booking.paymentStatus === 'partially_paid') {
       return {
-        paymentStatus: 'paid',
+        paymentStatus: booking.paymentStatus,
         booking,
       }
     }
@@ -303,6 +373,39 @@ export const stripeService = {
         const session = await stripe.checkout.sessions.retrieve(booking.stripeCheckoutSessionId)
 
         if (session.payment_status === 'paid') {
+          // If booking was already cancelled, do not revive it as confirmed!
+          if (booking.status === 'cancelled') {
+            booking.paymentStatus = 'paid'
+            booking.amountPaid = session.amount_total
+            booking.amountDue = 0
+            booking.paidAt = new Date()
+            booking.stripePaymentIntentId = session.payment_intent
+            booking.paymentNotes =
+              booking.paymentNotes ||
+              'Payment received after booking was cancelled. Requires refund.'
+            await booking.save()
+
+            await Payment.findOneAndUpdate(
+              { booking: booking._id },
+              {
+                $set: {
+                  status: 'paid',
+                  amount: session.amount_total,
+                  stripePaymentIntentId: session.payment_intent,
+                  paidAt: booking.paidAt,
+                  notes: booking.paymentNotes,
+                },
+              }
+            ).catch(() => {})
+
+            return {
+              paymentStatus: 'paid',
+              booking,
+              slotConflict: true,
+              message: 'Payment received, but booking was cancelled. Our team will issue a refund.',
+            }
+          }
+
           // Late-Payment & Slot Safety: Check if slot was reassigned to another customer
           const slotConflict = await SlotReservation.findOne({
             turf: booking.turf._id || booking.turf,
@@ -324,6 +427,19 @@ export const stripeService = {
             booking.paymentNotes = 'Payment received after slot release; slot reallocated to another customer. Requires refund.'
             await booking.save()
 
+            await Payment.findOneAndUpdate(
+              { booking: booking._id },
+              {
+                $set: {
+                  status: 'paid',
+                  amount: session.amount_total,
+                  stripePaymentIntentId: session.payment_intent,
+                  paidAt: booking.paidAt,
+                  notes: booking.paymentNotes,
+                },
+              }
+            ).catch(() => {})
+
             return {
               paymentStatus: 'paid',
               booking,
@@ -332,20 +448,42 @@ export const stripeService = {
             }
           }
 
-          // Slot is available: Confirm booking and mark paid
+          // Slot is available: Confirm booking and update payment status
+          const isPartialAdvance = booking.paymentPlan === 'partial_advance'
           booking.status = 'confirmed'
-          booking.paymentStatus = 'paid'
+          booking.paymentStatus = isPartialAdvance ? 'partially_paid' : 'paid'
           booking.amountPaid = session.amount_total
-          booking.amountDue = 0
+          booking.amountDue = Math.max(0, booking.totalAmount - session.amount_total)
           booking.paidAt = new Date()
           booking.stripePaymentIntentId = session.payment_intent
           await booking.save()
 
-          // Ensure slot reservations are active
+          // Ensure slot reservations are active and broadcast update
           await SlotReservation.updateMany({ booking: booking._id }, { status: 'active' })
+          broadcastAvailabilityUpdate({ turfId: booking.turf._id || booking.turf, date: booking.date, reason: 'booking_confirmed' })
+
+          await Payment.findOneAndUpdate(
+            { booking: booking._id },
+            {
+              $set: {
+                paymentId: `PAY-${booking.bookingId}`,
+                booking: booking._id,
+                bookingReference: booking.bookingId,
+                user: booking.user,
+                turf: booking.turf,
+                amount: session.amount_total,
+                currency: (session.currency || 'INR').toUpperCase(),
+                paymentMethod: 'stripe',
+                status: isPartialAdvance ? 'partially_paid' : 'paid',
+                stripePaymentIntentId: session.payment_intent,
+                paidAt: booking.paidAt,
+              },
+            },
+            { upsert: true, new: true }
+          ).catch(() => {})
 
           return {
-            paymentStatus: 'paid',
+            paymentStatus: booking.paymentStatus,
             booking,
           }
         }
@@ -360,6 +498,10 @@ export const stripeService = {
             await couponService.releaseRedemption(booking._id)
           }
           await booking.save()
+          await Payment.findOneAndUpdate(
+            { booking: booking._id },
+            { $set: { status: 'failed', failureReason: 'Stripe checkout session expired' } }
+          ).catch(() => {})
           broadcastAvailabilityUpdate({ turfId: booking.turf._id || booking.turf, date: booking.date, reason: 'booking_cancelled' })
 
           return {
@@ -431,7 +573,35 @@ export const stripeService = {
           const bookingId = session.client_reference_id || session.metadata?.bookingId
           if (bookingId) {
             const booking = await Booking.findById(bookingId)
-            if (booking && booking.paymentStatus !== 'paid') {
+            if (booking && booking.paymentStatus !== 'paid' && booking.paymentStatus !== 'partially_paid') {
+              // Verify amount & currency
+              const expectedCurrency = (env.STRIPE_CURRENCY || 'inr').toLowerCase()
+              if (session.currency && session.currency.toLowerCase() !== expectedCurrency) {
+                booking.paymentStatus = 'failed'
+                booking.paymentFailureReason = `Currency mismatch: expected ${expectedCurrency}, got ${session.currency}`
+                await booking.save()
+                await Payment.findOneAndUpdate(
+                  { booking: booking._id },
+                  { $set: { status: 'failed', failureReason: booking.paymentFailureReason } }
+                ).catch(() => {})
+                break
+              }
+              const isPartialAdvance = booking.paymentPlan === 'partial_advance'
+              const expectedAmount = isPartialAdvance
+                ? (booking.advanceAmount || Math.round((booking.totalAmount * (booking.advancePercentage || 20)) / 100))
+                : booking.totalAmount
+
+              if (typeof session.amount_total === 'number' && session.amount_total < expectedAmount) {
+                booking.paymentStatus = 'failed'
+                booking.paymentFailureReason = `Amount mismatch: expected ${expectedAmount}, paid ${session.amount_total}`
+                await booking.save()
+                await Payment.findOneAndUpdate(
+                  { booking: booking._id },
+                  { $set: { status: 'failed', failureReason: booking.paymentFailureReason } }
+                ).catch(() => {})
+                break
+              }
+
               // If booking was already cancelled, do not revive it as confirmed!
               if (booking.status === 'cancelled') {
                 booking.paymentStatus = 'paid'
@@ -443,12 +613,25 @@ export const stripeService = {
                   booking.paymentNotes ||
                   'Payment received after slot release; slot reallocated to another customer. Requires refund.'
                 await booking.save()
+
+                await Payment.findOneAndUpdate(
+                  { booking: booking._id },
+                  {
+                    $set: {
+                      status: 'paid',
+                      amount: session.amount_total,
+                      stripePaymentIntentId: session.payment_intent,
+                      paidAt: booking.paidAt,
+                      notes: booking.paymentNotes,
+                    },
+                  }
+                ).catch(() => {})
                 break
               }
 
               // Check slot conflict before confirming
               const slotConflict = await SlotReservation.findOne({
-                turf: booking.turf,
+                turf: booking.turf?._id || booking.turf,
                 date: booking.date,
                 slotTime: { $in: booking.selectedSlots },
                 status: 'active',
@@ -464,16 +647,49 @@ export const stripeService = {
                 booking.stripePaymentIntentId = session.payment_intent
                 booking.paymentNotes = 'Payment received after slot release; slot reallocated to another customer. Requires refund.'
                 await booking.save()
+
+                await Payment.findOneAndUpdate(
+                  { booking: booking._id },
+                  {
+                    $set: {
+                      status: 'paid',
+                      amount: session.amount_total,
+                      stripePaymentIntentId: session.payment_intent,
+                      paidAt: booking.paidAt,
+                      notes: booking.paymentNotes,
+                    },
+                  }
+                ).catch(() => {})
               } else {
                 booking.status = 'confirmed'
-                booking.paymentStatus = 'paid'
+                booking.paymentStatus = isPartialAdvance ? 'partially_paid' : 'paid'
                 booking.amountPaid = session.amount_total
-                booking.amountDue = 0
+                booking.amountDue = Math.max(0, booking.totalAmount - session.amount_total)
                 booking.paidAt = new Date()
                 booking.stripePaymentIntentId = session.payment_intent
                 await booking.save()
                 await SlotReservation.updateMany({ booking: booking._id }, { status: 'active' })
-                broadcastAvailabilityUpdate({ turfId: booking.turf, date: booking.date, reason: 'booking_confirmed' })
+                broadcastAvailabilityUpdate({ turfId: booking.turf?._id || booking.turf, date: booking.date, reason: 'booking_confirmed' })
+
+                await Payment.findOneAndUpdate(
+                  { booking: booking._id },
+                  {
+                    $set: {
+                      paymentId: `PAY-${booking.bookingId}`,
+                      booking: booking._id,
+                      bookingReference: booking.bookingId,
+                      user: booking.user,
+                      turf: booking.turf,
+                      amount: session.amount_total,
+                      currency: (session.currency || 'INR').toUpperCase(),
+                      paymentMethod: 'stripe',
+                      status: isPartialAdvance ? 'partially_paid' : 'paid',
+                      stripePaymentIntentId: session.payment_intent,
+                      paidAt: booking.paidAt,
+                    },
+                  },
+                  { upsert: true, new: true }
+                ).catch(() => {})
               }
             }
           }
@@ -499,7 +715,11 @@ export const stripeService = {
               await couponService.releaseRedemption(booking._id)
             }
             await booking.save()
-            broadcastAvailabilityUpdate({ turfId: booking.turf, date: booking.date, reason: 'booking_cancelled' })
+            await Payment.findOneAndUpdate(
+              { booking: booking._id },
+              { $set: { status: 'failed', failureReason: booking.paymentFailureReason } }
+            ).catch(() => {})
+            broadcastAvailabilityUpdate({ turfId: booking.turf?._id || booking.turf, date: booking.date, reason: 'booking_cancelled' })
           }
         }
         break
@@ -523,6 +743,17 @@ export const stripeService = {
             booking.refundedAt = new Date()
             booking.refundFailureReason = ''
             await booking.save()
+
+            await Payment.findOneAndUpdate(
+              { booking: booking._id },
+              {
+                $set: {
+                  status: booking.paymentStatus,
+                  stripeRefundId: charge.id,
+                  refundedAt: booking.refundedAt,
+                },
+              }
+            ).catch(() => {})
           }
         }
         break
@@ -559,6 +790,18 @@ export const stripeService = {
             booking.refundStatus = 'pending'
           }
           await booking.save()
+
+          await Payment.findOneAndUpdate(
+            { booking: booking._id },
+            {
+              $set: {
+                status: booking.paymentStatus,
+                stripeRefundId: refund.id,
+                refundedAt: booking.refundedAt || null,
+                failureReason: booking.refundFailureReason || '',
+              },
+            }
+          ).catch(() => {})
         }
         break
       }
@@ -581,6 +824,15 @@ export const stripeService = {
           booking.refundStatus = 'failed'
           booking.refundFailureReason = refund.failure_reason || 'Refund failed by Stripe'
           await booking.save()
+
+          await Payment.findOneAndUpdate(
+            { booking: booking._id },
+            {
+              $set: {
+                failureReason: booking.refundFailureReason || '',
+              },
+            }
+          ).catch(() => {})
         }
         break
       }
@@ -648,6 +900,10 @@ export const stripeService = {
         await couponService.releaseRedemption(booking._id)
       }
       await booking.save()
+      await Payment.findOneAndUpdate(
+        { booking: booking._id },
+        { $set: { status: 'failed', failureReason: 'Cancelled by customer on Stripe checkout page' } }
+      ).catch(() => {})
       broadcastAvailabilityUpdate({ turfId: booking.turf, date: booking.date, reason: 'booking_cancelled' })
     }
 
@@ -680,14 +936,19 @@ export const stripeService = {
       throw error
     }
 
-    if (booking.paymentMethod !== 'stripe') {
+    if (booking.paymentMethod !== 'stripe' && !booking.stripePaymentIntentId) {
       const error = new Error('Only Stripe online payments can be refunded via Stripe.')
       error.statusCode = 400
       error.code = 'INVALID_PAYMENT_METHOD_FOR_STRIPE_REFUND'
       throw error
     }
 
-    if (booking.paymentStatus !== 'paid' && booking.paymentStatus !== 'refunded') {
+    if (
+      booking.paymentStatus !== 'paid' &&
+      booking.paymentStatus !== 'partially_paid' &&
+      booking.paymentStatus !== 'refunded' &&
+      booking.paymentStatus !== 'partially_refunded'
+    ) {
       const error = new Error('Cannot process refund for an unpaid booking.')
       error.statusCode = 400
       error.code = 'BOOKING_NOT_PAID'
@@ -808,6 +1069,27 @@ export const stripeService = {
 
       await booking.save()
 
+      await Payment.findOneAndUpdate(
+        { booking: booking._id },
+        {
+          $set: {
+            paymentId: `PAY-${booking.bookingId}`,
+            booking: booking._id,
+            bookingReference: booking.bookingId,
+            user: booking.user,
+            turf: booking.turf,
+            amount: booking.totalAmount,
+            currency: 'INR',
+            paymentMethod: booking.paymentMethod || 'stripe',
+            status: booking.paymentStatus,
+            stripeRefundId: refund?.id,
+            refundedAt: booking.refundedAt || null,
+            failureReason: booking.refundFailureReason || '',
+          },
+        },
+        { upsert: true, new: true }
+      ).catch(() => {})
+
       return {
         success: refund.status !== 'failed',
         refund,
@@ -833,6 +1115,15 @@ export const stripeService = {
         failureReason: stripeErr.message || 'Stripe error',
       })
       await booking.save()
+
+      await Payment.findOneAndUpdate(
+        { booking: booking._id },
+        {
+          $set: {
+            failureReason: booking.refundFailureReason || 'Stripe API call failed',
+          },
+        }
+      ).catch(() => {})
 
       return {
         success: false,

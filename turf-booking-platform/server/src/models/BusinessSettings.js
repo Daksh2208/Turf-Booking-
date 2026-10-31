@@ -124,6 +124,18 @@ const businessSettingsSchema = new mongoose.Schema(
         max: [100, 'Tax rate cannot exceed 100%'],
       },
     },
+    partialPaymentSettings: {
+      enabled: {
+        type: Boolean,
+        default: true,
+      },
+      advancePercentage: {
+        type: Number,
+        default: 20,
+        min: [1, 'Advance percentage must be at least 1%'],
+        max: [99, 'Advance percentage cannot exceed 99%'],
+      },
+    },
     aboutText: {
       type: String,
       default: 'Premier multi-sport arena hosting box cricket, football, pickleball, and badminton turfs.',
@@ -149,7 +161,9 @@ businessSettingsSchema.statics.getSettings = async function () {
   let settings = await this.findOne()
   if (!settings) {
     settings = await this.create({})
-  } else if (!settings.cancellationPolicy || !settings.cancellationPolicy.tiers?.length) {
+  }
+  let needsSave = false
+  if (!settings.cancellationPolicy || !settings.cancellationPolicy.tiers?.length) {
     settings.cancellationPolicy = {
       enabled: true,
       cutoffHours: settings.bookingRules?.cancellationCutoffHours ?? 4,
@@ -161,6 +175,16 @@ businessSettingsSchema.statics.getSettings = async function () {
       ],
       defaultRefundPercentage: 0,
     }
+    needsSave = true
+  }
+  if (!settings.partialPaymentSettings) {
+    settings.partialPaymentSettings = {
+      enabled: true,
+      advancePercentage: 20,
+    }
+    needsSave = true
+  }
+  if (needsSave) {
     await settings.save()
   }
   return settings

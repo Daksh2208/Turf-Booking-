@@ -129,8 +129,33 @@ export const BookingSuccessPage = () => {
 
   const isCancelled = booking.status === 'cancelled'
   const isFailed = booking.paymentStatus === 'failed'
-  const isPaid = booking.paymentStatus === 'paid'
   const isCompleted = booking.status === 'completed'
+
+  const advancePaid =
+    booking.amountPaid !== undefined && booking.amountPaid !== null && booking.amountPaid > 0
+      ? booking.amountPaid
+      : booking.advanceAmount !== undefined && booking.advanceAmount !== null
+      ? booking.advanceAmount
+      : 0
+
+  const calculatedRemaining = Math.max(0, (booking.totalAmount || 0) - advancePaid)
+
+  // Remaining due is strictly 0 only if booking is 100% paid
+  const remainingDue =
+    booking.paymentStatus === 'paid' && (booking.amountPaid >= (booking.totalAmount || 0) || !booking.paymentPlan || booking.paymentPlan === 'full_online')
+      ? 0
+      : (booking.amountDue !== undefined && booking.amountDue !== null && booking.amountDue > 0)
+      ? booking.amountDue
+      : (booking.remainingAmount !== undefined && booking.remainingAmount !== null && booking.remainingAmount > 0)
+      ? booking.remainingAmount
+      : calculatedRemaining
+
+  const isPartiallyPaid =
+    booking.paymentStatus === 'partially_paid' ||
+    (booking.paymentPlan === 'partial_advance' && advancePaid > 0 && remainingDue > 0) ||
+    (advancePaid > 0 && advancePaid < booking.totalAmount)
+
+  const isPaid = (booking.paymentStatus === 'paid' || remainingDue === 0) && !isPartiallyPaid
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8 print:py-0 print:px-0">
@@ -239,6 +264,10 @@ export const BookingSuccessPage = () => {
               <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]">
                 {booking.paymentMethod === 'stripe' ? 'Paid (Stripe)' : 'Paid'}
               </span>
+            ) : isPartiallyPaid ? (
+              <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+                Partially Paid (₹{((remainingDue / 100).toFixed(2))} Due)
+              </span>
             ) : booking.paymentStatus === 'refunded' ? (
               <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[#EFF6FF] text-[#1B4E82] border border-[#BFDBFE]">
                 Refunded
@@ -253,7 +282,20 @@ export const BookingSuccessPage = () => {
 
         {/* Arena & Time Details */}
         <div className="p-6 sm:p-8 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Partially Paid Venue Banner */}
+          {isPartiallyPaid && !isCancelled && !isFailed && (
+            <div className="p-4 rounded-2xl bg-[#FDF4E7] border border-[#F6E1C4] text-[#79420D] space-y-1">
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <AlertCircle className="w-4 h-4 text-[#B26213] shrink-0" />
+                <span>Remaining Balance Payable at Venue Counter</span>
+              </div>
+              <p className="text-xs text-[#79420D]/90">
+                You have paid <strong className="font-mono text-sm font-black text-[#17231B]">₹{((advancePaid / 100).toFixed(2))}</strong> online ({booking.advancePercentage || 20}% advance). Please pay the remaining balance of <strong className="font-mono text-sm font-black text-[#79420D]">₹{((remainingDue / 100).toFixed(2))}</strong> at the turf reception counter upon arrival via Cash, UPI, or Card.
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-4">
             <div>
               <span className="text-[10px] uppercase font-bold text-[#526258] tracking-wider block">
                 Sports Arena
@@ -271,8 +313,8 @@ export const BookingSuccessPage = () => {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-3 rounded-2xl bg-[#F6F8F6] border border-[#D7E0D9]">
                 <span className="text-[10px] uppercase font-bold text-[#526258] tracking-wider block">
                   Date
                 </span>
@@ -281,7 +323,7 @@ export const BookingSuccessPage = () => {
                   <span>{formattedDate}</span>
                 </span>
               </div>
-              <div>
+              <div className="p-3 rounded-2xl bg-[#F6F8F6] border border-[#D7E0D9]">
                 <span className="text-[10px] uppercase font-bold text-[#526258] tracking-wider block">
                   Time Slot
                 </span>
@@ -289,6 +331,21 @@ export const BookingSuccessPage = () => {
                   <Clock className="w-3.5 h-3.5 text-[#267A45]" />
                   <span>
                     {booking.startTime} - {booking.endTime}
+                  </span>
+                </span>
+              </div>
+              <div className="p-3 rounded-2xl bg-[#F6F8F6] border border-[#D7E0D9]">
+                <span className="text-[10px] uppercase font-bold text-[#526258] tracking-wider block">
+                  Payment Status
+                </span>
+                <span className="text-xs font-semibold text-[#17231B] mt-1 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#267A45]" />
+                  <span>
+                    {isPartiallyPaid
+                      ? `₹${((remainingDue / 100).toFixed(2))} Due at Venue`
+                      : isPaid
+                      ? '100% Pre-Paid'
+                      : 'Pay at Venue'}
                   </span>
                 </span>
               </div>
@@ -371,10 +428,12 @@ export const BookingSuccessPage = () => {
 
               <div className="flex justify-between items-center pt-2 border-t border-[#E2E8E3]">
                 <div>
-                  <span className="text-sm font-bold text-[#17231B] block">Final Total</span>
+                  <span className="text-sm font-bold text-[#17231B] block">Total Booking Amount</span>
                   <span className="text-[10px] font-medium">
                     {isCancelled || isFailed ? (
                       <span className="text-[#922B27]">Cancelled / Void</span>
+                    ) : isPartiallyPaid ? (
+                      <span className="text-[#79420D]">Partial advance paid online • Balance due at venue</span>
                     ) : isPaid ? (
                       <span className="text-[#267A45]">Paid via Online Payment</span>
                     ) : (
@@ -390,6 +449,21 @@ export const BookingSuccessPage = () => {
                   ₹{(booking.totalAmount / 100).toFixed(2)}
                 </span>
               </div>
+
+              {isPartiallyPaid && (
+                <div className="pt-2 border-t border-[#E2E8E3] space-y-1.5 text-xs">
+                  <div className="flex justify-between text-[#1D6537] font-semibold">
+                    <span>Advance Paid via Stripe:</span>
+                    <span className="font-mono">₹{((advancePaid / 100).toFixed(2))}</span>
+                  </div>
+                  <div className="flex justify-between text-[#79420D] font-bold text-sm pt-1 border-t border-[#E2E8E3]/60">
+                    <span>Remaining Balance Due at Venue:</span>
+                    <span className="font-mono text-base font-black text-[#79420D]">
+                      ₹{((remainingDue / 100).toFixed(2))}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -422,10 +496,12 @@ export const BookingSuccessPage = () => {
               <p className="text-[#526258] text-[11px] leading-relaxed">
                 1. Arrive at least 15 minutes before your match time at {booking.turf?.name || 'the arena'}.<br />
                 2. Show your Booking Reference <strong className="text-[#267A45] font-mono">{booking.bookingId}</strong> at the reception desk.<br />
-                {isPaid ? (
+                {isPartiallyPaid ? (
+                  <>3. Your advance of ₹{((advancePaid / 100).toFixed(2))} is verified. Settle the remaining <strong className="font-mono text-[#79420D]">₹{((remainingDue / 100).toFixed(2))}</strong> via Cash, UPI, or Card at the reception counter and start playing!</>
+                ) : isPaid ? (
                   <>3. Your payment is verified. Hit the pitch and enjoy your match!</>
                 ) : (
-                  <>3. Settle ₹{(booking.totalAmount / 100).toFixed(2)} via Cash or UPI and start playing!</>
+                  <>3. Settle ₹{((remainingDue / 100).toFixed(2))} via Cash or UPI at the reception counter and start playing!</>
                 )}
               </p>
             </div>

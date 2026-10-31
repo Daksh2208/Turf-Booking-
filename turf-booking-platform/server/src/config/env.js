@@ -1,7 +1,12 @@
 import dotenv from 'dotenv'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
-// Load environment variables
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// Load environment variables from cwd, and fallback to server directory .env
 dotenv.config()
+dotenv.config({ path: path.resolve(__dirname, '../../.env') })
 
 /**
  * Validates environment variables without external schema dependencies

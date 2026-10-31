@@ -190,12 +190,23 @@ export const MyBookingsPage = () => {
     }
   }
 
-  const getPaymentBadge = (paymentStatus, paymentMethod) => {
+  const getPaymentBadge = (paymentStatus, paymentMethod, booking) => {
     const isStripe = paymentMethod === 'stripe'
     if (paymentStatus === 'paid') {
       return (
         <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]">
           {isStripe ? 'Paid (Stripe)' : 'Paid'}
+        </span>
+      )
+    }
+    if (paymentStatus === 'partially_paid') {
+      const due =
+        booking?.amountDue && booking.amountDue > 0
+          ? booking.amountDue
+          : Math.max(0, (booking?.totalAmount || 0) - (booking?.amountPaid || 0))
+      return (
+        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+          Partially Paid (₹{((due || 0) / 100).toFixed(2)} Due)
         </span>
       )
     }
@@ -581,15 +592,21 @@ export const MyBookingsPage = () => {
                         <span className="text-base font-black font-mono text-[#17231B]">
                           ₹{(booking.totalAmount / 100).toFixed(2)}
                         </span>
-                        {getPaymentBadge(booking.paymentStatus, booking.paymentMethod)}
+                        {getPaymentBadge(booking.paymentStatus, booking.paymentMethod, booking)}
                         {getRefundBadge(booking)}
                       </div>
+                      {booking.paymentStatus === 'partially_paid' && (
+                        <div className="text-[10px] text-[#526258] mt-0.5 font-mono">
+                          Paid: ₹{((booking.amountPaid || 0) / 100).toFixed(2)} • Due: <span className="text-[#79420D] font-bold">₹{(((booking.amountDue ?? (booking.totalAmount - (booking.amountPaid || 0)))) / 100).toFixed(2)}</span>
+                        </div>
+                      )}
                     </div>
 
                     {booking.status === 'cancelled' || booking.status === 'expired' || booking.status === 'failed' ? (
                       <div className="flex items-center gap-2">
                         <Link
                           to={`/bookings/success/${booking._id}`}
+                          state={{ booking }}
                           className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#FDF0EF] text-[#526258] hover:text-[#922B27] text-xs font-semibold border border-[#D7E0D9] hover:border-[#F8D2CE] transition-all inline-flex items-center gap-1.5 cursor-pointer"
                         >
                           <span>View Details</span>
@@ -609,6 +626,7 @@ export const MyBookingsPage = () => {
                       <div className="flex items-center gap-2">
                         <Link
                           to={`/bookings/success/${booking._id}`}
+                          state={{ booking }}
                           className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#EFF6FF] text-[#1B4E82] text-xs font-semibold border border-[#BFDBFE] transition-all inline-flex items-center gap-1.5 cursor-pointer"
                         >
                           <span>View Pass</span>
@@ -638,6 +656,7 @@ export const MyBookingsPage = () => {
                         )}
                         <Link
                           to={`/bookings/success/${booking._id}`}
+                          state={{ booking }}
                           className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-[#F0F6F1] text-[#17231B] text-xs font-semibold border border-[#D7E0D9] transition-all inline-flex items-center gap-1.5 cursor-pointer"
                         >
                           <span>View Pass</span>

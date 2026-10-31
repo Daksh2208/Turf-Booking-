@@ -572,7 +572,7 @@ describe('PHASE 3: Booking & Pricing Reliability Production Engineering Suite', 
       // Create a hold that expired 1 minute ago
       const expiredAt = new Date(Date.now() - 60000)
       const resDoc = await Reservation.create({
-        reservationId: 'RES-EXPIRED-TEST',
+        reservationId: `RES-EXPIRED-TEST-${Date.now()}`,
         user: user1._id,
         turf: testTurf._id,
         date: TEST_WEEKDAY,

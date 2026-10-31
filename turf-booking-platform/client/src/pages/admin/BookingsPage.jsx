@@ -55,8 +55,9 @@ export const BookingsPage = () => {
   const [cancellationReason, setCancellationReason] = useState('')
 
   // Payment modal fields
-  const [paymentMethod, setPaymentMethod] = useState('Pay at Venue')
+  const [paymentMethod, setPaymentMethod] = useState('Cash at Counter')
   const [paymentNotes, setPaymentNotes] = useState('')
+  const [paymentAmount, setPaymentAmount] = useState('')
 
   const [successToast, setSuccessToast] = useState(null)
   const [serverError, setServerError] = useState(null)
@@ -116,8 +117,8 @@ export const BookingsPage = () => {
 
   // Record payment mutation
   const recordPaymentMutation = useMutation({
-    mutationFn: ({ id, paymentMethod, notes }) =>
-      adminInventoryService.recordPayment(id, { paymentMethod, notes }),
+    mutationFn: ({ id, paymentMethod, notes, amount }) =>
+      adminInventoryService.recordPayment(id, { paymentMethod, notes, amount }),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ['adminBookings'] })
       queryClient.invalidateQueries({ queryKey: ['adminDashboard'] })
@@ -164,12 +165,17 @@ export const BookingsPage = () => {
   }
 
   const handleOpenPaymentModal = (booking) => {
-    if (booking.paymentMethod === 'stripe') {
-      setServerError('Stripe online payments cannot be manually recorded by an administrator. They must be verified via Stripe.')
+    if (booking.paymentMethod === 'stripe' && booking.paymentPlan !== 'partial_advance') {
+      setServerError('Full Stripe online payments cannot be manually recorded by an administrator. They must be verified via Stripe.')
       return
     }
+    const due =
+      booking.amountDue && booking.amountDue > 0
+        ? booking.amountDue
+        : Math.max(0, (booking.totalAmount || 0) - (booking.amountPaid || 0))
     setSelectedBooking(booking)
-    setPaymentMethod(booking.paymentMethod || 'Pay at Venue')
+    setPaymentAmount(((due || 0) / 100).toFixed(2))
+    setPaymentMethod('Cash at Counter')
     setPaymentNotes('')
     setServerError(null)
     setIsPaymentModalOpen(true)
@@ -188,10 +194,14 @@ export const BookingsPage = () => {
   const handleSavePayment = (e) => {
     e.preventDefault()
     if (!selectedBooking) return
+    const parsedAmount = paymentAmount !== '' && !isNaN(Number(paymentAmount))
+      ? Math.round(Number(paymentAmount) * 100)
+      : undefined
     recordPaymentMutation.mutate({
       id: selectedBooking._id,
       paymentMethod,
       notes: paymentNotes,
+      amount: parsedAmount,
     })
   }
 
@@ -235,6 +245,13 @@ export const BookingsPage = () => {
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]">
             <Check className="w-2.5 h-2.5" />
             Paid
+          </span>
+        )
+      case 'partially_paid':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+            <Timer className="w-2.5 h-2.5" />
+            Partially Paid
           </span>
         )
       case 'refunded':
@@ -560,12 +577,12 @@ export const BookingsPage = () => {
                           Details
                         </button>
 
-                        {isUnpaid && b.paymentMethod !== 'stripe' && (
+                        {(b.paymentStatus === 'partially_paid' || (isUnpaid && b.paymentMethod !== 'stripe')) && b.status !== 'cancelled' && (
                           <button
                             type="button"
                             onClick={() => handleOpenPaymentModal(b)}
                             className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#79420D] hover:text-[#79420D] bg-[#FDF4E7] hover:bg-[#F8E3C5] border border-[#F8E3C5] transition-colors cursor-pointer"
-                            title="Record venue payment"
+                            title="Record venue remaining payment"
                           >
                             <Banknote className="w-3.5 h-3.5 inline mr-1" />
                             Record Pay
@@ -667,12 +684,16 @@ export const BookingsPage = () => {
               </div>
             </div>
 
-            {/* Unpaid Warning Banner with quick Pay action */}
-            {selectedBooking.paymentStatus === 'unpaid' && selectedBooking.status !== 'cancelled' && (
+            {/* Unpaid / Partial Payment Warning Banner with quick Pay action */}
+            {(selectedBooking.paymentStatus === 'unpaid' || selectedBooking.paymentStatus === 'partially_paid') && selectedBooking.status !== 'cancelled' && (
               <div className="p-3 rounded-xl bg-[#FDF4E7] border border-[#F8E3C5] flex items-center justify-between text-[#79420D]">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>Pay at Venue payment pending receipt at the counter.</span>
+                  <span>
+                    {selectedBooking.paymentStatus === 'partially_paid'
+                      ? `Advance paid. Remaining balance ₹${(((selectedBooking.amountDue ?? (selectedBooking.totalAmount - (selectedBooking.amountPaid || 0)))) / 100).toFixed(2)} due at counter.`
+                      : 'Pay at Venue payment pending receipt at the counter.'}
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -680,7 +701,7 @@ export const BookingsPage = () => {
                     setIsDetailsOpen(false)
                     handleOpenPaymentModal(selectedBooking)
                   }}
-                  className="px-2.5 py-1 rounded-lg bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-[11px] transition-colors cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg bg-[#267A45] hover:bg-[#1E6338] text-white font-bold text-[11px] transition-colors cursor-pointer shrink-0 ml-2"
                 >
                   Record Payment
                 </button>
@@ -797,6 +818,36 @@ export const BookingsPage = () => {
                 <span>Final Total Amount:</span>
                 <span className="text-[#267A45]">₹{((selectedBooking.totalAmount || 0) / 100).toFixed(2)}</span>
               </div>
+
+              <div className="pt-2 border-t border-[#E2E8E3] space-y-1 text-xs">
+                <div className="flex justify-between text-[#526258]">
+                  <span>Payment Plan:</span>
+                  <span className="font-semibold text-[#17231B] capitalize">
+                    {selectedBooking.paymentPlan === 'partial_advance'
+                      ? `Partial Advance (${selectedBooking.advancePercentage || 20}%)`
+                      : 'Full Online Pre-Paid'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[#1D6537]">
+                  <span>Amount Paid:</span>
+                  <span className="font-mono font-bold">
+                    ₹{((selectedBooking.amountPaid || 0) / 100).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[#79420D]">
+                  <span>Remaining Due:</span>
+                  <span className="font-mono font-bold">
+                    ₹{(((selectedBooking.amountDue ?? (selectedBooking.totalAmount - (selectedBooking.amountPaid || 0)))) / 100).toFixed(2)}
+                  </span>
+                </div>
+                {selectedBooking.venuePayment?.collectedAt && (
+                  <div className="mt-2 p-2 rounded-lg bg-[#F6F8F6] border border-[#D7E0D9] text-[11px] text-[#526258]">
+                    <span className="font-bold text-[#17231B] block">Counter Settlement:</span>
+                    <span>Collected ₹{((selectedBooking.venuePayment.amount || 0) / 100).toFixed(2)} via {selectedBooking.venuePayment.paymentMethod}</span>
+                    {selectedBooking.venuePayment.notes && <span className="block italic">Notes: "{selectedBooking.venuePayment.notes}"</span>}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Cancellation & Refund Management Section */}
@@ -892,19 +943,50 @@ export const BookingsPage = () => {
               </div>
             )}
 
-            <div className="p-3 rounded-xl bg-[#F6F8F6] border border-[#D7E0D9] text-xs">
+            <div className="p-3.5 rounded-xl bg-[#F6F8F6] border border-[#D7E0D9] text-xs space-y-1.5">
               <div className="flex justify-between text-[#526258]">
-                <span>Player:</span>
+                <span>Customer:</span>
                 <span className="font-semibold text-[#17231B]">
                   {selectedBooking.contactDetails?.name || selectedBooking.user?.name}
                 </span>
               </div>
-              <div className="flex justify-between text-[#526258] mt-1">
-                <span>Total Due:</span>
-                <span className="font-bold text-[#267A45] text-sm">
+              <div className="flex justify-between text-[#526258]">
+                <span>Total Booking Amount:</span>
+                <span className="font-mono font-semibold text-[#17231B]">
                   ₹{((selectedBooking.totalAmount || 0) / 100).toFixed(2)}
                 </span>
               </div>
+              <div className="flex justify-between text-[#1D6537]">
+                <span>Advance Paid Online:</span>
+                <span className="font-mono font-semibold">
+                  ₹{((selectedBooking.amountPaid || 0) / 100).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between text-[#79420D] pt-1 border-t border-[#D7E0D9]">
+                <span className="font-bold">Remaining Due at Venue:</span>
+                <span className="font-bold font-mono text-sm">
+                  ₹{(((selectedBooking.amountDue ?? (selectedBooking.totalAmount - (selectedBooking.amountPaid || 0)))) / 100).toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#17231B] mb-1">
+                Amount to Collect (₹)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={(((selectedBooking.amountDue ?? (selectedBooking.totalAmount - (selectedBooking.amountPaid || 0)))) / 100).toFixed(2)}
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                required
+                className="w-full px-3 py-2 rounded-xl bg-white border border-[#D7E0D9] text-xs font-mono font-bold text-[#17231B] focus:outline-none focus:border-[#267A45]"
+              />
+              <span className="text-[10px] text-[#526258] mt-1 block">
+                Pre-filled with total remaining balance. Partial collection is allowed; overpayment is blocked.
+              </span>
             </div>
 
             <div>
@@ -916,9 +998,10 @@ export const BookingsPage = () => {
                 onChange={(e) => setPaymentMethod(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-white border border-[#D7E0D9] text-xs text-[#17231B] focus:outline-none focus:border-[#267A45]"
               >
-                <option value="Pay at Venue">Pay at Venue (Cash at Desk)</option>
+                <option value="Cash at Counter">Cash at Counter</option>
                 <option value="upi">UPI / QR Code Scan</option>
                 <option value="card">Card POS Terminal</option>
+                <option value="Pay at Venue">Pay at Venue (General)</option>
               </select>
             </div>
 

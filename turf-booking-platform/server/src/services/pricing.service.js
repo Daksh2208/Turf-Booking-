@@ -423,6 +423,12 @@ export const pricingService = {
     const taxAmount = taxEnabled ? Math.round((taxableAmount * taxPercentage) / 100) : 0
     const finalTotal = taxableAmount + taxAmount
 
+    // Authoritative partial advance calculation from BusinessSettings
+    const partialPaymentEnabled = settings.partialPaymentSettings?.enabled !== false
+    const advancePercentage = partialPaymentEnabled ? (Number(settings.partialPaymentSettings?.advancePercentage) || 20) : 0
+    const advanceAmount = partialPaymentEnabled ? Math.round((finalTotal * advancePercentage) / 100) : finalTotal
+    const remainingAmount = finalTotal - advanceAmount
+
     return {
       turf: {
         id: turf._id,
@@ -457,6 +463,12 @@ export const pricingService = {
         taxAmount,
       },
       finalTotal,
+      partialPayment: {
+        enabled: partialPaymentEnabled,
+        advancePercentage,
+        advanceAmount,
+        remainingAmount,
+      },
       currency: settings.currency || 'INR',
       note: 'Pricing quote estimate only. Slot is not reserved until booking is confirmed.',
     }

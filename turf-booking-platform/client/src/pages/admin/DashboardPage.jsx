@@ -118,13 +118,42 @@ export const DashboardPage = () => {
     }
   }
 
-  const getPaymentBadge = (paymentStatus) => {
+  const getPaymentBadge = (paymentStatus, b) => {
+    const isPartial =
+      paymentStatus === 'partially_paid' ||
+      (b?.paymentPlan === 'partial_advance' && (b?.amountPaid > 0 && b?.amountPaid < b?.totalAmount))
+
+    if (isPartial) {
+      const remaining =
+        b?.amountDue && b.amountDue > 0
+          ? b.amountDue
+          : Math.max(0, (b?.totalAmount || 0) - (b?.amountPaid || 0))
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+          <Clock className="w-2.5 h-2.5 text-[#92400E]" />
+          <span>Partially Paid</span>
+          {remaining > 0 && (
+            <span className="font-mono text-[9px] lowercase font-medium text-[#78350F]">
+              (₹{formatPrice(remaining)} due)
+            </span>
+          )}
+        </span>
+      )
+    }
+
     switch (paymentStatus) {
       case 'paid':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]">
             <Check className="w-2.5 h-2.5 text-[#267A45]" />
             Paid
+          </span>
+        )
+      case 'refunded':
+      case 'partially_refunded':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#EFF6FF] text-[#1B4E82] border border-[#BFDBFE]">
+            Refunded
           </span>
         )
       default:
@@ -405,7 +434,7 @@ export const DashboardPage = () => {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-1">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
             <div className="p-3 rounded-xl bg-[#E7F3E9] border border-[#C9DFCE]">
               <span className="text-[11px] text-[#1D6537] font-bold block uppercase">
                 Paid In Full
@@ -414,7 +443,19 @@ export const DashboardPage = () => {
                 ₹{formatPrice(paymentBreakdown.paid?.amount || 0)}
               </span>
               <span className="text-[11px] text-[#526258] mt-1 block">
-                {paymentBreakdown.paid?.count || 0} Paid Bookings
+                {paymentBreakdown.paid?.count || 0} Fully Paid
+              </span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[#FEF3C7] border border-[#FDE68A]">
+              <span className="text-[11px] text-[#92400E] font-bold block uppercase">
+                Partially Paid
+              </span>
+              <span className="text-lg sm:text-xl font-black text-[#17231B] mt-0.5 block">
+                ₹{formatPrice(paymentBreakdown.partially_paid?.collected || 0)}
+              </span>
+              <span className="text-[11px] text-[#92400E] mt-1 block font-medium">
+                {paymentBreakdown.partially_paid?.count || 0} Bookings (₹{formatPrice(paymentBreakdown.partially_paid?.due || 0)} Due)
               </span>
             </div>
 
@@ -536,7 +577,7 @@ export const DashboardPage = () => {
                       ₹{formatPrice(b.totalAmount || 0)}
                     </td>
                     <td className="px-4 py-3">
-                      {getPaymentBadge(b.paymentStatus)}
+                      {getPaymentBadge(b.paymentStatus, b)}
                     </td>
                     <td className="px-4 py-3">
                       {getStatusBadge(b.status)}

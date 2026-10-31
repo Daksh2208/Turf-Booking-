@@ -44,6 +44,10 @@ export const settingsService = {
         taxName: settings.taxSettings.taxName,
         taxRatePercentage: settings.taxSettings.taxRatePercentage,
       },
+      partialPaymentSettings: {
+        enabled: settings.partialPaymentSettings?.enabled ?? true,
+        advancePercentage: settings.partialPaymentSettings?.advancePercentage ?? 20,
+      },
       aboutText: settings.aboutText,
       termsUrl: settings.termsUrl,
       privacyUrl: settings.privacyUrl,
@@ -135,6 +139,25 @@ export const settingsService = {
       }
       if (data.taxSettings.taxRatePercentage !== undefined) {
         settings.taxSettings.taxRatePercentage = Number(data.taxSettings.taxRatePercentage)
+      }
+    }
+
+    if (data.partialPaymentSettings) {
+      if (!settings.partialPaymentSettings) {
+        settings.partialPaymentSettings = { enabled: true, advancePercentage: 20 }
+      }
+      if (data.partialPaymentSettings.enabled !== undefined) {
+        settings.partialPaymentSettings.enabled = Boolean(data.partialPaymentSettings.enabled)
+      }
+      if (data.partialPaymentSettings.advancePercentage !== undefined) {
+        const pct = Number(data.partialPaymentSettings.advancePercentage)
+        if (typeof pct !== 'number' || Number.isNaN(pct) || !Number.isFinite(pct) || pct < 1 || pct > 99) {
+          const error = new Error('Advance payment percentage must be a valid number between 1 and 99.')
+          error.statusCode = 400
+          error.code = 'INVALID_ADVANCE_PERCENTAGE'
+          throw error
+        }
+        settings.partialPaymentSettings.advancePercentage = Math.round(pct)
       }
     }
 

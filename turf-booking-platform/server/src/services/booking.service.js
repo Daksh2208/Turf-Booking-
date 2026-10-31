@@ -8,6 +8,7 @@ import { SlotReservation } from '../models/SlotReservation.js'
 import { HeldSlot } from '../models/HeldSlot.js'
 import { Reservation } from '../models/Reservation.js'
 import { User } from '../models/User.js'
+import { Payment } from '../models/Payment.js'
 import { BusinessSettings } from '../models/BusinessSettings.js'
 import { logAudit } from '../utils/auditLogger.js'
 import pricingService from './pricing.service.js'
@@ -101,9 +102,17 @@ export function calculateRefundDetails({ booking, settings, now = new Date() }) 
     }
   }
 
-  const isPaidStripe = booking.paymentMethod === 'stripe' && booking.paymentStatus === 'paid'
-  const isPaidVenue = booking.paymentMethod !== 'stripe' && booking.paymentStatus === 'paid'
-  const isUnpaid = booking.paymentStatus !== 'paid'
+  const totalCollected = booking.amountPaid || (booking.paymentStatus === 'paid' ? booking.totalAmount : 0) || 0
+  const isPaidStripe =
+    (booking.paymentMethod === 'stripe' || Boolean(booking.stripePaymentIntentId)) &&
+    (booking.paymentStatus === 'paid' || booking.paymentStatus === 'partially_paid')
+  const isPaidVenue =
+    booking.paymentMethod !== 'stripe' &&
+    !booking.stripePaymentIntentId &&
+    (booking.paymentStatus === 'paid' || booking.paymentStatus === 'partially_paid')
+  const isUnpaid =
+    booking.paymentStatus === 'unpaid' ||
+    (!booking.amountPaid && booking.paymentStatus !== 'paid' && booking.paymentStatus !== 'partially_paid')
 
   let eligibleRefundAmount = 0
   let nonRefundableAmount = 0
@@ -116,11 +125,9 @@ export function calculateRefundDetails({ booking, settings, now = new Date() }) 
     nonRefundableAmount = 0
   } else if (isPaidVenue) {
     refundType = 'not_required'
-    const totalCollected = booking.amountPaid || booking.totalAmount || 0
     eligibleRefundAmount = Math.round(totalCollected * (refundPercentage / 100))
     nonRefundableAmount = totalCollected - eligibleRefundAmount
   } else if (isPaidStripe) {
-    const totalCollected = booking.amountPaid || booking.totalAmount || 0
     eligibleRefundAmount = Math.round(totalCollected * (refundPercentage / 100))
     nonRefundableAmount = totalCollected - eligibleRefundAmount
     if (refundPercentage >= 100) {
@@ -152,6 +159,7 @@ export function calculateRefundDetails({ booking, settings, now = new Date() }) 
     refundPercentage,
     eligibleRefundAmount,
     nonRefundableAmount,
+    totalCollected,
     originalAmount: booking.amountPaid || booking.totalAmount || 0,
     refundType,
     policyExplanation,
@@ -538,6 +546,35 @@ export const bookingService = {
         ? quote.hourlySegments[0].rateType
         : 'base'
 
+    // Check partial advance settings & payment plan
+    const settings = await BusinessSettings.getSettings()
+    const partialSettings = settings?.partialPaymentSettings || { enabled: true, advancePercentage: 20 }
+    const isPartialPlan = data.paymentPlan === 'partial_advance'
+
+    // If client attempts direct zero-advance Pay at Venue without partial advance:
+    const isDirectPayAtVenue = paymentMethod === 'Pay at Venue' || paymentMethod === 'pay_at_venue'
+    if (isDirectPayAtVenue && !isPartialPlan) {
+      const isEnforcing = data.enforceAdvancePayment || (process.env.NODE_ENV !== 'test' && !data.allowZeroAdvance)
+      if (isEnforcing) {
+        if (partialSettings.enabled !== false) {
+          const error = new Error('Pay at Venue requires an online partial advance payment. Please choose "Pay Advance Online, Remaining at Venue".')
+          error.statusCode = 400
+          error.code = 'ADVANCE_PAYMENT_REQUIRED'
+          throw error
+        } else {
+          const error = new Error('Pay at Venue is currently disabled. Please pay the full amount online.')
+          error.statusCode = 400
+          error.code = 'PAY_AT_VENUE_DISABLED'
+          throw error
+        }
+      }
+    }
+
+    const effectiveAdvancePercentage = isPartialPlan ? (partialSettings.advancePercentage || 20) : 0
+    const advanceAmount = isPartialPlan ? Math.round((quote.finalTotal * effectiveAdvancePercentage) / 100) : 0
+    const remainingAmount = isPartialPlan ? quote.finalTotal - advanceAmount : 0
+    const isOnlineSession = paymentMethod === 'stripe' || isPartialPlan
+
     const bookingPayload = {
       bookingId,
       user: user._id,
@@ -589,12 +626,16 @@ export const bookingService = {
         playerCount: quote.playerCount,
         capacity: quote.capacity,
       },
-      status: paymentMethod === 'stripe' ? 'pending' : 'confirmed',
-      paymentStatus: paymentMethod === 'stripe' ? 'pending' : 'unpaid',
-      paymentMethod: paymentMethod === 'stripe' ? 'stripe' : (paymentMethod || 'Pay at Venue'),
+      paymentPlan: isPartialPlan ? 'partial_advance' : (data.paymentPlan || 'full_online'),
+      advancePercentage: effectiveAdvancePercentage,
+      advanceAmount,
+      remainingAmount,
+      status: isOnlineSession ? 'pending' : 'confirmed',
+      paymentStatus: isOnlineSession ? 'pending' : 'unpaid',
+      paymentMethod: isOnlineSession ? 'stripe' : (paymentMethod || 'Pay at Venue'),
       amountPaid: 0,
       amountDue: quote.finalTotal,
-      paymentExpiresAt: paymentMethod === 'stripe' ? new Date(Date.now() + 15 * 60 * 1000) : null,
+      paymentExpiresAt: isOnlineSession ? new Date(Date.now() + 15 * 60 * 1000) : null,
       idempotencyKey: idempotencyKey ? idempotencyKey.trim() : undefined,
     }
 
@@ -780,6 +821,25 @@ export const bookingService = {
       }).catch(() => {})
     }
 
+    // Record initial payment ledger entry
+    await Payment.findOneAndUpdate(
+      { booking: createdBooking._id },
+      {
+        $set: {
+          paymentId: `PAY-${createdBooking.bookingId}`,
+          booking: createdBooking._id,
+          bookingReference: createdBooking.bookingId,
+          user: createdBooking.user,
+          turf: createdBooking.turf,
+          amount: createdBooking.totalAmount,
+          currency: 'INR',
+          paymentMethod: createdBooking.paymentMethod,
+          status: createdBooking.paymentStatus,
+        },
+      },
+      { upsert: true, new: true }
+    ).catch(() => {})
+
     // Broadcast live availability update
     broadcastAvailabilityUpdate({ turfId, date, reason: 'booking_confirmed' })
 
@@ -863,7 +923,7 @@ export const bookingService = {
    * Explicit Pay at Venue Payment Recording (Admin only)
    * Records receipt of money collected at the counter without changing customer booking parameters.
    */
-  async recordPayment(id, { paymentMethod = 'Pay at Venue', notes = '' } = {}, adminUser, ip = '') {
+  async recordPayment(id, { paymentMethod = 'Pay at Venue', notes = '', amount } = {}, adminUser, ip = '') {
     const booking = await Booking.findById(id)
     if (!booking) {
       const error = new Error('Booking not found.')
@@ -879,7 +939,23 @@ export const bookingService = {
       throw error
     }
 
-    if (booking.paymentMethod === 'stripe' && booking.paymentStatus !== 'paid') {
+    // Idempotent: If already fully paid and zero due, return existing record
+    if (booking.paymentStatus === 'paid' && (booking.amountDue === 0 || booking.amountDue === undefined)) {
+      return booking.populate([
+        { path: 'turf', select: 'name slug address images' },
+        { path: 'sport', select: 'name slug' },
+        { path: 'user', select: 'name email phone' },
+        { path: 'paymentRecordedBy', select: 'name email' },
+        { path: 'cancelledBy.user', select: 'name email' },
+      ])
+    }
+
+    // Full online Stripe bookings cannot be manually marked as paid by admin
+    if (
+      (!booking.paymentPlan || booking.paymentPlan === 'full_online') &&
+      booking.paymentMethod === 'stripe' &&
+      booking.paymentStatus !== 'paid'
+    ) {
       const error = new Error('Stripe payments must be verified online via Stripe and cannot be manually marked as paid by an administrator.')
       error.statusCode = 400
       error.code = 'MANUAL_STRIPE_PAYMENT_FORBIDDEN'
@@ -887,19 +963,68 @@ export const bookingService = {
     }
 
     const previousPaymentStatus = booking.paymentStatus
-    booking.paymentStatus = 'paid'
-    booking.amountPaid = booking.totalAmount
-    booking.amountDue = 0
+    const previousAmountPaid = booking.amountPaid || 0
+    const currentDue = booking.amountDue !== undefined ? booking.amountDue : Math.max(0, booking.totalAmount - previousAmountPaid)
+
+    let paymentAmount = currentDue
+    if (amount !== undefined && amount !== null && amount !== '') {
+      const parsed = Number(amount)
+      if (typeof parsed !== 'number' || isNaN(parsed) || parsed <= 0) {
+        const error = new Error('Payment amount must be a positive number in paise.')
+        error.statusCode = 400
+        error.code = 'INVALID_PAYMENT_AMOUNT'
+        throw error
+      }
+      if (parsed > currentDue) {
+        const error = new Error(`Payment amount (₹${(parsed / 100).toFixed(2)}) cannot exceed remaining balance (₹${(currentDue / 100).toFixed(2)}).`)
+        error.statusCode = 400
+        error.code = 'OVERPAYMENT_NOT_ALLOWED'
+        throw error
+      }
+      paymentAmount = Math.round(parsed)
+    }
+
+    const newAmountPaid = previousAmountPaid + paymentAmount
+    const newAmountDue = Math.max(0, booking.totalAmount - newAmountPaid)
+
+    booking.amountPaid = newAmountPaid
+    booking.amountDue = newAmountDue
+    booking.paymentStatus = newAmountDue === 0 ? 'paid' : 'partially_paid'
     booking.paidAt = new Date()
     booking.paymentRecordedBy = adminUser._id
-    if (paymentMethod) {
-      booking.paymentMethod = paymentMethod
+    booking.venuePayment = {
+      collectedAt: new Date(),
+      collectedBy: adminUser._id,
+      paymentMethod: paymentMethod || 'Cash',
+      amount: paymentAmount,
+      notes: notes || '',
     }
     if (notes) {
       booking.paymentNotes = notes
     }
 
     await booking.save()
+
+    await Payment.findOneAndUpdate(
+      { booking: booking._id, paymentMethod: { $ne: 'stripe' } },
+      {
+        $set: {
+          paymentId: `PAY-VENUE-${booking.bookingId}`,
+          booking: booking._id,
+          bookingReference: booking.bookingId,
+          user: booking.user,
+          turf: booking.turf,
+          amount: newAmountPaid,
+          currency: 'INR',
+          paymentMethod: paymentMethod || 'Cash',
+          status: booking.paymentStatus,
+          paidAt: booking.paidAt,
+          recordedBy: adminUser._id,
+          notes: booking.paymentNotes || '',
+        },
+      },
+      { upsert: true, new: true }
+    ).catch(() => {})
 
     await logAudit({
       actorId: adminUser._id,
@@ -909,9 +1034,11 @@ export const bookingService = {
       details: {
         bookingId: booking.bookingId,
         previousPaymentStatus,
-        paymentStatus: 'paid',
-        amount: booking.totalAmount,
-        paymentMethod: booking.paymentMethod,
+        paymentStatus: booking.paymentStatus,
+        amountCollected: paymentAmount,
+        amountPaid: newAmountPaid,
+        amountDue: newAmountDue,
+        paymentMethod: paymentMethod || 'Cash',
       },
       ip,
     })
@@ -1057,7 +1184,12 @@ export const bookingService = {
     }
 
     // Process refund logic according to payment method and status
-    if (booking.paymentMethod === 'stripe' && booking.paymentStatus === 'paid') {
+    const hasStripeIntent = Boolean(booking.stripePaymentIntentId)
+    const isStripeOrAdvance =
+      (booking.paymentMethod === 'stripe' || hasStripeIntent) &&
+      (booking.paymentStatus === 'paid' || booking.paymentStatus === 'partially_paid')
+
+    if (isStripeOrAdvance) {
       if (refundDetails.eligibleRefundAmount > 0) {
         const stripe = await getStripeService()
         await stripe.processStripeRefund({
@@ -1072,14 +1204,18 @@ export const bookingService = {
         booking.refundAmount = 0
         await booking.save()
       }
-    } else if (booking.paymentMethod === 'stripe' && booking.paymentStatus !== 'paid') {
+    } else if (
+      booking.paymentMethod === 'stripe' &&
+      booking.paymentStatus !== 'paid' &&
+      booking.paymentStatus !== 'partially_paid'
+    ) {
       booking.refundStatus = 'not_applicable'
       booking.paymentStatus = 'failed'
       booking.refundAmount = 0
       await booking.save()
     } else {
       // Pay at Venue / Cash / Counter
-      if (booking.paymentStatus === 'paid') {
+      if (booking.paymentStatus === 'paid' || booking.paymentStatus === 'partially_paid') {
         booking.refundStatus = 'not_required'
         booking.refundAmount = refundDetails.eligibleRefundAmount
       } else {
@@ -1482,7 +1618,7 @@ export const bookingService = {
       if (userId) pendingQuery.user = userId
       if (turfId) pendingQuery.turf = turfId
 
-      const expiredPending = await Booking.find(pendingQuery).select('_id turf date')
+      const expiredPending = await Booking.find(pendingQuery).select('_id turf date coupon')
       if (expiredPending.length > 0) {
         const expiredIds = expiredPending.map((b) => b._id)
         await Booking.updateMany(
@@ -1499,7 +1635,14 @@ export const bookingService = {
           { booking: { $in: expiredIds } },
           { $set: { status: 'released' } }
         )
+        await Payment.updateMany(
+          { booking: { $in: expiredIds } },
+          { $set: { status: 'failed', failureReason: 'Payment session expired' } }
+        ).catch(() => {})
         for (const b of expiredPending) {
+          if (b.coupon?.couponId) {
+            await couponService.releaseCouponOnCancellation(b._id).catch(() => {})
+          }
           broadcastAvailabilityUpdate({
             turfId: b.turf,
             date: b.date,
@@ -1696,7 +1839,7 @@ export const bookingService = {
       Booking.find({
         date: today,
         status: { $ne: 'cancelled' },
-        paymentStatus: 'paid',
+        paymentStatus: { $in: ['paid', 'partially_paid'] },
       }),
       User.countDocuments({ role: 'customer' }),
       User.countDocuments({ role: 'customer', createdAt: { $gte: todayStart } }),
@@ -1734,6 +1877,8 @@ export const bookingService = {
             _id: '$paymentStatus',
             count: { $sum: 1 },
             totalAmount: { $sum: '$totalAmount' },
+            totalCollected: { $sum: { $ifNull: ['$amountPaid', 0] } },
+            totalDue: { $sum: { $ifNull: ['$amountDue', 0] } },
           },
         },
       ]),
@@ -1755,13 +1900,15 @@ export const bookingService = {
             _id: '$paymentStatus',
             count: { $sum: 1 },
             totalAmount: { $sum: '$totalAmount' },
+            totalCollected: { $sum: { $ifNull: ['$amountPaid', 0] } },
+            totalDue: { $sum: { $ifNull: ['$amountDue', 0] } },
           },
         },
       ]),
     ])
 
-    // Strict revenue definition: ONLY money actually paid (paymentStatus === 'paid')
-    const todayRevenuePaise = todayPaidBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0)
+    // Strict revenue definition: ONLY money actually paid (paid or partially_paid)
+    const todayRevenuePaise = todayPaidBookings.reduce((sum, b) => sum + (b.amountPaid || (b.paymentStatus === 'paid' ? b.totalAmount : 0) || 0), 0)
     const todayTotalBookingValuePaise = todayActiveBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0)
     const todayUnpaidValuePaise = Math.max(0, todayTotalBookingValuePaise - todayRevenuePaise)
 
@@ -1824,13 +1971,19 @@ export const bookingService = {
     // Helper to map payment aggregation
     const mapPayment = (aggregation) => {
       const breakdown = {
-        paid: { count: 0, amount: 0 },
-        unpaid: { count: 0, amount: 0 },
-        refunded: { count: 0, amount: 0 },
+        paid: { count: 0, amount: 0, collected: 0, due: 0 },
+        partially_paid: { count: 0, amount: 0, collected: 0, due: 0 },
+        unpaid: { count: 0, amount: 0, collected: 0, due: 0 },
+        refunded: { count: 0, amount: 0, collected: 0, due: 0 },
       }
       for (const p of aggregation) {
         if (breakdown[p._id] !== undefined) {
-          breakdown[p._id] = { count: p.count, amount: p.totalAmount }
+          breakdown[p._id] = {
+            count: p.count,
+            amount: p.totalAmount,
+            collected: p._id === 'paid' ? p.totalAmount : (p.totalCollected || 0),
+            due: p._id === 'unpaid' ? p.totalAmount : (p.totalDue || 0),
+          }
         }
       }
       return breakdown

@@ -193,17 +193,39 @@ const bookingSchema = new mongoose.Schema(
       default: 'confirmed',
       index: true,
     },
+    paymentPlan: {
+      type: String,
+      enum: ['full_online', 'partial_advance'],
+      default: 'full_online',
+      index: true,
+    },
     paymentStatus: {
       type: String,
-      enum: ['unpaid', 'pending', 'paid', 'refunded', 'failed'],
+      enum: ['unpaid', 'pending', 'partially_paid', 'paid', 'refunded', 'failed', 'refund_pending', 'partially_refunded'],
       default: 'unpaid',
       index: true,
     },
     paymentMethod: {
       type: String,
-      enum: ['Pay at Venue', 'pay_at_venue', 'stripe', 'online', 'card', 'upi', 'Cash', 'cash'],
+      enum: ['Pay at Venue', 'pay_at_venue', 'stripe', 'online', 'card', 'upi', 'Cash', 'cash', 'counter'],
       default: 'Pay at Venue',
     },
+    advancePercentage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    advanceAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    }, // in integer paise
+    remainingAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    }, // in integer paise
     amountPaid: {
       type: Number,
       default: 0,
@@ -214,6 +236,13 @@ const bookingSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     }, // in integer paise
+    venuePayment: {
+      collectedAt: { type: Date, default: null },
+      collectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+      paymentMethod: { type: String, default: '' },
+      amount: { type: Number, default: 0 },
+      notes: { type: String, default: '' },
+    },
     stripeCheckoutSessionId: {
       type: String,
       trim: true,
@@ -361,6 +390,36 @@ const bookingSchema = new mongoose.Schema(
     timestamps: true,
   }
 )
+
+/**
+ * Pre-save defensive consistency hook for partial advance payments:
+ * Enforces that bookings with partial_advance payment plan where amountPaid < totalAmount
+ * are strictly marked partially_paid with accurate amountDue and remainingAmount.
+ */
+bookingSchema.pre('save', function (next) {
+  if (this.paymentPlan === 'partial_advance') {
+    // If money has been paid but remaining balance is still due
+    if (this.amountPaid > 0 && this.amountPaid < this.totalAmount) {
+      if (this.status !== 'cancelled' && this.status !== 'expired' && this.status !== 'failed') {
+        this.paymentStatus = 'partially_paid'
+      }
+      this.amountDue = Math.max(0, this.totalAmount - this.amountPaid)
+      this.remainingAmount = this.amountDue
+    } else if (this.amountPaid >= this.totalAmount && this.totalAmount > 0) {
+      this.paymentStatus = 'paid'
+      this.amountDue = 0
+      this.remainingAmount = 0
+    }
+  } else if (this.paymentPlan === 'full_online' || !this.paymentPlan) {
+    if (this.paymentStatus === 'paid') {
+      this.amountDue = 0
+      if (!this.amountPaid && this.totalAmount > 0) {
+        this.amountPaid = this.totalAmount
+      }
+    }
+  }
+  next()
+})
 
 // Efficient compound indexes for customer lookups, admin reporting and conflict detection
 bookingSchema.index({ user: 1, createdAt: -1 })

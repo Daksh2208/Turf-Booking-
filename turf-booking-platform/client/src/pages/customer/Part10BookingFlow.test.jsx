@@ -9,6 +9,7 @@ import { BookingSuccessPage } from './BookingSuccessPage'
 import { MyBookingsPage } from './MyBookingsPage'
 import customerBookingService from '../../services/customer/booking.service'
 import customerInventoryService from '../../services/customer/inventory.service'
+import customerPaymentService from '../../services/customer/payment.service'
 
 const mockUser = {
   _id: 'user-p10-123',
@@ -135,6 +136,11 @@ describe('Part 10 Frontend: Checkout, Booking Confirmation & My Bookings', () =>
       bookings: [mockBooking],
       pagination: { page: 1, totalPages: 1, total: 1 },
     })
+    vi.spyOn(customerPaymentService, 'getStripeConfig').mockResolvedValue({ enabled: true, publishableKey: 'pk_test' })
+    vi.spyOn(customerPaymentService, 'createCheckoutSession').mockResolvedValue({ url: 'https://checkout.stripe.com/test-session' })
+    vi.spyOn(customerInventoryService, 'getSettings').mockResolvedValue({
+      partialPaymentSettings: { enabled: true, advancePercentage: 20 },
+    })
   })
 
   it('1. CheckoutPage displays arena, slot, contact fields, and authoritative price quote', async () => {
@@ -163,11 +169,11 @@ describe('Part 10 Frontend: Checkout, Booking Confirmation & My Bookings', () =>
     await waitFor(() => {
       expect(screen.getByText('Pro Football Bibs × 1')).toBeInTheDocument()
       expect(screen.getByText('GST (18%)')).toBeInTheDocument()
-      expect(screen.getByText('₹2006.00')).toBeInTheDocument()
+      expect(screen.getAllByText(/2006\.00/).length).toBeGreaterThanOrEqual(1)
     })
 
-    // Pay at Venue option clearly highlighted
-    expect(screen.getByText('Pay at Venue')).toBeInTheDocument()
+    // Partial Advance option clearly highlighted with dynamic percentage
+    expect(screen.getByText(/Advance Online, Remaining at Venue/i)).toBeInTheDocument()
   })
 
   it('2. CheckoutPage enforces validation if contact details are cleared', async () => {
@@ -184,21 +190,25 @@ describe('Part 10 Frontend: Checkout, Booking Confirmation & My Bookings', () =>
     })
 
     await waitFor(() => {
-      expect(screen.getByText('₹2006.00')).toBeInTheDocument()
+      expect(screen.getAllByText(/2006\.00/).length).toBeGreaterThanOrEqual(1)
     })
 
     // Clear name and phone inputs
     const nameInput = screen.getByDisplayValue('Virat Sharma')
     fireEvent.change(nameInput, { target: { value: '' } })
 
-    const submitBtn = screen.getByRole('button', { name: /Confirm & Book/i })
+    const submitBtn = screen.getByRole('button', { name: /Pay.*with Stripe/i })
     fireEvent.click(submitBtn)
 
     expect(screen.getByText(/Full name is required for booking/i)).toBeInTheDocument()
-    expect(customerBookingService.createBooking).not.toHaveBeenCalled()
+    expect(customerPaymentService.createCheckoutSession).not.toHaveBeenCalled()
   })
 
   it('3. CheckoutPage successfully submits booking with Pay at Venue and idempotency', async () => {
+    // Mock window.location
+    delete window.location
+    window.location = { href: '', origin: 'http://localhost:3000' }
+
     renderWithProviders(
       <Routes>
         <Route path="/checkout" element={<CheckoutPage />} />
@@ -218,25 +228,27 @@ describe('Part 10 Frontend: Checkout, Booking Confirmation & My Bookings', () =>
     )
 
     await waitFor(() => {
-      expect(screen.getByText('₹2006.00')).toBeInTheDocument()
+      expect(screen.getAllByText(/2006\.00/).length).toBeGreaterThanOrEqual(1)
     })
 
-    const submitBtn = screen.getByRole('button', { name: /Confirm & Book/i })
+    const submitBtn = screen.getByRole('button', { name: /Pay.*with Stripe/i })
     fireEvent.click(submitBtn)
 
     await waitFor(() => {
-      expect(customerBookingService.createBooking).toHaveBeenCalledWith(
+      expect(customerPaymentService.createCheckoutSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          turfId: mockTurf._id,
-          date: '2026-11-10',
-          startTime: '18:00',
-          endTime: '19:00',
-          paymentMethod: 'Pay at Venue',
-          contactDetails: {
-            name: 'Virat Sharma',
-            email: 'virat@example.com',
-            phone: '9876543210',
-          },
+          bookingData: expect.objectContaining({
+            turfId: mockTurf._id,
+            date: '2026-11-10',
+            startTime: '18:00',
+            endTime: '19:00',
+            paymentPlan: 'partial_advance',
+            contactDetails: {
+              name: 'Virat Sharma',
+              email: 'virat@example.com',
+              phone: '9876543210',
+            },
+          }),
         }),
         expect.stringMatching(/^IDEM-/)
       )

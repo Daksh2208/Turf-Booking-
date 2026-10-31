@@ -66,10 +66,10 @@ export const updateBookingStatus = async (req, res, next) => {
 
 export const recordPayment = async (req, res, next) => {
   try {
-    const { paymentMethod, notes } = req.body
+    const { paymentMethod, notes, amount } = req.body
     const booking = await bookingService.recordPayment(
       req.params.id,
-      { paymentMethod, notes },
+      { paymentMethod, notes, amount },
       req.user,
       req.ip
     )

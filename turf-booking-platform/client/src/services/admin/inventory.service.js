@@ -139,8 +139,8 @@ export const adminInventoryService = {
     return response.data?.data?.booking
   },
 
-  async recordPayment(id, { paymentMethod = 'Pay at Venue', notes = '' } = {}) {
-    const response = await apiClient.post(`/admin/bookings/${id}/payment`, { paymentMethod, notes })
+  async recordPayment(id, { paymentMethod = 'Pay at Venue', notes = '', amount } = {}) {
+    const response = await apiClient.post(`/admin/bookings/${id}/payment`, { paymentMethod, notes, amount })
     return response.data?.data?.booking
   },
 

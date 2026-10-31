@@ -279,6 +279,13 @@ export const couponService = {
   },
 
   /**
+   * Alias for releaseCouponOnCancellation to ensure cross-module method call compatibility
+   */
+  async releaseRedemption(bookingId, session = null) {
+    return this.releaseCouponOnCancellation(bookingId, session)
+  },
+
+  /**
    * Releases a coupon redemption when a booking is cancelled.
    * Decrements usedCount and marks redemption as released.
    */
@@ -304,6 +311,13 @@ export const couponService = {
     )
 
     return redemption
+  },
+
+  /**
+   * Alias for releaseCouponOnCancellation to ensure cross-module method call compatibility
+   */
+  async releaseRedemption(bookingId, session = null) {
+    return this.releaseCouponOnCancellation(bookingId, session)
   },
 
   // ================= ADMIN CRUD OPERATIONS ================= //

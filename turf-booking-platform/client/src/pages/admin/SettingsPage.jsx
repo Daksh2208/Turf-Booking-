@@ -19,6 +19,8 @@ import {
   Sparkles,
   Check,
   X,
+  CreditCard,
+  Wallet,
 } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import adminInventoryService from '../../services/admin/inventory.service'
@@ -66,6 +68,10 @@ export const SettingsPage = () => {
       taxEnabled: true,
       taxName: 'GST',
       taxRatePercentage: 18,
+    },
+    partialPaymentSettings: {
+      enabled: true,
+      advancePercentage: 20,
     },
     aboutText: '',
     termsUrl: '/terms',
@@ -118,6 +124,10 @@ export const SettingsPage = () => {
           taxEnabled: settings.taxSettings?.taxEnabled ?? true,
           taxName: settings.taxSettings?.taxName || 'GST',
           taxRatePercentage: settings.taxSettings?.taxRatePercentage ?? 18,
+        },
+        partialPaymentSettings: {
+          enabled: settings.partialPaymentSettings?.enabled ?? true,
+          advancePercentage: settings.partialPaymentSettings?.advancePercentage ?? 20,
         },
         aboutText: settings.aboutText || '',
         termsUrl: settings.termsUrl || '/terms',
@@ -250,6 +260,51 @@ export const SettingsPage = () => {
     !isTaxRateEmpty && currentTaxRateNumber > 28 && currentTaxRateNumber <= 100
   const hasTaxRateError = Boolean(formData.taxSettings.taxEnabled && (isTaxRateOver100 || isTaxRateNegative))
 
+  const currentAdvancePercentage =
+    typeof formData.partialPaymentSettings?.advancePercentage === 'number'
+      ? formData.partialPaymentSettings.advancePercentage
+      : parseFloat(formData.partialPaymentSettings?.advancePercentage) || 0
+
+  const isAdvancePercentageInvalid =
+    Boolean(formData.partialPaymentSettings?.enabled &&
+    (currentAdvancePercentage < 1 || currentAdvancePercentage > 99 || isNaN(currentAdvancePercentage)))
+
+  const handleAdvancePercentageChange = (rawVal) => {
+    if (rawVal === '') {
+      setFormData((prev) => ({
+        ...prev,
+        partialPaymentSettings: {
+          ...prev.partialPaymentSettings,
+          advancePercentage: '',
+        },
+      }))
+      return
+    }
+    const parsed = parseInt(rawVal, 10)
+    setFormData((prev) => ({
+      ...prev,
+      partialPaymentSettings: {
+        ...prev.partialPaymentSettings,
+        advancePercentage: isNaN(parsed) ? rawVal : parsed,
+      },
+    }))
+  }
+
+  const adjustAdvancePercentage = (delta) => {
+    const current =
+      typeof formData.partialPaymentSettings?.advancePercentage === 'number'
+        ? formData.partialPaymentSettings.advancePercentage
+        : parseInt(formData.partialPaymentSettings?.advancePercentage, 10) || 20
+    const nextVal = Math.min(99, Math.max(1, current + delta))
+    setFormData((prev) => ({
+      ...prev,
+      partialPaymentSettings: {
+        ...prev.partialPaymentSettings,
+        advancePercentage: nextVal,
+      },
+    }))
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     setServerError(null)
@@ -264,13 +319,25 @@ export const SettingsPage = () => {
       return
     }
 
+    if (isAdvancePercentageInvalid) {
+      setServerError('Advance payment percentage must be a valid number between 1% and 99%.')
+      return
+    }
+
     const finalTaxRate = isNaN(currentTaxRateNumber) ? 0 : currentTaxRateNumber
+    const finalAdvancePercentage = isNaN(currentAdvancePercentage)
+      ? 20
+      : Math.min(99, Math.max(1, Math.round(currentAdvancePercentage)))
 
     const payload = {
       ...formData,
       taxSettings: {
         ...formData.taxSettings,
         taxRatePercentage: finalTaxRate,
+      },
+      partialPaymentSettings: {
+        enabled: Boolean(formData.partialPaymentSettings?.enabled),
+        advancePercentage: finalAdvancePercentage,
       },
     }
 
@@ -894,6 +961,193 @@ export const SettingsPage = () => {
           </div>
         </div>
 
+        {/* Section: Partial Advance Payment Configuration */}
+        <div className="rounded-2xl border border-[#D7E0D9] bg-white p-5 sm:p-6 space-y-4 shadow-xs">
+          <div className="border-b border-[#E2E8E3] pb-3">
+            <h2 className="text-sm font-bold text-[#17231B] flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-[#267A45]" />
+              <span>Partial Advance Payment (Pay at Venue Policy)</span>
+            </h2>
+            <p className="text-xs text-[#526258] mt-1">
+              Configure required online advance payment percentage for customers choosing Pay at Venue. Prevents no-show slot wastage and guarantees match commitment.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {/* Enable/Disable Toggle */}
+            <div className="flex items-center gap-3 p-3.5 rounded-xl bg-[#F7FAF8] border border-[#D7E0D9]">
+              <input
+                type="checkbox"
+                id="partialPaymentEnabled"
+                checked={Boolean(formData.partialPaymentSettings?.enabled)}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    partialPaymentSettings: {
+                      ...prev.partialPaymentSettings,
+                      enabled: e.target.checked,
+                    },
+                  }))
+                }
+                className="w-4 h-4 rounded text-[#267A45] focus:ring-[#267A45] border-[#D7E0D9] cursor-pointer"
+              />
+              <label htmlFor="partialPaymentEnabled" className="text-xs cursor-pointer select-none">
+                <span className="font-semibold text-[#17231B] block">Enable Partial Advance Online Payment</span>
+                <span className="text-[#526258] text-[11px]">
+                  When enabled, customers pay an advance online via Stripe to confirm their booking, and the remaining amount is collected at the venue.
+                </span>
+              </label>
+            </div>
+
+            {/* Advance Percentage Controls */}
+            {formData.partialPaymentSettings?.enabled && (
+              <div className="space-y-4 p-4 rounded-xl bg-white border border-[#E2E8E3]">
+                <FormField
+                  label="Advance Payment Percentage (%)"
+                  htmlFor="advancePercentage"
+                  hint="Must be between 1% and 99% (Default: 20%)"
+                >
+                  <div className="space-y-2 max-w-sm">
+                    <div className="flex items-stretch">
+                      <button
+                        type="button"
+                        disabled={currentAdvancePercentage <= 1}
+                        onClick={() => adjustAdvancePercentage(-1)}
+                        className="px-3.5 py-2.5 rounded-l-xl border border-r-0 border-[#D7E0D9] bg-[#F7FAF8] hover:bg-[#EBF3EC] active:bg-[#DCEBDD] text-[#17231B] disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-semibold flex items-center justify-center cursor-pointer select-none"
+                        title="Decrease by 1%"
+                        aria-label="Decrease advance percentage"
+                      >
+                        <Minus className="w-3.5 h-3.5 text-[#526258]" />
+                      </button>
+
+                      <div className="relative flex-1">
+                        <Input
+                          id="advancePercentage"
+                          type="number"
+                          min="1"
+                          max="99"
+                          step="1"
+                          value={formData.partialPaymentSettings?.advancePercentage ?? ''}
+                          onChange={(e) => handleAdvancePercentageChange(e.target.value)}
+                          className={`text-center font-mono font-bold text-xs pr-8 rounded-none border-x-0 ${
+                            isAdvancePercentageInvalid
+                              ? 'border-[#F8D2CE] bg-[#FDF0EF] text-[#922B27] focus:ring-[#922B27]'
+                              : ''
+                          }`}
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#526258] select-none pointer-events-none">
+                          %
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={currentAdvancePercentage >= 99}
+                        onClick={() => adjustAdvancePercentage(1)}
+                        className="px-3.5 py-2.5 rounded-r-xl border border-l-0 border-[#D7E0D9] bg-[#F7FAF8] hover:bg-[#EBF3EC] active:bg-[#DCEBDD] text-[#17231B] disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-semibold flex items-center justify-center cursor-pointer select-none"
+                        title="Increase by 1%"
+                        aria-label="Increase advance percentage"
+                      >
+                        <Plus className="w-3.5 h-3.5 text-[#526258]" />
+                      </button>
+                    </div>
+
+                    {/* Invalid Range Error */}
+                    {isAdvancePercentageInvalid && (
+                      <div className="flex items-start gap-2 p-2.5 rounded-xl bg-[#FDF0EF] border border-[#F8D2CE] text-[#922B27] text-xs">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-[#922B27] mt-0.5" />
+                        <div>
+                          <p className="font-semibold">Invalid Advance Percentage</p>
+                          <p className="text-[11px] text-[#922B27]/90 mt-0.5">
+                            Advance payment percentage must be a valid number between 1% and 99%.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Quick Preset Buttons */}
+                    <div className="space-y-1 pt-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-semibold text-[#17231B]">Quick Presets:</span>
+                        <span className="text-[#647168]">Default: 20%</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[10, 20, 30, 50].map((pct) => {
+                          const isSelected = Number(currentAdvancePercentage) === pct
+                          return (
+                            <button
+                              key={pct}
+                              type="button"
+                              onClick={() => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  partialPaymentSettings: {
+                                    ...prev.partialPaymentSettings,
+                                    advancePercentage: pct,
+                                  },
+                                }))
+                              }}
+                              className={`py-1.5 px-2 rounded-xl text-center transition-all cursor-pointer border text-xs font-bold ${
+                                isSelected
+                                  ? 'bg-[#267A45] text-white border-[#267A45] shadow-xs'
+                                  : 'bg-[#F7FAF8] hover:bg-[#EBF3EC] border-[#D7E0D9] text-[#17231B]'
+                              }`}
+                            >
+                              {pct}% {pct === 20 ? '(Default)' : ''}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </FormField>
+
+                {/* Real-Time Calculation Simulation Card */}
+                <div className="mt-4 p-4 rounded-2xl bg-[#F6F8F6] border border-[#D7E0D9] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[#17231B] flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-[#267A45]" />
+                      <span>Live Quote Simulation (Example: ₹2,000 Total)</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#E7F3E9] text-[#1D6537] border border-[#C9DFCE]">
+                      {currentAdvancePercentage}% Advance Rate
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+                    <div className="p-2.5 rounded-xl bg-white border border-[#E2E8E3]">
+                      <span className="text-[10px] text-[#526258] block">Total Booking Value</span>
+                      <span className="font-mono font-black text-sm text-[#17231B]">₹2,000.00</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-white border border-[#C9DFCE]">
+                      <span className="text-[10px] text-[#1D6537] font-semibold block">
+                        Advance Paid Online (Stripe)
+                      </span>
+                      <span className="font-mono font-black text-sm text-[#267A45]">
+                        ₹{(Math.round((2000 * (currentAdvancePercentage || 20)) / 100)).toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-white border border-[#F6E1C4]">
+                      <span className="text-[10px] text-[#79420D] font-semibold block">
+                        Remaining at Venue Counter
+                      </span>
+                      <span className="font-mono font-black text-sm text-[#79420D]">
+                        ₹{(2000 - Math.round((2000 * (currentAdvancePercentage || 20)) / 100)).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-[#526258] pt-1">
+                    Customer pays the advance online through Stripe to confirm the reservation. The venue reception collects the remaining balance on match day.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Section 4: Public Business Info */}
         <div className="rounded-2xl border border-[#D7E0D9] bg-white p-5 sm:p-6 space-y-4 shadow-xs">
           <h2 className="text-sm font-bold text-[#17231B] flex items-center gap-2 border-b border-[#E2E8E3] pb-3">
@@ -936,7 +1190,7 @@ export const SettingsPage = () => {
             type="submit"
             variant="primary"
             size="lg"
-            disabled={hasTaxRateError || updateMutation.isPending}
+            disabled={hasTaxRateError || isAdvancePercentageInvalid || updateMutation.isPending}
             isLoading={updateMutation.isPending}
             className="cursor-pointer shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
           >
