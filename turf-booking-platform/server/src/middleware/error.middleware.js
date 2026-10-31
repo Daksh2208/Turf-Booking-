@@ -17,7 +17,43 @@ export const errorMiddleware = (err, req, res, next) => {
     })
   }
 
-  // 2. Determine appropriate status code & environment mode
+  // 2. Intercept Mongoose CastError (e.g. invalid ObjectId parameters or query values)
+  if (err.name === 'CastError') {
+    return res.status(400).json({
+      success: false,
+      error: {
+        message: `Invalid format for field '${err.path}': received '${err.value}'`,
+        code: 'INVALID_ID_FORMAT',
+      },
+    })
+  }
+
+  // 3. Intercept Mongoose Schema ValidationError
+  if (err.name === 'ValidationError' && err.errors) {
+    const errorMessages = Object.values(err.errors).map((e) => e.message)
+    return res.status(400).json({
+      success: false,
+      error: {
+        message: errorMessages.join('. '),
+        code: 'VALIDATION_ERROR',
+        details: errorMessages,
+      },
+    })
+  }
+
+  // 4. Intercept MongoDB duplicate key errors (code 11000)
+  if (err.code === 11000) {
+    const duplicateField = Object.keys(err.keyValue || {})[0] || 'field'
+    return res.status(409).json({
+      success: false,
+      error: {
+        message: `A record with this ${duplicateField} already exists.`,
+        code: 'DUPLICATE_KEY_ERROR',
+      },
+    })
+  }
+
+  // 5. Determine appropriate status code & environment mode
   const statusCode = typeof err.statusCode === 'number' ? err.statusCode : 500
   const isProduction = env.NODE_ENV === 'production'
   const isServerError = statusCode >= 500

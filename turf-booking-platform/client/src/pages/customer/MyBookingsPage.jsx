@@ -128,7 +128,7 @@ export const MyBookingsPage = () => {
         status: activeFilter,
         date: selectedDate,
       }),
-    refetchInterval: 5000,
+    staleTime: 30000,
   })
 
   const bookings = data?.bookings || []

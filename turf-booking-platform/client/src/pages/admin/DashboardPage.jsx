@@ -39,7 +39,7 @@ export const DashboardPage = () => {
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['adminDashboard'],
     queryFn: () => adminInventoryService.getDashboard(),
-    refetchInterval: 15000,
+    refetchInterval: 30000,
   })
 
   const metrics = data?.metrics || {

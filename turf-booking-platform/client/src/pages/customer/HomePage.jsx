@@ -35,13 +35,14 @@ export const HomePage = () => {
   const { data: sports = [], isLoading: sportsLoading } = useQuery({
     queryKey: ['publicSports'],
     queryFn: () => customerInventoryService.getSports(),
-    refetchInterval: 5000,
+    staleTime: 60000,
   })
 
   // Fetch Public Business Settings
   const { data: settings } = useQuery({
     queryKey: ['publicBusinessSettings'],
     queryFn: () => customerInventoryService.getSettings(),
+    staleTime: 300000,
   })
 
   // Deduplicate sports so only unique categories appear (no duplicate "Box Cricket" variants)
@@ -71,7 +72,7 @@ export const HomePage = () => {
   const { data: banners = [] } = useQuery({
     queryKey: ['publicBanners'],
     queryFn: () => customerInventoryService.getBanners(),
-    refetchInterval: 5000,
+    staleTime: 60000,
   })
 
   // 3. Fetch Featured / Recent Turfs (dynamically filters when a sport is selected)
@@ -83,7 +84,7 @@ export const HomePage = () => {
         sort: 'newest',
         sportSlug: selectedSportSlug || undefined,
       }),
-    refetchInterval: 5000,
+    staleTime: 30000,
   })
 
   const turfs = turfsData?.turfs || []

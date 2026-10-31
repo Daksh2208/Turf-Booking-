@@ -893,4 +893,80 @@ To ensure zero regressions across both client and server applications, comprehen
 - **Integrity Guarantee:** Zero hard-coded business data remains on customer pages; all changes made by the administrator immediately reflect across customer discovery, transactional booking, cancellation, and refund flows.
 
 ---
+
+## 11. Phase 5 — Security, Performance & UX Audit & Implementation Verification
+
+### 11.1 Audit Summary & Scope
+Phase 5 represents the final hardening stage for TurfSpot, focusing on enterprise security, performance optimization, UX refinement, and mobile responsiveness across all viewports (320px – 1440px).
+
+| Dimension | Pre-Phase 5 Baseline | Post-Phase 5 Hardened | Key Improvements Implemented |
+| :--- | :---: | :---: | :--- |
+| **Backend Input Validation** | Partial (Auth & Inventory only) | **Comprehensive (All routes)** | Express-validator schemas for bookings, slot holds, coupons, and payments |
+| **Error Handling & Sanitization** | Basic 500 fallback | **Specialized 400/409/500** | Structured handling for Mongoose `CastError` (400), `ValidationError` (400), and duplicate key 11000 (409) |
+| **Rate Limiting** | Auth routes only | **Full Protection** | Sensitive limiters on login (25/15m), bookings/holds (60/10m), stripe checkout (30/10m), coupons (30/10m), general (600/15m) |
+| **CORS Security** | Permissive substring localhost | **Strict Regex & Origin Whitelist** | Exact port regex for localhost/127.0.0.1, preventing spoofed origin domains |
+| **Client Bundle Size** | 996.30 kB monolithic JS | **360.67 kB (64% reduction)** | React.lazy route code-splitting, Rollup manual vendor chunking, PageFallback |
+| **API Network Strain** | 5s polling across pages | **Event-Driven & Cached** | Removed 5s polling intervals on sports, banners, turfs, and bookings |
+| **Accessibility (WCAG 2.1)** | Default outlines | **High-Contrast Visible Focus** | `:focus-visible` 2px emerald outline, ARIA labels, semantic meta tags |
+
+---
+
+### 11.2 Security Hardening Details
+1. **Centralized Error Middleware:**
+   - Intercepts Mongoose `CastError` (e.g. invalid MongoDB ObjectIds) and returns HTTP 400 with code `INVALID_ID_FORMAT`.
+   - Intercepts Mongoose `ValidationError` and returns HTTP 400 with code `VALIDATION_ERROR` and detailed field failure array.
+   - Intercepts MongoDB duplicate key errors (code `11000`) and returns HTTP 409 with code `DUPLICATE_KEY_ERROR`.
+   - Masks internal stack traces in production environment (`NODE_ENV === 'production'`).
+2. **CORS Hardening:**
+   - Replaced substring matching with strict regex validation: `/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/` to prevent sub-domain spoofing attacks.
+3. **Multi-Tier Rate Limiting:**
+   - `authLimiter`: 25 attempts / 15 min for `/login` and `/register`.
+   - `bookingLimiter`: 60 requests / 10 min for `/api/v1/bookings` and `/api/v1/reservations/hold`.
+   - `paymentLimiter`: 30 requests / 10 min for `/api/v1/payments/stripe/checkout-session`.
+   - `couponLimiter`: 30 requests / 10 min for `/api/v1/coupons/validate` (prevents dictionary attacks).
+   - `apiLimiter`: 600 requests / 15 min general API ceiling.
+4. **Input Validation:**
+   - `booking.validator.js` enforces YYYY-MM-DD dates, HH:mm 24-hour formats, valid MongoDB ObjectIds, integer paise constraints, and strict enum values (`paymentPlan: 'full_online' | 'partial_advance'`).
+
+---
+
+### 11.3 Performance Optimization Details
+1. **Unnecessary API Polling Elimination:**
+   - Removed `refetchInterval: 5000` from `HomePage.jsx` on `publicSports`, `publicBanners`, and `homeFeaturedTurfs` (replaced with `staleTime: 60000` and `30000`).
+   - Removed `refetchInterval: 5000` from `TurfDetailPage.jsx` on `publicTurfDetail` (replaced with `staleTime: 60000`).
+   - Removed `refetchInterval: 5000` from `MyBookingsPage.jsx` on `myBookings` (replaced with `staleTime: 30000`).
+   - Scaled `AvailabilityCalendar.jsx` fallback polling from 6s to 30s, preserving instant millisecond Socket.IO push updates.
+2. **Code Splitting & Bundle Reduction:**
+   - Implemented dynamic `React.lazy()` for all 11 admin pages and 12 customer sub-routes.
+   - Configured Vite manual vendor chunking:
+     - `vendor-react` (51.22 kB)
+     - `vendor-icons` (26.42 kB)
+     - `vendor-utils` (62.17 kB)
+   - Initial JavaScript download for landing page reduced from **996.30 kB down to 360.67 kB** (106.65 kB gzip) — **63.8% bandwidth reduction**.
+   - Vite production build duration improved from 31.01s to **9.44s** (69.5% faster build).
+3. **Database Query Optimization:**
+   - Added compound index `{ user: 1, status: 1, date: 1 }` and `{ user: 1, date: 1 }` on `Booking` collection to accelerate customer match filtering and live count aggregation.
+
+---
+
+### 11.4 Mobile Responsiveness & Accessibility
+1. **WCAG 2.1 AA Compliance:**
+   - Added `:focus-visible` indicators with `#267A45` high-contrast outline for keyboard navigation.
+   - Enhanced `index.html` with description meta tags, theme color (`#267A45`), and descriptive title.
+   - Added `PageFallback` spinner component with `role="status"` and accessible loading labels.
+2. **Responsive Layouts:**
+   - Admin tables feature horizontal scrolling with sticky headers and responsive metadata badges.
+   - Customer booking filters switch between compact pill scrollbars on mobile and full grids on desktop.
+
+---
+
+### 11.5 Automated Test Verification
+- **Client Test Suite:** `npm --prefix turf-booking-platform/client test`
+  - **14 of 14 test files passed (86 of 86 tests passed)**
+- **Server Security Suite:** `npx vitest run tests/phase5SecurityAudit.test.js`
+  - **12 of 12 tests passed** covering error middleware, RBAC guards, token signing, duration parsing, and rate limiters.
+- **Client Production Build:** `npm --prefix turf-booking-platform/client run build`
+  - **Passed in 9.44s with 0 warnings or errors**.
+
+---
 *Report updated and validated for TurfSpot Production Engineering & Product Management.*

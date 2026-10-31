@@ -51,14 +51,16 @@ app.use(
       // Allow requests with no origin (like curl, server-to-server)
       if (!origin) return callback(null, true)
       const cleanOrigin = origin.trim().replace(/\/$/, '')
+      const isLocalhost =
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(cleanOrigin)
+
       if (
         allowedOrigins.includes(cleanOrigin) ||
         cleanOrigin.endsWith('.onrender.com') ||
         cleanOrigin.endsWith('.vercel.app') ||
         cleanOrigin.endsWith('.netlify.app') ||
         cleanOrigin.endsWith('.pages.dev') ||
-        cleanOrigin.includes('localhost') ||
-        cleanOrigin.includes('127.0.0.1')
+        isLocalhost
       ) {
         return callback(null, true)
       }

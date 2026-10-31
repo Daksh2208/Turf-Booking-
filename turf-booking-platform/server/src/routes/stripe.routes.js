@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireAuth, requireCustomer, optionalAuth } from '../middleware/auth.middleware.js'
+import { paymentLimiter } from '../middleware/rate-limit.middleware.js'
 import {
   getPublicConfig,
   createCheckoutSession,
@@ -14,8 +15,8 @@ const router = Router()
 router.get('/config', getPublicConfig)
 
 // Customer authenticated: Create Checkout Session
-router.post('/checkout-session', requireAuth, requireCustomer, createCheckoutSession)
-router.post('/create-checkout-session', requireAuth, requireCustomer, createCheckoutSession)
+router.post('/checkout-session', paymentLimiter, requireAuth, requireCustomer, createCheckoutSession)
+router.post('/create-checkout-session', paymentLimiter, requireAuth, requireCustomer, createCheckoutSession)
 
 // Authenticated (customer or admin) or checkout session-id verified: Retrieve authoritative status
 router.get('/status/:bookingId', optionalAuth, getPaymentStatus)

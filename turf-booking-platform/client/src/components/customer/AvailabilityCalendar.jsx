@@ -105,7 +105,7 @@ export const AvailabilityCalendar = ({
     queryKey: ['turfAvailability', { turfId, date: currentDate }],
     queryFn: () => customerBookingService.getAvailability(turfId, currentDate),
     enabled: !!turfId && !!currentDate,
-    refetchInterval: 6000,
+    refetchInterval: 30000,
   })
 
   const slots = data?.slots || []
@@ -152,7 +152,7 @@ export const AvailabilityCalendar = ({
                 }
               }
             })
-            .catch(() => {})
+            .catch(() => { })
         }
       } catch {
         // Safe fallback
@@ -594,17 +594,16 @@ export const AvailabilityCalendar = ({
             return (
               <div
                 key={`${slot.startTime}-${slot.endTime}`}
-                className={`p-3 rounded-2xl border flex flex-col justify-between transition-all select-none ${
-                  isSelectedByMe
+                className={`p-3 rounded-2xl border flex flex-col justify-between transition-all select-none ${isSelectedByMe
                     ? 'bg-[#E1F0E5] border-2 border-[#267A45] shadow-xs cursor-pointer'
                     : isAvailable
-                    ? 'bg-white border-[#D7E0D9] hover:border-[#267A45] hover:bg-[#F0F6F1] cursor-pointer'
-                    : isHeldByOther
-                    ? 'bg-[#FFFBEB] border-[#FCD34D] cursor-not-allowed opacity-90'
-                    : isBlocked
-                    ? 'bg-[#FDF0EF] border-[#F8D2CE] cursor-not-allowed opacity-90'
-                    : 'bg-[#EDF1EE] border-[#D7E0D9] cursor-not-allowed opacity-80'
-                }`}
+                      ? 'bg-white border-[#D7E0D9] hover:border-[#267A45] hover:bg-[#F0F6F1] cursor-pointer'
+                      : isHeldByOther
+                        ? 'bg-[#FFFBEB] border-[#FCD34D] cursor-not-allowed opacity-90'
+                        : isBlocked
+                          ? 'bg-[#FDF0EF] border-[#F8D2CE] cursor-not-allowed opacity-90'
+                          : 'bg-[#EDF1EE] border-[#D7E0D9] cursor-not-allowed opacity-80'
+                  }`}
                 onClick={() => handleSlotClick(slot)}
               >
                 <div>

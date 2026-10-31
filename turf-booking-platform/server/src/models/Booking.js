@@ -423,6 +423,8 @@ bookingSchema.pre('save', function (next) {
 
 // Efficient compound indexes for customer lookups, admin reporting and conflict detection
 bookingSchema.index({ user: 1, createdAt: -1 })
+bookingSchema.index({ user: 1, status: 1, date: 1 })
+bookingSchema.index({ user: 1, date: 1 })
 bookingSchema.index(
   { user: 1, idempotencyKey: 1 },
   { unique: true, partialFilterExpression: { idempotencyKey: { $type: 'string' } } }

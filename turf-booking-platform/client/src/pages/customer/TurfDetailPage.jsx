@@ -41,7 +41,7 @@ export const TurfDetailPage = () => {
     queryKey: ['publicTurfDetail', slug],
     queryFn: () => customerInventoryService.getTurfBySlug(slug),
     enabled: !!slug,
-    refetchInterval: 5000,
+    staleTime: 60000,
   })
 
   const arenaTimezone = turf?.timezone || 'Asia/Kolkata'

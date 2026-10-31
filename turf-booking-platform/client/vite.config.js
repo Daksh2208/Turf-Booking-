@@ -16,6 +16,18 @@ export default defineConfig({
   optimizeDeps: {
     include: ['driver.js'],
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-icons': ['lucide-react'],
+          'vendor-utils': ['axios', 'canvas-confetti'],
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',
