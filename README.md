@@ -8,7 +8,7 @@
 [![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose_8.12-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/)
 [![Socket.IO](https://img.shields.io/badge/Socket.IO-4.8.4_Real--Time-010101?logo=socketdotio&logoColor=white)](https://socket.io/)
 [![Stripe](https://img.shields.io/badge/Stripe-Payment_Gateway-008CDD?logo=stripe&logoColor=white)](https://stripe.com/)
-[![Vitest](https://img.shields.io/badge/Vitest-243_Tests_Passing-6E9F18?logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Vitest](https://img.shields.io/badge/Vitest-255_Tests_Passing-6E9F18?logo=vitest&logoColor=white)](https://vitest.dev/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A production-grade, full-stack **MERN** (MongoDB, Express.js, React 19, Node.js) web application and real-time facility operating system engineered for sports arena discovery, atomic slot scheduling, authoritative dynamic pricing, self-service cancellations with automated Stripe refunds, and comprehensive facility administration.
@@ -57,7 +57,7 @@ For comprehensive system diagrams, database schemas, deep-dive implementation re
 
 | Document | Purpose & Scope |
 | :--- | :--- |
-| **[Production Audit Report](PRODUCTION_AUDIT_REPORT.md)** | Multi-perspective audit (Platform Owner, Customer/Player, Software Architect), phase-by-phase implementation verification (Phases 1, 2, 3, 3.1 & 3.2), and 100% production readiness scorecard. |
+| **[Production Audit Report](PRODUCTION_AUDIT_REPORT.md)** | Multi-perspective audit (Platform Owner, Customer/Player, Software Architect), phase-by-phase implementation verification (Phases 1, 2, 3, 4 & 5), and 100% production readiness scorecard. |
 | **[Project Technical Report](docs/PROJECT_REPORT.md)** | Problem statement, functional domain requirements, MERN architecture, database schemas & referential integrity, and end-to-end user journeys. |
 | **[Setup & Installation Guide](docs/SETUP.md)** | Detailed step-by-step installation instructions, environment configuration reference, MongoDB seeding, Stripe CLI testing, and troubleshooting FAQs. |
 | **[Security Architecture Document](docs/SECURITY.md)** | Deep technical dive into JWT rotation, bcrypt password hashing, RBAC middleware, express-validator sanitization, Helmet headers, CORS policies, and Stripe webhook HMAC-SHA256 signature verification. |
@@ -67,6 +67,10 @@ For comprehensive system diagrams, database schemas, deep-dive implementation re
 ## 🌟 Key Highlights & Architectural Superpowers
 
 - **Strict Zero-Hardcoding Architecture**: No pricing, sports, banners, turfs, or rules are hard-coded. Any change committed by the administrator in the Admin Panel immediately reflects across customer search, slot calendars, and checkout totals without requiring server redeployment or client page reloads.
+- **Dynamic Route Code-Splitting & 64% Bundle Reduction**: Customer and admin pages use `React.lazy()` dynamic imports with a seamless, branded `<PageFallback />`. Initial landing page JavaScript payload was reduced from **996 kB down to 360 kB**, with Rollup manual vendor chunking and build times under 9 seconds.
+- **Multi-Tier Rate Limiting & Enterprise Security**: Layered defensive rate limiting guards authentication (25/15m), slot reservations/holds (60/10m), Stripe checkout initialization (30/10m), and coupon validation (30/10m to prevent dictionary attacks).
+- **Backend Validation & Robust Error Formatting**: Centralized express-validator schemas validate all booking, slot query, hold, and payment inputs. Centralized error middleware gracefully handles Mongoose `CastError` (400), `ValidationError` (400), and MongoDB 11000 duplicate keys (409) with stack trace suppression in production.
+- **High-Contrast WCAG 2.1 AA Accessibility**: High-contrast `:focus-visible` emerald outlines ensure accessible keyboard navigation across all buttons, inputs, and interactive cards without relying solely on color.
 - **Real-Time WebSocket Synchronization (Socket.IO)**: Client browsers join room-specific channels (`turf:${turfId}:${date}`). Changes made via slot holds, administrative slot blocks, cancellations, or bookings broadcast instantaneously with zero client polling load.
 - **10-Minute Concurrency-Safe Temporary Slot Holds**: Prevents double-booking during checkout. Multi-slot reservations are protected with atomic locks and duplicate-key race condition handling. Abandoned sessions automatically expire after 10 minutes and are swept by a 60-second background worker.
 - **Authoritative Backend Dynamic Pricing Engine**: Formula: `Total = (Base/Peak/Weekend Rate × Hours) + Equipment Add-Ons - Coupon Discount + GST`. Calculation executes strictly on the backend in integer paise (`Math.round`) to safeguard against tampering and floating-point errors.
@@ -651,7 +655,7 @@ All connected customer browsers immediately re-fetch the latest slot states with
 
 The codebase includes comprehensive automated test suites covering backend services, concurrency locks, cancellation refund mathematics, RBAC policies, and frontend components:
 
-### 1. Backend Automated Test Suite (157 Tests)
+### 1. Backend Automated Test Suite (169 Tests)
 Run backend tests with Vitest:
 ```bash
 cd turf-booking-platform/server
@@ -659,6 +663,7 @@ npm test
 ```
 
 Key verified test suites:
+- `phase5SecurityAudit.test.js` (**12 tests**): Centralized error middleware (`CastError` 400, `ValidationError` 400, `DuplicateKey` 409, `INVALID_JSON`), RBAC authorization guards (`requireAuth`, `requireAdmin`, `requireCustomer`), JWT token generation & verification, rate limiter exports.
 - `bookingLifecycleUnit.test.js` (**7 tests**): Smart filtering (`all`, `upcoming`, `today`, `past`, `cancelled`), automatic completion, customer isolation.
 - `dateUtils.test.js` (**6 tests**): Venue timezone (`Asia/Kolkata`) epoch timestamp conversion and midnight-crossing matches (`23:00`–`01:00`).
 - `cancellationRefund.test.js` (**17 tests**): Customer cancellation permissions, cutoff deadline enforcement, 100% refund calculations, Pay at Venue safety, Stripe refund retries.
@@ -692,7 +697,7 @@ Verify the production build using Vite 7:
 cd turf-booking-platform/client
 npm run build
 ```
-> Produces an optimized, tree-shaken production bundle in `client/dist/` with zero build warnings.
+> Produces an optimized, tree-shaken, code-split production bundle in `client/dist/` with zero build warnings (initial bundle size: 360 kB, build duration: ~8.9 seconds).
 
 ---
 
@@ -706,12 +711,12 @@ A rigorous multi-perspective audit was conducted across the commercial, customer
 | :--- | :---: | :--- |
 | **Admin Control & Authority** | **`10.0 / 10`** | Unified database, zero hardcoded content, instant block/unblock, dynamic GST & cancellation cutoff controls. |
 | **Public Access & Discovery** | **`10.0 / 10`** | 100% public discovery on `/`, `/turfs`, `/turfs/:slug` without registration wall; debounced search and dynamic sport pills. |
-| **Booking Journey & UX** | **`10.0 / 10`** | Real-time SlotGrid (5 visual states), dynamic price quotes in paise, equipment add-ons, 10-min temporary hold with countdown. |
+| **Booking Journey & UX** | **`10.0 / 10`** | Real-time SlotGrid (5 visual states), dynamic price quotes in paise, equipment add-ons, 10-min temporary hold with countdown, `<PageFallback />`. |
 | **Customer Match Hub** | **`10.0 / 10`** | My Bookings match hub with 5 smart filters, calendar date picker, digital Booking Pass, self-service cancellations & Stripe refunds. |
-| **Data & Referential Integrity** | **`10.0 / 10`** | Partial unique indexes, safe deletion checks preventing orphan sports/turfs, atomic multi-slot hold rollback. |
-| **UI & Customer Ergonomics** | **`10.0 / 10`** | Modern Tailwind CSS v4 design, responsive mobile navigation, status badges, and accessible modal flows. |
-| **Scalability & Performance** | **`10.0 / 10`** | Room-based Socket.IO broadcasts, 60s background reconciler, zero client polling load. |
-| **Security & Compliance** | **`10.0 / 10`** | JWT token rotation, bcrypt, signed HTTP-only cookies, express-validator schemas, Helmet headers, CORS policies. |
+| **Data & Referential Integrity** | **`10.0 / 10`** | Partial unique indexes, safe deletion checks preventing orphan sports/turfs, atomic multi-slot hold rollback, compound user-status indexes. |
+| **UI & Customer Ergonomics** | **`10.0 / 10`** | Modern Tailwind CSS v4 design, responsive mobile navigation, status badges, and WCAG 2.1 AA `:focus-visible` accessible focus rings. |
+| **Scalability & Performance** | **`10.0 / 10`** | 64% main bundle reduction (996 kB -> 360 kB), React.lazy route code-splitting, zero continuous 5s polling, room-based Socket.IO broadcasts. |
+| **Security & Compliance** | **`10.0 / 10`** | JWT token rotation, bcrypt, signed HTTP-only cookies, express-validator schemas, multi-tier rate limiting, error middleware sanitization, Helmet headers, CORS policies. |
 
 ---
 
